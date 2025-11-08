@@ -1,19 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { ProtectedRoute } from "@/lib/components/ProtectedRoute";
+import { LoginPage } from "@/app/auth/LoginPage";
 
-// Placeholder components (we'll build these later)
-function LoginPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-[#33FF99] to-[#3366FF]">
-      <div className="bg-white p-8 rounded-lg shadow-xl">
-        <h1 className="text-2xl font-bold mb-4">Login</h1>
-        <p className="text-gray-600">Login page - coming soon</p>
-      </div>
-    </div>
-  );
-}
-
+// Keep the other placeholder components for now
 function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-[#33FF99] to-[#3366FF]">
