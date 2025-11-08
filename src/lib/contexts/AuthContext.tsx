@@ -78,6 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   // Sign up
+  // Sign up
   const signUp = async (
     email: string,
     password: string,
@@ -88,27 +89,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Send verification email
     await sendEmailVerification(result.user);
 
-    // Create user profile in Firestore
+    // Create user profile in Firestore (only include defined fields)
     const newUser: User = {
       uid: result.user.uid,
       email: email,
       firstName: userData.firstName || "",
       lastName: userData.lastName || "",
       displayName: `${userData.firstName} ${userData.lastName}`,
-      photoURL: "assets/images/logo-avi.jpg",
+      photoURL: "",
       termsOfAgreement: true,
       mobile: userData.mobile || "",
       biography: "",
       location: "",
       notification: false,
       numNotification: 0,
-      referredBy: userData.referredBy || "",
       numReferral: 0,
       onboardingFinished: false,
-      shoeSize: userData.shoeSize,
       sneakerCount: 0,
       wishlistCount: 0,
     };
+
+    // Only add optional fields if they exist
+    if (userData.referredBy) {
+      newUser.referredBy = userData.referredBy;
+    }
+
+    if (userData.shoeSize) {
+      newUser.shoeSize = userData.shoeSize;
+    }
 
     await setDoc(doc(db, "users", result.user.uid), newUser);
 
