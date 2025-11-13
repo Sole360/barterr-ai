@@ -5,6 +5,7 @@ import { LoginPage } from "@/app/auth/LoginPage";
 import { SignupPage } from "@/app/auth/SignupPage";
 import { OnboardingPage } from "@/app/auth/OnboardingPage";
 import { DashboardPage } from "@/app/dashboard/DashboardPage";
+import { Toaster } from "@/components/ui/toaster";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+        <Toaster />
       </AuthProvider>
     </BrowserRouter>
   );

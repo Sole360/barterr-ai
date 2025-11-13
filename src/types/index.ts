@@ -52,11 +52,22 @@ export interface Sneaker {
   photos?: boolean;
 }
 
+export interface TradeOffer {
+  cash: number;
+  sneakers: Sneaker[];
+}
+
+export interface OfferHistory {
+  theirOffer: TradeOffer;
+  yourOffer: TradeOffer;
+  initiatedBy: string;
+}
+
 export interface Trade {
   tradeId: string;
-  theirOffer?: any;
-  yourOffer?: any;
-  offer?: any[];
+  theirOffer?: TradeOffer;
+  yourOffer?: TradeOffer;
+  offer?: OfferHistory[];
   add?: number;
   ask?: number;
   senderId: string;
@@ -82,39 +93,71 @@ export interface Trade {
   posterPaymentId?: string;
   declined: boolean;
   reminderSent: boolean;
-  tradeLikelihood?: any;
+  tradeLikelihood?: number;
+}
+
+export interface UserReference {
+  id: string;
+  name: string;
+  email: string;
+  rating?: number;
 }
 
 export interface Post {
   postId: string;
   public?: boolean;
   userId?: string;
-  wishers: any[];
-  owners: any[];
+  wishers?: UserReference[];
+  owners?: UserReference[];
   apiID?: string;
-  styleId: string;
+  styleId?: string;
   title: string;
   brand: string;
   productImageUrl: string;
-  postedAt: Timestamp;
-  updatedAt: Timestamp;
-  active: boolean;
+  postedAt?: Timestamp;
+  updatedAt?: Timestamp;
+  active?: boolean;
   sneaks?: Sneaker[];
+}
+
+export interface TrackingInfo {
+  carrier: string;
+  tracking: string;
+  label: string;
 }
 
 export interface Order {
   id: string;
   completed?: boolean;
-  confirmedAt: any;
-  poster: any;
-  sender: any;
-  users?: any[];
-  tradeDeal: any;
-  trackingSender?: any;
-  trackingPoster?: any;
-  trackingSole360?: any;
+  confirmedAt: Timestamp;
+  poster: UserReference;
+  sender: UserReference;
+  users?: string[];
+  tradeDeal: {
+    senderOffer: TradeOffer;
+    posterOffer: TradeOffer;
+  };
+  trackingSender?: TrackingInfo;
+  trackingPoster?: TrackingInfo;
+  trackingSole360?: TrackingInfo;
   fakes?: {
     userId: string;
     reasons: string;
   };
+}
+
+export interface Listing {
+  id: string;
+  postId: string;
+  userId: string;
+  userName: string;
+  userRating: number;
+  size: number;
+  condition: "new" | "used";
+  conditionGrade: number;
+  tradeValue: number;
+  location: string;
+  responseTime: string;
+  photos?: string[];
+  createdAt: Timestamp;
 }
