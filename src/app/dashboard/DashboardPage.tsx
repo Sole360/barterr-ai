@@ -1,12 +1,23 @@
+import { useState } from "react";
 import { Navbar } from "@/components/shared/Navbar";
 
+type BrandFilter =
+  | "All"
+  | "Nike"
+  | "Adidas"
+  | "Jordan"
+  | "New Balance"
+  | "Other";
+
 export function DashboardPage() {
-  // Dummy sneaker posts for now
+  const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
+
+  // Dummy sneaker posts
   const dummyPosts = [
     {
       id: "1",
       title: "Air Jordan 1 Retro High OG",
-      brand: "Nike",
+      brand: "Jordan",
       imageUrl:
         "https://images.unsplash.com/photo-1584735175097-719d848f8449?w=400&h=300&fit=crop",
       size: 10.5,
@@ -51,7 +62,7 @@ export function DashboardPage() {
     {
       id: "6",
       title: "Travis Scott Jordan 1",
-      brand: "Nike",
+      brand: "Jordan",
       imageUrl:
         "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=400&h=300&fit=crop",
       size: 10,
@@ -59,23 +70,64 @@ export function DashboardPage() {
     },
   ];
 
+  // Filter posts by brand
+  const filteredPosts =
+    selectedBrand === "All"
+      ? dummyPosts
+      : dummyPosts.filter((post) => post.brand === selectedBrand);
+
+  const brands: BrandFilter[] = [
+    "All",
+    "Nike",
+    "Adidas",
+    "Jordan",
+    "New Balance",
+    "Other",
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      {/* Main Content - with top padding for fixed navbar */}
+      {/* Main Content */}
       <main className="pt-20 pb-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Page Header */}
-          <div className="mb-8">
+          <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Discover</h1>
             <p className="text-gray-600">Browse sneakers available for trade</p>
           </div>
 
+          {/* Brand Filter Tabs */}
+          <div className="mb-6 overflow-x-auto">
+            <div className="flex space-x-2 min-w-max pb-2">
+              {brands.map((brand) => (
+                <button
+                  key={brand}
+                  onClick={() => setSelectedBrand(brand)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+                    selectedBrand === brand
+                      ? "bg-[#3366FF] text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                  }`}
+                >
+                  {brand}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Results Count */}
+          <div className="mb-4">
+            <p className="text-sm text-gray-600">
+              {filteredPosts.length}{" "}
+              {filteredPosts.length === 1 ? "sneaker" : "sneakers"} available
+            </p>
+          </div>
+
           {/* Sneaker Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-            {" "}
-            {dummyPosts.map((post) => (
+            {filteredPosts.map((post) => (
               <div
                 key={post.id}
                 className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
@@ -109,6 +161,16 @@ export function DashboardPage() {
               </div>
             ))}
           </div>
+
+          {/* Empty State */}
+          {filteredPosts.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 mb-2">No sneakers found</p>
+              <p className="text-sm text-gray-400">
+                Try selecting a different brand
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </div>
