@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Star, MapPin, Clock } from "lucide-react";
+import { Heart, Star, MapPin, Clock, X } from "lucide-react";
 import { Listing, Post } from "@/types";
 import { Timestamp } from "firebase/firestore";
 
@@ -79,7 +79,7 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 bg-white [&>button]:hidden">
         {/* Hero Image */}
         <div className="relative aspect-[4/3] bg-gray-100">
           <img
@@ -87,16 +87,27 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
             alt={post.title}
             className="w-full h-full object-cover"
           />
-          <button
-            onClick={() => setIsWishlisted(!isWishlisted)}
-            className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
-          >
-            <Heart
-              className={`w-6 h-6 ${
-                isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"
-              }`}
-            />
-          </button>
+
+          {/* Buttons stacked vertically in top-right */}
+          <div className="absolute top-4 right-4 flex flex-col gap-2">
+            <button
+              onClick={onClose}
+              className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
+            >
+              <X className="w-6 h-6 text-gray-600" />
+            </button>
+
+            <button
+              onClick={() => setIsWishlisted(!isWishlisted)}
+              className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
+            >
+              <Heart
+                className={`w-6 h-6 ${
+                  isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         <div className="p-6">

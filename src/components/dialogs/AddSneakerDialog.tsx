@@ -178,7 +178,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
+      <DialogContent className="max-w-2xl h-[100vh] sm:h-[90vh] w-full sm:max-w-2xl overflow-y-auto bg-white p-0 sm:rounded-lg">
         <DialogHeader className="mb-6">
           <DialogTitle className="text-2xl font-bold text-gray-900">
             {step === "search"
@@ -186,7 +186,6 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
               : "Listing Details"}
           </DialogTitle>
         </DialogHeader>
-
         {step === "search" ? (
           // Search Step
           <div className="space-y-6">

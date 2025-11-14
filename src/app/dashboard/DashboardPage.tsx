@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Plus } from "lucide-react";
 import { Navbar } from "@/components/shared/Navbar";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
-import { Post } from "@/types";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
-import { Plus } from "lucide-react";
+import { Post } from "@/types";
+import {
+  subscribeToPosts,
+  subscribeToPostsByBrand,
+} from "@/lib/firebase/posts.service";
 
 type BrandFilter =
   | "All"
@@ -17,56 +21,9 @@ export function DashboardPage() {
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [addSneakerOpen, setAddSneakerOpen] = useState(false);
-
-  const dummyPosts: Post[] = [
-    {
-      postId: "1",
-      title: "Air Jordan 1 Retro High OG",
-      brand: "Jordan",
-      productImageUrl:
-        "https://images.unsplash.com/photo-1584735175097-719d848f8449?w=400&h=300&fit=crop",
-    },
-    {
-      postId: "2",
-      title: "Yeezy Boost 350 V2",
-      brand: "Adidas",
-      productImageUrl:
-        "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=400&h=300&fit=crop",
-    },
-    {
-      postId: "3",
-      title: "Nike Dunk Low Panda",
-      brand: "Nike",
-      productImageUrl:
-        "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop",
-    },
-    {
-      postId: "4",
-      title: "New Balance 550",
-      brand: "New Balance",
-      productImageUrl:
-        "https://images.unsplash.com/photo-1539185441755-769473a23570?w=400&h=300&fit=crop",
-    },
-    {
-      postId: "5",
-      title: "Air Max 90",
-      brand: "Nike",
-      productImageUrl:
-        "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=400&h=300&fit=crop",
-    },
-    {
-      postId: "6",
-      title: "Travis Scott Jordan 1",
-      brand: "Jordan",
-      productImageUrl:
-        "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=400&h=300&fit=crop",
-    },
-  ];
-
-  const filteredPosts =
-    selectedBrand === "All"
-      ? dummyPosts
-      : dummyPosts.filter((post) => post.brand === selectedBrand);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const brands: BrandFilter[] = [
     "All",
@@ -76,6 +33,50 @@ export function DashboardPage() {
     "New Balance",
     "Other",
   ];
+
+  // Subscribe to posts based on selected brand
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+
+    let unsubscribe: (() => void) | undefined;
+
+    if (selectedBrand === "All") {
+      // Subscribe to all posts
+      unsubscribe = subscribeToPosts(
+        (fetchedPosts) => {
+          setPosts(fetchedPosts);
+          setLoading(false);
+        },
+        (err) => {
+          console.error("Error fetching posts:", err);
+          setError("Failed to load sneakers");
+          setLoading(false);
+        }
+      );
+    } else {
+      // Subscribe to posts by brand
+      unsubscribe = subscribeToPostsByBrand(
+        selectedBrand,
+        (fetchedPosts) => {
+          setPosts(fetchedPosts);
+          setLoading(false);
+        },
+        (err) => {
+          console.error("Error fetching posts:", err);
+          setError("Failed to load sneakers");
+          setLoading(false);
+        }
+      );
+    }
+
+    // Cleanup subscription when component unmounts or brand changes
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [selectedBrand]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -88,6 +89,7 @@ export function DashboardPage() {
             <p className="text-gray-600">Browse sneakers available for trade</p>
           </div>
 
+          {/* Brand Filter Tabs */}
           <div className="mb-6 overflow-x-auto">
             <div className="flex space-x-2 min-w-max pb-2">
               {brands.map((brand) => (
@@ -106,50 +108,94 @@ export function DashboardPage() {
             </div>
           </div>
 
+          {/* Results Count */}
           <div className="mb-4">
             <p className="text-sm text-gray-600">
-              {filteredPosts.length}{" "}
-              {filteredPosts.length === 1 ? "sneaker" : "sneakers"} available
+              {loading
+                ? "Loading..."
+                : `${posts.length} ${
+                    posts.length === 1 ? "sneaker" : "sneakers"
+                  } available`}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-            {filteredPosts.map((post) => (
-              <div
-                key={post.postId}
-                onClick={() => setSelectedPost(post)}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
+          {/* Error State */}
+          {error && (
+            <div className="text-center py-12">
+              <p className="text-red-500 mb-2">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-sm text-[#3366FF] hover:underline"
               >
-                <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
-                  <img
-                    src={post.productImageUrl}
-                    alt={post.title}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
+                Try again
+              </button>
+            </div>
+          )}
 
-                <div className="p-4">
-                  <p className="text-xs font-medium text-[#3366FF] mb-1">
-                    {post.brand}
-                  </p>
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                    {post.title}
-                  </h3>
+          {/* Loading State */}
+          {loading && !error && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+              {[...Array(10)].map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-lg shadow-sm overflow-hidden animate-pulse"
+                >
+                  <div className="aspect-[4/3] bg-gray-200" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-3 bg-gray-200 rounded w-1/3" />
+                    <div className="h-4 bg-gray-200 rounded w-full" />
+                    <div className="h-3 bg-gray-200 rounded w-2/3" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {filteredPosts.length === 0 && (
+          {/* Sneaker Grid */}
+          {!loading && !error && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+              {posts.map((post) => (
+                <div
+                  key={post.postId}
+                  onClick={() => setSelectedPost(post)}
+                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
+                >
+                  <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
+                    <img
+                      src={post.productImageUrl}
+                      alt={post.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+
+                  <div className="p-4">
+                    <p className="text-xs font-medium text-[#3366FF] mb-1">
+                      {post.brand}
+                    </p>
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                      {post.title}
+                    </h3>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && posts.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-500 mb-2">No sneakers found</p>
               <p className="text-sm text-gray-400">
-                Try selecting a different brand
+                {selectedBrand === "All"
+                  ? "Be the first to add a sneaker!"
+                  : `Try selecting a different brand or add some ${selectedBrand} sneakers`}
               </p>
             </div>
           )}
         </div>
       </main>
+
+      {/* Floating Action Button */}
       <button
         onClick={() => setAddSneakerOpen(true)}
         className="fixed bottom-6 right-6 w-14 h-14 bg-[#3366FF] text-white rounded-full shadow-lg hover:bg-[#3366FF]/90 hover:scale-110 transition-all flex items-center justify-center z-40"
