@@ -189,10 +189,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
       // Process each sneaker
       for (const sneaker of selectedSneakers) {
         try {
-          console.log("Starting to add sneaker:", sneaker.name);
-
           // Create or get post (with temporary StockX/GOAT image)
-          console.log("Creating post...");
           const postId = await createOrUpdatePost({
             styleId: sneaker.styleId,
             title: sneaker.name,
@@ -200,10 +197,8 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
             productImageUrl: sneaker.imageUrl, // Temporary URL
             userId: currentUser!.uid,
           });
-          console.log("Post created/found:", postId);
 
           // Create listing
-          console.log("Creating listing...");
           await createListing({
             postId,
             userId: currentUser!.uid,
@@ -215,21 +210,18 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
             condition: sneaker.condition === 10 ? "new" : "used",
             conditionGrade: sneaker.condition,
             tradeValue: parseFloat(sneaker.tradeValue),
-            location: userProfile.location || "Location not set",
+            location: userProfile.location ?? "Location not set",
             responseTime: "Usually responds within 24 hours",
             photos: [],
           });
-          console.log("Listing created");
 
           // Queue background image upload
-          console.log("Queueing image upload...");
           await queueImageUpload(
             postId,
             sneaker.styleId,
             sneaker.imageUrl,
             sneaker.source
           );
-          console.log("Image job queued");
 
           successCount++;
         } catch (error) {

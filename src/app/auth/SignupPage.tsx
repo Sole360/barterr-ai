@@ -66,12 +66,12 @@ export function SignupPage() {
         firstName: values.firstName,
         lastName: values.lastName,
         mobile: values.phoneNumber,
-        referredBy: referralId || undefined,
+        referredBy: referralId ?? undefined,
       });
 
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || "Failed to create account");
+      setError(err.message ?? "Failed to create account");
     } finally {
       setLoading(false);
     }

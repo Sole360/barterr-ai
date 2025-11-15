@@ -77,7 +77,7 @@ export function Navbar() {
                     </div>
                   )}
                   <span className="hidden sm:block text-sm font-medium text-gray-700">
-                    {userProfile?.firstName || "User"}
+                    {userProfile?.firstName ?? "User"}
                   </span>
                 </button>
               </DropdownMenuTrigger>
