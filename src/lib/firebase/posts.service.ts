@@ -10,6 +10,7 @@ import {
   onSnapshot,
   Timestamp,
   Unsubscribe,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "./config";
 import { Post, Listing } from "@/types";
@@ -203,4 +204,16 @@ export async function createListing(listingData: {
 
   const docRef = await addDoc(listingsRef, newListing);
   return docRef.id;
+}
+
+// Update an existing post's image URL
+export async function updatePostImage(
+  postId: string,
+  firebaseImageUrl: string
+): Promise<void> {
+  const postRef = doc(db, "posts", postId);
+  await updateDoc(postRef, {
+    productImageUrl: firebaseImageUrl,
+    updatedAt: Timestamp.now(),
+  });
 }
