@@ -160,11 +160,12 @@ export function DashboardPage() {
                   onClick={() => setSelectedPost(post)}
                   className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
                 >
-                  <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
+                  <div className="aspect-square bg-white rounded-lg overflow-hidden flex items-center justify-center p-4">
                     <img
                       src={post.productImageUrl}
                       alt={post.title}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-contain"
+                      referrerPolicy="no-referrer"
                     />
                   </div>
 

@@ -353,6 +353,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
                             src={sneaker.imageUrl}
                             alt={sneaker.name}
                             className="w-full h-full object-contain"
+                            referrerPolicy="no-referrer"
                           />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -396,6 +397,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
                             src={sneaker.imageUrl}
                             alt={sneaker.name}
                             className="w-full h-full object-contain"
+                            referrerPolicy="no-referrer"
                           />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -429,6 +431,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
                       src={selectedSneaker.imageUrl}
                       alt={selectedSneaker.name}
                       className="w-full h-full object-contain"
+                      referrerPolicy="no-referrer"
                     />
                   </div>
                   <div className="flex-1 min-w-0">

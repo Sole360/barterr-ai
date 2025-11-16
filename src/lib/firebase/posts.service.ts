@@ -13,7 +13,95 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "./config";
-import { Post, Listing } from "@/types";
+import { Post, Listing, WisherOwner } from "@/types";
+import { arrayUnion, arrayRemove } from "firebase/firestore";
+
+// Add user to wishlist
+export async function addToWishlist(
+  postId: string,
+  userId: string,
+  displayName: string,
+  email: string,
+  photoURL: string,
+  size: number
+): Promise<void> {
+  const postRef = doc(db, "posts", postId);
+
+  const wisherData = {
+    userId,
+    displayName,
+    email,
+    userPhoto: photoURL || "",
+    size,
+    condition: 10,
+  };
+
+  await updateDoc(postRef, {
+    wishers: arrayUnion(wisherData),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// Remove from wishlist
+export async function removeFromWishlist(
+  postId: string,
+  userId: string,
+  currentWishers: WisherOwner[]
+): Promise<void> {
+  const postRef = doc(db, "posts", postId);
+
+  // Find exact wisher object to remove
+  const wisherToRemove = currentWishers.find((w) => w.userId === userId);
+
+  if (wisherToRemove) {
+    await updateDoc(postRef, {
+      wishers: arrayRemove(wisherToRemove),
+      updatedAt: Timestamp.now(),
+    });
+  }
+}
+
+// Add to collection (creates listing + adds to owners)
+export async function addToCollection(
+  postId: string,
+  userId: string,
+  displayName: string,
+  email: string,
+  photoURL: string,
+  size: number,
+  conditionGrade: number,
+  tradeValue: number,
+  location: string
+): Promise<void> {
+  // Create listing
+  await createListing({
+    postId,
+    userId,
+    userName: displayName,
+    userRating: 5.0,
+    size,
+    condition: conditionGrade === 10 ? "new" : "used",
+    conditionGrade,
+    tradeValue,
+    location,
+    responseTime: "Usually responds within 24 hours",
+    photos: [],
+  });
+
+  // Add to owners array
+  const postRef = doc(db, "posts", postId);
+  await updateDoc(postRef, {
+    owners: arrayUnion({
+      userId,
+      displayName,
+      email,
+      userPhoto: photoURL || "",
+      size,
+      condition: conditionGrade,
+    }),
+    updatedAt: Timestamp.now(),
+  });
+}
 
 // Subscribe to all active posts (real-time)
 export function subscribeToPosts(

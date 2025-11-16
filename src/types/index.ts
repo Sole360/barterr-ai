@@ -107,8 +107,8 @@ export interface Post {
   postId: string;
   public?: boolean;
   userId?: string;
-  wishers?: UserReference[];
-  owners?: UserReference[];
+  wishers?: WisherOwner[];
+  owners?: WisherOwner[];
   apiID?: string;
   styleId?: string;
   title: string;
@@ -160,4 +160,12 @@ export interface Listing {
   responseTime: string;
   photos?: string[];
   createdAt: Timestamp;
+}
+export interface WisherOwner {
+  userId: string;
+  displayName: string;
+  email: string;
+  userPhoto: string;
+  size: number;
+  condition: number;
 }
