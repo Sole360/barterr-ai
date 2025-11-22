@@ -20,6 +20,9 @@ import {
 } from "@/lib/firebase/posts.service";
 import { queueImageUpload } from "@/lib/firebase/imageQueue.service";
 import { searchSneakers, SearchResult } from "@/lib/api/kicksdb.service";
+import { CategoryPhotoUpload } from "@/components/shared/CategoryPhotoUpload";
+import { updateDoc, doc, arrayUnion, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
 
 interface AddSneakerDialogProps {
   open: boolean;
@@ -35,6 +38,14 @@ interface SelectedSneaker extends SearchResult {
   hasInsoles: boolean;
   hasLaces: boolean;
   flaws: string;
+  photos?: {
+    appearance?: string;
+    boxLabel?: string;
+    insoles?: string;
+    boxFrontal?: string;
+    insoleStitching?: string;
+    dateCode?: string;
+  };
 }
 
 export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
@@ -62,6 +73,46 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
   const [hasInsoles, setHasInsoles] = useState(true);
   const [hasLaces, setHasLaces] = useState(true);
   const [flaws, setFlaws] = useState("");
+
+  // Photo upload state
+  const [uploadedPhotos, setUploadedPhotos] = useState<{
+    appearance?: string;
+    boxLabel?: string;
+    insoles?: string;
+    boxFrontal?: string;
+    insoleStitching?: string;
+    dateCode?: string;
+  }>({});
+
+  const photoCategories = [
+    { key: "appearance", label: "Appearance" },
+    { key: "boxLabel", label: "Box Label" },
+    { key: "insoles", label: "Insoles/Sockliner" },
+    { key: "boxFrontal", label: "Box Front" },
+    { key: "insoleStitching", label: "Insole Stitching" },
+    { key: "dateCode", label: "Date Code" },
+  ];
+
+  const handlePhotoUploadComplete = (category: string, downloadURL: string) => {
+    setUploadedPhotos((prev) => ({
+      ...prev,
+      [category]: downloadURL,
+    }));
+  };
+
+  const handlePhotoUploadError = (error: Error) => {
+    toast({
+      title: "Upload failed",
+      description: error.message,
+      variant: "destructive",
+    });
+  };
+
+  const allPhotosUploaded = photoCategories.every(
+    (cat) => uploadedPhotos[cat.key as keyof typeof uploadedPhotos]
+  );
+
+  const uploadedCount = Object.keys(uploadedPhotos).length;
 
   // Common sneaker sizes
   const sneakerSizes = [
@@ -130,6 +181,16 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
   const handleAddToList = () => {
     if (!selectedSneaker || !size || !tradeValue) return;
 
+    // Check photos for used condition
+    if (condition < 10 && !allPhotosUploaded) {
+      toast({
+        title: "Photos required",
+        description: `Please upload all 6 required photos (${uploadedCount}/6)`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const sneakerToAdd: SelectedSneaker = {
       ...selectedSneaker,
       size,
@@ -139,6 +200,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
       hasInsoles,
       hasLaces,
       flaws,
+      photos: condition < 10 ? uploadedPhotos : undefined,
     };
 
     setSelectedSneakers([...selectedSneakers, sneakerToAdd]);
@@ -152,6 +214,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
     setSelectedSneaker(null);
     setTradeValue("");
     setFlaws("");
+    setUploadedPhotos({});
     setStep("search");
     setSearchQuery("");
     setSearchResults([]);
@@ -198,7 +261,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
             userId: currentUser!.uid,
           });
 
-          // Create listing
+          // Create listing with photos if used
           await createListing({
             postId,
             userId: currentUser!.uid,
@@ -212,7 +275,22 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
             tradeValue: parseFloat(sneaker.tradeValue),
             location: userProfile.location ?? "Location not set",
             responseTime: "Usually responds within 24 hours",
-            photos: [],
+            photos: sneaker.photos,
+            approvalStatus: sneaker.condition === 10 ? "approved" : "pending",
+          });
+
+          // Add to owners array in post
+          const postRef = doc(db, "posts", postId);
+          await updateDoc(postRef, {
+            owners: arrayUnion({
+              userId: currentUser!.uid,
+              displayName: `${userProfile.firstName} ${userProfile.lastName}`,
+              email: userProfile.email,
+              userPhoto: userProfile.photoURL ?? "",
+              size: parseFloat(sneaker.size),
+              condition: sneaker.condition,
+            }),
+            updatedAt: Timestamp.now(),
           });
 
           // Queue background image upload
@@ -232,12 +310,17 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
       }
 
       // Show final result
+      const hasUsedSneakers = selectedSneakers.some((s) => s.condition < 10);
       if (failCount === 0) {
         toast({
           title: "Success! 🎉",
-          description: `${successCount} sneaker${
-            successCount > 1 ? "s" : ""
-          } added to your collection`,
+          description: hasUsedSneakers
+            ? `${successCount} sneaker${
+                successCount > 1 ? "s" : ""
+              } submitted for review`
+            : `${successCount} sneaker${
+                successCount > 1 ? "s" : ""
+              } added to your collection`,
         });
       } else {
         toast({
@@ -274,6 +357,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
     setHasInsoles(true);
     setHasLaces(true);
     setFlaws("");
+    setUploadedPhotos({});
     onClose();
   };
 
@@ -406,6 +490,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
                           </p>
                           <p className="text-xs text-gray-500">
                             Size {sneaker.size} • ${sneaker.tradeValue}
+                            {sneaker.condition < 10 && " • Pending Review"}
                           </p>
                         </div>
                         <button
@@ -528,6 +613,50 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
                 </div>
               </div>
 
+              {/* Photo Upload for Used Sneakers */}
+              {condition < 10 && (
+                <div className="border-t pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Required Photos *
+                    </h3>
+                    <span
+                      className={`text-sm font-medium ${
+                        allPhotosUploaded ? "text-green-600" : "text-gray-600"
+                      }`}
+                    >
+                      {uploadedCount}/6 uploaded
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    {photoCategories.map((category) => (
+                      <CategoryPhotoUpload
+                        key={category.key}
+                        category={category.key}
+                        categoryLabel={category.label}
+                        userId={currentUser?.uid ?? ""}
+                        listingId={`temp_${selectedSneaker?.id}_${Date.now()}`}
+                        existingPhotoUrl={
+                          uploadedPhotos[
+                            category.key as keyof typeof uploadedPhotos
+                          ]
+                        }
+                        onUploadComplete={handlePhotoUploadComplete}
+                        onUploadError={handlePhotoUploadError}
+                      />
+                    ))}
+                  </div>
+
+                  {!allPhotosUploaded && (
+                    <p className="text-xs text-orange-600 text-center">
+                      ⚠️ All 6 photos required • Listing will need admin
+                      approval
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Checkboxes */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium text-gray-700">
@@ -613,6 +742,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
                 onClick={() => {
                   setStep("search");
                   setSelectedSneaker(null);
+                  setUploadedPhotos({});
                 }}
                 className="flex-1 h-12"
               >
@@ -620,7 +750,9 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
               </Button>
               <Button
                 onClick={handleAddToList}
-                disabled={!size || !tradeValue}
+                disabled={
+                  !size || !tradeValue || (condition < 10 && !allPhotosUploaded)
+                }
                 className="flex-1 bg-[#3366FF] hover:bg-[#3366FF]/90 h-12"
               >
                 Add to List

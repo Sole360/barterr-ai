@@ -1,4 +1,4 @@
-// COMPLETE UPDATED src/components/dialogs/PostDetailModal.tsx
+// src/components/dialogs/PostDetailModal.tsx - CLEANED UP
 
 import { useState, useEffect } from "react";
 import {
@@ -8,7 +8,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Star, MapPin, Clock, X } from "lucide-react";
+import {
+  Heart,
+  Star,
+  MapPin,
+  Clock,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Listing, Post } from "@/types";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +24,6 @@ import {
   subscribeToListings,
   addToWishlist,
   removeFromWishlist,
-  addToCollection,
 } from "@/lib/firebase/posts.service";
 
 interface PostDetailModalProps {
@@ -103,48 +110,6 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
       toast({
         title: "Error",
         description: "Failed to update wishlist",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddToCollection = async () => {
-    if (!currentUser || !userProfile) {
-      toast({
-        title: "Login required",
-        description: "Please login to add to collection",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await addToCollection(
-        post.postId,
-        currentUser.uid,
-        `${userProfile.firstName} ${userProfile.lastName}`,
-        userProfile.email,
-        userProfile.photoURL ?? "",
-        selectedSize,
-        selectedCondition === "new" ? 10 : 8,
-        0, // tradeValue - user can update later
-        userProfile.location ?? "Location not set"
-      );
-
-      toast({
-        title: "Added to collection! 🎉",
-        description: "Your sneaker is now available for trading",
-      });
-
-      onClose();
-    } catch (error) {
-      console.error("Collection error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add to collection",
         variant: "destructive",
       });
     } finally {
@@ -246,17 +211,6 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
             </div>
           </div>
 
-          {/* Add to Collection Button */}
-          <div className="mb-6">
-            <Button
-              onClick={handleAddToCollection}
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-[#33FF99] to-[#3366FF] hover:opacity-90 h-12 text-white font-semibold"
-            >
-              Add to My Collection
-            </Button>
-          </div>
-
           {/* Listings */}
           <div className="space-y-4">
             <p className="text-sm font-medium text-gray-700">
@@ -273,70 +227,138 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
               </div>
             ) : (
               listings.map((listing) => (
-                <div
+                <ListingCard
                   key={listing.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-[#3366FF] transition-colors"
-                >
-                  {/* Listing Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-semibold text-lg text-gray-900">
-                          ${listing.tradeValue}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          Trade Value
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-700">
-                          {listing.userName}
-                        </span>
-                        <div className="flex items-center">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm text-gray-600 ml-1">
-                            {listing.userRating}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                        {listing.condition === "new"
-                          ? "Deadstock"
-                          : `${listing.conditionGrade}/10`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Listing Details */}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      {listing.location}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="w-4 h-4 mr-2" />
-                      {listing.responseTime}
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <Button
-                    className="w-full bg-[#3366FF] hover:bg-[#3366FF]/90"
-                    onClick={() => {
-                      // TODO: Handle trade request - Phase 6
-                      console.log("Request trade with:", listing.userId);
-                    }}
-                  >
-                    Request Trade
-                  </Button>
-                </div>
+                  listing={listing}
+                  showPhotos={selectedCondition === "used"}
+                />
               ))
             )}
           </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Separate component for listing cards with photo carousel
+function ListingCard({
+  listing,
+  showPhotos,
+}: {
+  listing: Listing;
+  showPhotos: boolean;
+}) {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+
+  const photos = listing.photos
+    ? Object.values(listing.photos).filter(Boolean)
+    : [];
+
+  const nextPhoto = () => {
+    setCurrentPhotoIndex((prev) => (prev + 1) % photos.length);
+  };
+
+  const prevPhoto = () => {
+    setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  };
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 hover:border-[#3366FF] transition-colors">
+      {/* Photo Carousel for Used Listings */}
+      {showPhotos && photos.length > 0 && (
+        <div className="mb-4">
+          <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+            <img
+              src={photos[currentPhotoIndex]}
+              alt={`Photo ${currentPhotoIndex + 1}`}
+              className="w-full h-full object-cover"
+            />
+
+            {photos.length > 1 && (
+              <>
+                <button
+                  onClick={prevPhoto}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1 bg-white/80 rounded-full hover:bg-white"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={nextPhoto}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 bg-white/80 rounded-full hover:bg-white"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+
+                {/* Photo indicator dots */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                  {photos.map((_, idx) => (
+                    <div
+                      key={idx}
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        idx === currentPhotoIndex ? "bg-white" : "bg-white/50"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Listing Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div className="flex items-center space-x-2 mb-1">
+            <span className="font-semibold text-lg text-gray-900">
+              ${listing.tradeValue}
+            </span>
+            <span className="text-sm text-gray-500">Trade Value</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-gray-700">
+              {listing.userName}
+            </span>
+            <div className="flex items-center">
+              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <span className="text-sm text-gray-600 ml-1">
+                {listing.userRating}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+            {listing.condition === "new"
+              ? "Deadstock"
+              : `${listing.conditionGrade}/10`}
+          </span>
+        </div>
+      </div>
+
+      {/* Listing Details */}
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center text-sm text-gray-600">
+          <MapPin className="w-4 h-4 mr-2" />
+          {listing.location}
+        </div>
+        <div className="flex items-center text-sm text-gray-600">
+          <Clock className="w-4 h-4 mr-2" />
+          {listing.responseTime}
+        </div>
+      </div>
+
+      {/* Action Button */}
+      <Button
+        className="w-full bg-[#3366FF] hover:bg-[#3366FF]/90"
+        onClick={() => {
+          // TODO: Handle trade request - Phase 6
+          console.log("Request trade with:", listing.userId);
+        }}
+      >
+        Request Trade
+      </Button>
+    </div>
   );
 }

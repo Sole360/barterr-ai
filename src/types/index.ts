@@ -158,7 +158,15 @@ export interface Listing {
   tradeValue: number;
   location: string;
   responseTime: string;
-  photos?: string[];
+  photos?: {
+    appearance?: string;
+    boxLabel?: string;
+    insoles?: string;
+    boxFrontal?: string;
+    insoleStitching?: string;
+    dateCode?: string;
+  };
+  approvalStatus?: "pending" | "approved" | "rejected";
   createdAt: Timestamp;
 }
 export interface WisherOwner {

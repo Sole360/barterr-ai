@@ -71,21 +71,32 @@ export async function addToCollection(
   size: number,
   conditionGrade: number,
   tradeValue: number,
-  location: string
+  location: string,
+  photos?: {
+    appearance?: string;
+    boxLabel?: string;
+    insoles?: string;
+    boxFrontal?: string;
+    insoleStitching?: string;
+    dateCode?: string;
+  }
 ): Promise<void> {
-  // Create listing
+  const condition = conditionGrade === 10 ? "new" : "used";
+
+  // Create listing using the shared function
   await createListing({
     postId,
     userId,
     userName: displayName,
     userRating: 5.0,
     size,
-    condition: conditionGrade === 10 ? "new" : "used",
+    condition,
     conditionGrade,
     tradeValue,
     location,
     responseTime: "Usually responds within 24 hours",
-    photos: [],
+    photos,
+    approvalStatus: condition === "used" && photos ? "pending" : "approved",
   });
 
   // Add to owners array
@@ -95,7 +106,7 @@ export async function addToCollection(
       userId,
       displayName,
       email,
-      userPhoto: photoURL || "",
+      userPhoto: photoURL,
       size,
       condition: conditionGrade,
     }),
@@ -192,9 +203,9 @@ export function subscribeToListings(
 ): Unsubscribe {
   const listingsRef = collection(db, "listings");
 
-  // Build query with filters
   const constraints = [
     where("postId", "==", postId),
+    where("approvalStatus", "==", "approved"), // Only show approved listings
     orderBy("tradeValue", "asc"),
   ];
 
@@ -269,7 +280,8 @@ export async function createOrUpdatePost(postData: {
   return docRef.id;
 }
 
-// Create a listing
+// src/lib/firebase/posts.service.ts - FIX createListing
+
 export async function createListing(listingData: {
   postId: string;
   userId: string;
@@ -281,14 +293,37 @@ export async function createListing(listingData: {
   tradeValue: number;
   location: string;
   responseTime: string;
-  photos?: string[];
+  photos?: {
+    appearance?: string;
+    boxLabel?: string;
+    insoles?: string;
+    boxFrontal?: string;
+    insoleStitching?: string;
+    dateCode?: string;
+  };
+  approvalStatus?: "pending" | "approved" | "rejected";
 }): Promise<string> {
   const listingsRef = collection(db, "listings");
 
   const newListing: Partial<Listing> = {
-    ...listingData,
+    postId: listingData.postId,
+    userId: listingData.userId,
+    userName: listingData.userName,
+    userRating: listingData.userRating,
+    size: listingData.size,
+    condition: listingData.condition,
+    conditionGrade: listingData.conditionGrade,
+    tradeValue: listingData.tradeValue,
+    location: listingData.location,
+    responseTime: listingData.responseTime,
+    approvalStatus: listingData.approvalStatus ?? "approved",
     createdAt: Timestamp.now(),
   };
+
+  // Only add photos if they exist
+  if (listingData.photos) {
+    newListing.photos = listingData.photos;
+  }
 
   const docRef = await addDoc(listingsRef, newListing);
   return docRef.id;
