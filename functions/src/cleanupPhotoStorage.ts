@@ -41,7 +41,7 @@ export const deleteListingPhotos = onDocumentDeleted(
         // Extract path from Firebase Storage URL
         // Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media...
         const url = new URL(photoUrl);
-        const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
+        const pathMatch = url.pathname.match(/\/o\/(.+)$/);
         if (!pathMatch) {
           console.warn(`Could not extract path from URL: ${photoUrl}`);
           return;
