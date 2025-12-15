@@ -32,6 +32,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUserProfile: (updates: Partial<User>) => Promise<void>;
+  resendEmailVerification: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -126,6 +127,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     });
   };
 
+  const resendEmailVerification = async () => {
+    if (!auth.currentUser) throw new Error("No signed-in user");
+    await sendEmailVerification(auth.currentUser);
+  };
+
   // Logout
   const logout = async () => {
     await signOut(auth);
@@ -174,6 +180,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     resetPassword,
     updateUserProfile,
+    resendEmailVerification,
   };
 
   return (

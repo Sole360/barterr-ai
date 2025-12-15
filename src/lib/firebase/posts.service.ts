@@ -11,6 +11,7 @@ import {
   Timestamp,
   Unsubscribe,
   updateDoc,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "./config";
 import { Post, Listing, WisherOwner } from "@/types";
@@ -283,6 +284,7 @@ export async function createOrUpdatePost(postData: {
 // src/lib/firebase/posts.service.ts - FIX createListing
 
 export async function createListing(listingData: {
+  listingId?: string;
   postId: string;
   userId: string;
   userName: string;
@@ -318,11 +320,14 @@ export async function createListing(listingData: {
     responseTime: listingData.responseTime,
     approvalStatus: listingData.approvalStatus ?? "approved",
     createdAt: Timestamp.now(),
+    ...(listingData.photos ? { photos: listingData.photos } : {}),
   };
 
-  // Only add photos if they exist
-  if (listingData.photos) {
-    newListing.photos = listingData.photos;
+  if (listingData.listingId) {
+    await setDoc(doc(db, "listings", listingData.listingId), newListing, {
+      merge: true,
+    });
+    return listingData.listingId;
   }
 
   const docRef = await addDoc(listingsRef, newListing);

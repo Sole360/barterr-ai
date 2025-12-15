@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search, X, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -21,8 +21,15 @@ import {
 import { queueImageUpload } from "@/lib/firebase/imageQueue.service";
 import { searchSneakers, SearchResult } from "@/lib/api/kicksdb.service";
 import { CategoryPhotoUpload } from "@/components/shared/CategoryPhotoUpload";
-import { updateDoc, doc, arrayUnion, Timestamp } from "firebase/firestore";
+import {
+  updateDoc,
+  doc,
+  arrayUnion,
+  Timestamp,
+  collection,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
+import { deleteFolder } from "@/lib/firebase/storageCleanup";
 
 interface AddSneakerDialogProps {
   open: boolean;
@@ -31,6 +38,7 @@ interface AddSneakerDialogProps {
 
 // Extended interface for selected sneakers with form data
 interface SelectedSneaker extends SearchResult {
+  listingId?: string;
   size: string;
   condition: number;
   tradeValue: string;
@@ -51,6 +59,7 @@ interface SelectedSneaker extends SearchResult {
 export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
   const { toast } = useToast();
   const { currentUser, userProfile } = useAuth();
+  const [draftListingId, setDraftListingId] = useState<string>("");
 
   const [step, setStep] = useState<"search" | "details">("search");
   const [searchQuery, setSearchQuery] = useState("");
@@ -73,6 +82,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
   const [hasInsoles, setHasInsoles] = useState(true);
   const [hasLaces, setHasLaces] = useState(true);
   const [flaws, setFlaws] = useState("");
+  const skipDraftCleanupRef = useRef(false);
 
   // Photo upload state
   const [uploadedPhotos, setUploadedPhotos] = useState<{
@@ -174,6 +184,9 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
   }, [searchQuery, toast]);
 
   const handleSelectSneaker = (sneaker: SearchResult) => {
+    const id = doc(collection(db, "listings")).id;
+
+    setDraftListingId(id);
     setSelectedSneaker(sneaker);
     setStep("details");
   };
@@ -193,6 +206,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
 
     const sneakerToAdd: SelectedSneaker = {
       ...selectedSneaker,
+      listingId: draftListingId,
       size,
       condition,
       tradeValue,
@@ -263,6 +277,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
 
           // Create listing with photos if used
           await createListing({
+            listingId: sneaker.listingId,
             postId,
             userId: currentUser!.uid,
             userName: `${userProfile.firstName} ${userProfile.lastName.charAt(
@@ -330,7 +345,9 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
         });
       }
 
-      handleClose();
+      skipDraftCleanupRef.current = true;
+      await handleClose();
+      skipDraftCleanupRef.current = false;
     } catch (error) {
       console.error("Error saving sneakers:", error);
       toast({
@@ -343,26 +360,45 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
     }
   };
 
-  const handleClose = () => {
-    setStep("search");
-    setSearchQuery("");
-    setSearchResults([]);
-    setShowResults(false);
-    setSelectedSneaker(null);
-    setSelectedSneakers([]);
-    setSize("");
-    setTradeValue("");
-    setCondition(10);
-    setHasBox(true);
-    setHasInsoles(true);
-    setHasLaces(true);
-    setFlaws("");
-    setUploadedPhotos({});
-    onClose();
+  const handleClose = async () => {
+    try {
+      // Only attempt cleanup if we have a draft id + a user
+      if (!skipDraftCleanupRef.current && draftListingId && currentUser?.uid) {
+        // delete draft folder: sneaker_uploads/{uid}/{draftListingId}/...
+        await deleteFolder(
+          `sneaker_uploads/${currentUser.uid}/${draftListingId}`
+        );
+      }
+    } catch (err) {
+      console.error("Failed to cleanup draft listing photos:", err);
+    } finally {
+      setDraftListingId("");
+
+      setStep("search");
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowResults(false);
+      setSelectedSneaker(null);
+      setSelectedSneakers([]);
+      setSize("");
+      setTradeValue("");
+      setCondition(10);
+      setHasBox(true);
+      setHasInsoles(true);
+      setHasLaces(true);
+      setFlaws("");
+      setUploadedPhotos({});
+      onClose();
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog
+      open={open}
+      onOpenChange={() => {
+        void handleClose();
+      }}
+    >
       <DialogContent className="w-full max-w-2xl h-[90vh] p-0 bg-white overflow-hidden flex flex-col [&>button]:hidden">
         <DialogTitle className="sr-only">
           {step === "search" ? "Add Sneakers" : "Sneaker Details"}
@@ -382,7 +418,9 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
               )}
             </div>
             <button
-              onClick={handleClose}
+              onClick={() => {
+                void handleClose();
+              }}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
               <X className="w-6 h-6" />
@@ -614,7 +652,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
               </div>
 
               {/* Photo Upload for Used Sneakers */}
-              {condition < 10 && (
+              {condition < 10 && draftListingId && (
                 <div className="border-t pt-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-gray-900">
@@ -636,7 +674,7 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
                         category={category.key}
                         categoryLabel={category.label}
                         userId={currentUser?.uid ?? ""}
-                        listingId={`temp_${selectedSneaker?.id}_${Date.now()}`}
+                        listingId={draftListingId}
                         existingPhotoUrl={
                           uploadedPhotos[
                             category.key as keyof typeof uploadedPhotos

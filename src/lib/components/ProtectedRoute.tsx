@@ -37,6 +37,17 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <>{children}</>;
   }
 
+  if (!currentUser.emailVerified) {
+    return (
+      <Navigate
+        to={`/verify-email?email=${encodeURIComponent(
+          currentUser.email ?? ""
+        )}`}
+        replace
+      />
+    );
+  }
+
   // User hasn't finished onboarding and trying to access other pages - redirect to onboarding
   if (!userProfile.onboardingFinished) {
     return <Navigate to="/onboarding" replace />;

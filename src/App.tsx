@@ -6,6 +6,8 @@ import { SignupPage } from "@/app/auth/SignupPage";
 import { OnboardingPage } from "@/app/auth/OnboardingPage";
 import { DashboardPage } from "@/app/dashboard/DashboardPage";
 import { Toaster } from "@/components/ui/toaster";
+import { ForgotPasswordPage } from "@/app/auth/ForgotPasswordPage";
+import { VerifyEmailPage } from "@/app/auth/VerifyEmailPage";
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
 
           <Route
             path="/onboarding"
