@@ -7,7 +7,7 @@ export type CollectionItem = {
   size: string;
   value: string;
   imageUrl?: string;
-  status?: "approved" | "pending";
+  status?: "approved" | "pending" | "rejected";
 };
 
 type Props = {
@@ -17,7 +17,7 @@ type Props = {
 
 export function CollectionGrid({ items, onAddToCollection }: Props) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
       <AddToCollectionTile onClick={onAddToCollection} />
 
       {items.map((item) => (
@@ -50,17 +50,21 @@ function AddToCollectionTile({ onClick }: { onClick?: () => void }) {
 function SneakerCard({ item }: { item: CollectionItem }) {
   return (
     <div className="rounded-2xl border bg-card overflow-hidden">
-      <div className="relative aspect-square bg-muted">
+      <div className="relative aspect-[4/3] bg-muted">
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
             alt={item.name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain p-3"
             referrerPolicy="no-referrer"
           />
         ) : null}
 
-        {item.status === "pending" ? (
+        {item.status === "rejected" ? (
+          <div className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[11px] font-medium text-foreground border">
+            Rejected
+          </div>
+        ) : item.status === "pending" ? (
           <div className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[11px] font-medium text-foreground border">
             Pending Review
           </div>
