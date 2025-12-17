@@ -2,7 +2,8 @@ import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type CollectionItem = {
-  id: string;
+  id: string; // listingId
+  postId: string;
   name: string;
   size: string;
   value: string;
@@ -13,43 +14,62 @@ export type CollectionItem = {
 type Props = {
   items: CollectionItem[];
   onAddToCollection?: () => void;
+  onSelectItem?: (item: CollectionItem) => void;
 };
 
-export function CollectionGrid({ items, onAddToCollection }: Props) {
+export const CollectionGrid = ({
+  items,
+  onAddToCollection,
+  onSelectItem,
+}: Props) => {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
       <AddToCollectionTile onClick={onAddToCollection} />
-
       {items.map((item) => (
-        <SneakerCard key={item.id} item={item} />
+        <SneakerCard
+          key={item.id}
+          item={item}
+          onClick={() => onSelectItem?.(item)}
+        />
       ))}
     </div>
   );
-}
+};
 
-function AddToCollectionTile({ onClick }: { onClick?: () => void }) {
+const AddToCollectionTile = ({ onClick }: { onClick?: () => void }) => {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-2xl border bg-card p-4",
+        "relative rounded-2xl p-4 text-white",
         "min-h-[220px] flex flex-col items-center justify-center gap-2",
-        "hover:bg-accent/30 transition-colors"
+        "bg-gradient-to-br from-barterr-green-1 to-barterr-blue-2",
+        "hover:opacity-95 transition"
       )}
     >
-      <div className="h-10 w-10 rounded-full bg-gradient-to-r from-accent to-primary grid place-items-center text-primary-foreground">
-        <Plus className="h-5 w-5" />
+      <div className="h-12 w-12 rounded-full bg-white/20 grid place-items-center">
+        <Plus className="h-6 w-6 text-white" />
       </div>
-      <div className="text-sm font-semibold text-foreground">Add</div>
-      <div className="text-xs text-muted-foreground">to My Collection</div>
+      <div className="text-sm font-semibold">Add</div>
+      <div className="text-xs opacity-90">to My Collection</div>
     </button>
   );
-}
+};
 
-function SneakerCard({ item }: { item: CollectionItem }) {
+const SneakerCard = ({
+  item,
+  onClick,
+}: {
+  item: CollectionItem;
+  onClick?: () => void;
+}) => {
   return (
-    <div className="rounded-2xl border bg-card overflow-hidden">
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left rounded-2xl border bg-white overflow-hidden hover:shadow-sm transition"
+    >
       <div className="relative aspect-[4/3] bg-white">
         {item.imageUrl ? (
           <img
@@ -61,25 +81,23 @@ function SneakerCard({ item }: { item: CollectionItem }) {
         ) : null}
 
         {item.status === "rejected" ? (
-          <div className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[11px] font-medium text-foreground border">
+          <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium border">
             Rejected
           </div>
         ) : item.status === "pending" ? (
-          <div className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[11px] font-medium text-foreground border">
+          <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium border">
             Pending Review
           </div>
         ) : null}
       </div>
 
       <div className="p-3">
-        <div className="text-sm font-semibold text-foreground line-clamp-2">
-          {item.name}
-        </div>
+        <div className="text-sm font-semibold line-clamp-2">{item.name}</div>
         <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
           <span>{item.size}</span>
           <span className="font-medium text-foreground">{item.value}</span>
         </div>
       </div>
-    </div>
+    </button>
   );
-}
+};

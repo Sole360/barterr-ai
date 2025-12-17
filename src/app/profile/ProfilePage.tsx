@@ -1,16 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProfileHeader } from "./ProfileHeader";
 import { ProfileTabs, type ProfileTabKey } from "./ProfileTabs";
 import { CollectionGrid } from "./CollectionGrid";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
 import { useAuth } from "@/lib/contexts/AuthContext";
-import { useMyCollection } from "@/lib/firebase/useMyCollection";
+import {
+  MyCollectionItem,
+  useMyCollection,
+} from "@/lib/firebase/useMyCollection";
 
 export function ProfilePage() {
   const [tab, setTab] = useState<ProfileTabKey>("collection");
   const [addOpen, setAddOpen] = useState(false);
   const { currentUser } = useAuth();
   const { items, loading } = useMyCollection(currentUser?.uid);
+  const [selectedItem, setSelectedItem] = useState<MyCollectionItem | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (selectedItem) {
+      console.log("Selected collection item:", selectedItem);
+    }
+  }, [selectedItem]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -37,6 +49,7 @@ export function ProfilePage() {
               <CollectionGrid
                 items={items}
                 onAddToCollection={() => setAddOpen(true)}
+                onSelectItem={setSelectedItem}
               />
             )
           ) : tab === "fashion" ? (

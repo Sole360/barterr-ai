@@ -13,6 +13,7 @@ import { Listing, Post } from "@/types";
 
 export type MyCollectionItem = {
   id: string;
+  postId: string;
   name: string;
   size: string;
   value: string;
@@ -53,6 +54,7 @@ export function useMyCollection(userId?: string) {
 
         results.push({
           id: docSnap.id,
+          postId: listing.postId,
           name: post?.title ?? "Unknown Sneaker",
           imageUrl: post?.productImageUrl,
           size: `US ${listing.size}`,
