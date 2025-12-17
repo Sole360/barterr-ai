@@ -13,7 +13,7 @@ export function ProfilePage() {
   const { items, loading } = useMyCollection(currentUser?.uid);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <div className="mx-auto w-full max-w-2xl px-4 py-6 lg:max-w-4xl xl:max-w-5xl">
         <ProfileHeader
           displayName="Terrence Whaley"

@@ -50,7 +50,7 @@ function AddToCollectionTile({ onClick }: { onClick?: () => void }) {
 function SneakerCard({ item }: { item: CollectionItem }) {
   return (
     <div className="rounded-2xl border bg-card overflow-hidden">
-      <div className="relative aspect-[4/3] bg-muted">
+      <div className="relative aspect-[4/3] bg-white">
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
