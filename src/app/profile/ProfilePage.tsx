@@ -1,28 +1,29 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ProfileHeader } from "./ProfileHeader";
 import { ProfileTabs, type ProfileTabKey } from "./ProfileTabs";
 import { CollectionGrid } from "./CollectionGrid";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
 import { useAuth } from "@/lib/contexts/AuthContext";
-import {
-  MyCollectionItem,
-  useMyCollection,
-} from "@/lib/firebase/useMyCollection";
+import { useMyCollection } from "@/lib/firebase/useMyCollection";
+import { MyListingModal } from "@/components/dialogs/MyListingModal";
 
 export function ProfilePage() {
   const [tab, setTab] = useState<ProfileTabKey>("collection");
   const [addOpen, setAddOpen] = useState(false);
   const { currentUser } = useAuth();
   const { items, loading } = useMyCollection(currentUser?.uid);
-  const [selectedItem, setSelectedItem] = useState<MyCollectionItem | null>(
-    null
-  );
+  const [editListingId, setEditListingId] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
-  useEffect(() => {
-    if (selectedItem) {
-      console.log("Selected collection item:", selectedItem);
-    }
-  }, [selectedItem]);
+  const gridItems = items.map((item) => ({
+    id: item.id,
+    postId: item.postId,
+    name: item.name,
+    size: item.size,
+    value: item.value,
+    imageUrl: item.imageUrl,
+    status: item.status,
+  }));
 
   return (
     <div className="min-h-screen bg-white">
@@ -47,9 +48,15 @@ export function ProfilePage() {
               </div>
             ) : (
               <CollectionGrid
-                items={items}
+                items={gridItems}
                 onAddToCollection={() => setAddOpen(true)}
-                onSelectItem={setSelectedItem}
+                onSelectItem={(gridItem) => {
+                  const fullItem = items.find((i) => i.id === gridItem.id);
+                  if (!fullItem?.post) return;
+
+                  setEditListingId(gridItem.id);
+                  setEditOpen(true);
+                }}
               />
             )
           ) : tab === "fashion" ? (
@@ -65,6 +72,16 @@ export function ProfilePage() {
       </div>
 
       <AddSneakerDialog open={addOpen} onClose={() => setAddOpen(false)} />
+      {editListingId && (
+        <MyListingModal
+          open={editOpen}
+          listingId={editListingId}
+          onClose={() => {
+            setEditOpen(false);
+            setEditListingId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

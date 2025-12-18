@@ -1,9 +1,11 @@
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Post } from "@/types";
 
 export type CollectionItem = {
   id: string; // listingId
   postId: string;
+  post?: Post;
   name: string;
   size: string;
   value: string;

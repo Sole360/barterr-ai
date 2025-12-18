@@ -14,6 +14,7 @@ import { Listing, Post } from "@/types";
 export type MyCollectionItem = {
   id: string;
   postId: string;
+  post?: Post;
   name: string;
   size: string;
   value: string;
@@ -44,17 +45,24 @@ export function useMyCollection(userId?: string) {
       for (const docSnap of snap.docs) {
         const listing = docSnap.data() as Listing;
 
-        let post: Post | null = null;
+        let post: Post | undefined;
         try {
           const postSnap = await getDoc(doc(db, "posts", listing.postId));
           if (postSnap.exists()) {
-            post = postSnap.data() as Post;
+            post = { ...(postSnap.data() as Post), postId: listing.postId };
           }
-        } catch {}
+        } catch (err) {
+          console.warn("useMyCollection: failed to fetch post", {
+            postId: listing.postId,
+            listingId: docSnap.id,
+            err,
+          });
+        }
 
         results.push({
           id: docSnap.id,
           postId: listing.postId,
+          post,
           name: post?.title ?? "Unknown Sneaker",
           imageUrl: post?.productImageUrl,
           size: `US ${listing.size}`,

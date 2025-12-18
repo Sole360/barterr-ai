@@ -158,6 +158,12 @@ export interface Listing {
   tradeValue: number;
   location: string;
   responseTime: string;
+
+  hasBox?: boolean;
+  hasInsoles?: boolean;
+  hasLaces?: boolean;
+  flaws?: string;
+
   photos?: {
     appearance?: string;
     boxLabel?: string;
@@ -169,6 +175,7 @@ export interface Listing {
   approvalStatus?: "pending" | "approved" | "rejected";
   createdAt: Timestamp;
 }
+
 export interface WisherOwner {
   userId: string;
   displayName: string;
