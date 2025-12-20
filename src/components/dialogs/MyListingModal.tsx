@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useAuth } from "@/lib/contexts/auth.context";
 import {
   Dialog,
   DialogContent,

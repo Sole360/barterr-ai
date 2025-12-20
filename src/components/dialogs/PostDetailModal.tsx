@@ -18,7 +18,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Listing, Post } from "@/types";
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useAuth } from "@/lib/contexts/auth.context";
 import { useToast } from "@/hooks/use-toast";
 import {
   subscribeToListings,

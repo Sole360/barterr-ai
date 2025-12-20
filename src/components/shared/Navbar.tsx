@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useAuth } from "@/lib/contexts/auth.context";
 import { Bell, User, LogOut, Settings } from "lucide-react";
 import {
   DropdownMenu,

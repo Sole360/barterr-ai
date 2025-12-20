@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useAuth } from "@/lib/contexts/auth.context";
 import { Button } from "@/components/ui/button";
 import {
   Form,

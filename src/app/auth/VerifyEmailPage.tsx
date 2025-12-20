@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useAuth } from "@/lib/contexts/auth.context";
 
 export function VerifyEmailPage() {
   const { currentUser, resendEmailVerification } = useAuth();

@@ -1,12 +1,5 @@
+import { useEffect, useState, type ReactNode } from "react";
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
-import {
-  User as FirebaseUser,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -14,89 +7,45 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
+  type User as FirebaseUser,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/config";
-import { User } from "@/types";
+import type { User } from "@/types";
+import { AuthContext, type AuthContextType } from "./auth.context";
 
-interface AuthContextType {
-  currentUser: FirebaseUser | null;
-  userProfile: User | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (
-    email: string,
-    password: string,
-    userData: Partial<User>
-  ) => Promise<void>;
-  logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updateUserProfile: (updates: Partial<User>) => Promise<void>;
-  resendEmailVerification: () => Promise<void>;
-}
+type AuthProviderProps = { children: ReactNode };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-}
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile from Firestore
-  const fetchUserProfile = async (uid: string) => {
-    try {
-      const userDoc = await getDoc(doc(db, "users", uid));
-      if (userDoc.exists()) {
-        setUserProfile(userDoc.data() as User);
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-    }
-  };
-
-  // Sign in
-  const signIn = async (email: string, password: string) => {
+  const signIn: AuthContextType["signIn"] = async (email, password) => {
     const result = await signInWithEmailAndPassword(auth, email, password);
 
     if (!result.user.emailVerified) {
       await signOut(auth);
       throw new Error("Please verify your email before signing in.");
     }
-
-    await fetchUserProfile(result.user.uid);
   };
 
-  // Sign up
-  // Sign up
-  const signUp = async (
-    email: string,
-    password: string,
-    userData: Partial<User>
+  const signUp: AuthContextType["signUp"] = async (
+    email,
+    password,
+    userData
   ) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
-
-    // Send verification email
     await sendEmailVerification(result.user);
 
-    // Create user profile in Firestore (only include defined fields)
     const newUser: User = {
       uid: result.user.uid,
-      email: email,
+      email,
       firstName: userData.firstName ?? "",
       lastName: userData.lastName ?? "",
-      displayName: `${userData.firstName} ${userData.lastName}`,
+      displayName: `${userData.firstName ?? ""} ${
+        userData.lastName ?? ""
+      }`.trim(),
       photoURL: "",
       termsOfAgreement: true,
       mobile: userData.mobile ?? "",
@@ -110,65 +59,62 @@ export function AuthProvider({ children }: AuthProviderProps) {
       wishlistCount: 0,
     };
 
-    // Only add optional fields if they exist
-    if (userData.referredBy) {
-      newUser.referredBy = userData.referredBy;
-    }
-
-    if (userData.shoeSize) {
-      newUser.shoeSize = userData.shoeSize;
-    }
+    if (userData.referredBy) newUser.referredBy = userData.referredBy;
+    if (userData.shoeSize) newUser.shoeSize = userData.shoeSize;
 
     await setDoc(doc(db, "users", result.user.uid), newUser);
 
-    // Update display name in Firebase Auth
-    await updateProfile(result.user, {
-      displayName: newUser.displayName,
-    });
+    await updateProfile(result.user, { displayName: newUser.displayName });
   };
 
-  const resendEmailVerification = async () => {
-    if (!auth.currentUser) throw new Error("No signed-in user");
-    await sendEmailVerification(auth.currentUser);
-  };
+  const resendEmailVerification: AuthContextType["resendEmailVerification"] =
+    async () => {
+      if (!auth.currentUser) throw new Error("No signed-in user");
+      await sendEmailVerification(auth.currentUser);
+    };
 
-  // Logout
-  const logout = async () => {
+  const logout: AuthContextType["logout"] = async () => {
     await signOut(auth);
     setUserProfile(null);
   };
 
-  // Reset password
-  const resetPassword = async (email: string) => {
+  const resetPassword: AuthContextType["resetPassword"] = async (email) => {
     await sendPasswordResetEmail(auth, email);
   };
 
-  // Update user profile
-  const updateUserProfile = async (updates: Partial<User>) => {
+  const updateUserProfile: AuthContextType["updateUserProfile"] = async (
+    updates
+  ) => {
     if (!currentUser) throw new Error("No user logged in");
-
     await setDoc(doc(db, "users", currentUser.uid), updates, { merge: true });
-
-    if (userProfile) {
-      setUserProfile({ ...userProfile, ...updates });
-    }
+    // realtime listener updates userProfile automatically
   };
 
-  // Listen to auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
+    let unsubscribeUserDoc: (() => void) | null = null;
 
-      if (user) {
-        await fetchUserProfile(user.uid);
-      } else {
-        setUserProfile(null);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setUserProfile(null);
+
+      unsubscribeUserDoc?.();
+      unsubscribeUserDoc = null;
+
+      if (!user?.uid) {
+        setLoading(false);
+        return;
       }
 
-      setLoading(false);
+      unsubscribeUserDoc = onSnapshot(doc(db, "users", user.uid), (snap) => {
+        setUserProfile(snap.exists() ? (snap.data() as User) : null);
+        setLoading(false);
+      });
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeUserDoc?.();
+      unsubscribeAuth();
+    };
   }, []);
 
   const value: AuthContextType = {
@@ -188,4 +134,4 @@ export function AuthProvider({ children }: AuthProviderProps) {
       {!loading && children}
     </AuthContext.Provider>
   );
-}
+};

@@ -3,17 +3,20 @@ import { ProfileHeader } from "./ProfileHeader";
 import { ProfileTabs, type ProfileTabKey } from "./ProfileTabs";
 import { CollectionGrid } from "./CollectionGrid";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { MyListingModal } from "@/components/dialogs/MyListingModal";
+import { EditProfileDialog } from "@/components/dialogs/EditProfileDialog";
 
-export function ProfilePage() {
+export const ProfilePage = () => {
   const [tab, setTab] = useState<ProfileTabKey>("collection");
   const [addOpen, setAddOpen] = useState(false);
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const { items, loading } = useMyCollection(currentUser?.uid);
+
   const [editListingId, setEditListingId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   const gridItems = items.map((item) => ({
     id: item.id,
@@ -25,15 +28,22 @@ export function ProfilePage() {
     status: item.status,
   }));
 
+  const displayName =
+    userProfile?.displayName ?? currentUser?.displayName ?? "Your Profile";
+
+  const location = userProfile?.location ?? "Location not set";
+
+  const bio = userProfile?.biography ?? "Add a bio so people know you.";
+
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto w-full max-w-2xl px-4 py-6 lg:max-w-4xl xl:max-w-5xl">
         <ProfileHeader
-          displayName="Terrence Whaley"
-          location="Los Angeles, CA"
+          displayName={displayName}
+          location={location}
           rating={5}
-          bio="Write here if empty, this is placeholder."
-          onSettingsClick={() => console.log("settings")}
+          bio={bio}
+          onSettingsClick={() => setEditProfileOpen(true)}
         />
 
         <div className="mt-5">
@@ -69,6 +79,12 @@ export function ProfilePage() {
       </div>
 
       <AddSneakerDialog open={addOpen} onClose={() => setAddOpen(false)} />
+
+      <EditProfileDialog
+        open={editProfileOpen}
+        onClose={() => setEditProfileOpen(false)}
+      />
+
       {editListingId && (
         <MyListingModal
           open={editOpen}
@@ -81,4 +97,4 @@ export function ProfilePage() {
       )}
     </div>
   );
-}
+};
