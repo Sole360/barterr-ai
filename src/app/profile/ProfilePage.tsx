@@ -51,9 +51,6 @@ export function ProfilePage() {
                 items={gridItems}
                 onAddToCollection={() => setAddOpen(true)}
                 onSelectItem={(gridItem) => {
-                  const fullItem = items.find((i) => i.id === gridItem.id);
-                  if (!fullItem?.post) return;
-
                   setEditListingId(gridItem.id);
                   setEditOpen(true);
                 }}

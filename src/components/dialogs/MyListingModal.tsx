@@ -52,7 +52,16 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
     const run = async () => {
       if (!open || !listingId) return;
 
+      setListing(null);
+      setPost(null);
       setLoading(true);
+      setTradeValue("");
+      setConditionGrade(10);
+      setHasBox(true);
+      setHasInsoles(true);
+      setHasLaces(true);
+      setFlaws("");
+
       try {
         const snap = await getDoc(doc(db, "listings", listingId));
         if (!snap.exists()) {
@@ -151,7 +160,14 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="max-w-xl bg-white [&>button]:hidden">
         <DialogHeader>
           <DialogTitle>Edit Listing</DialogTitle>

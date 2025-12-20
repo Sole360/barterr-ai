@@ -292,6 +292,9 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
             responseTime: "Usually responds within 24 hours",
             photos: sneaker.photos,
             approvalStatus: sneaker.condition === 10 ? "approved" : "pending",
+            productName: sneaker.name,
+            productImageUrl: sneaker.imageUrl,
+            brand: sneaker.brand,
           });
 
           // Add to owners array in post

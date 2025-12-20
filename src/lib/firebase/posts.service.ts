@@ -295,6 +295,9 @@ export async function createListing(listingData: {
   tradeValue: number;
   location: string;
   responseTime: string;
+  productName?: string;
+  productImageUrl?: string;
+  brand?: string;
   photos?: {
     appearance?: string;
     boxLabel?: string;
@@ -320,6 +323,13 @@ export async function createListing(listingData: {
     responseTime: listingData.responseTime,
     approvalStatus: listingData.approvalStatus ?? "approved",
     createdAt: Timestamp.now(),
+    ...(listingData.productName
+      ? { productName: listingData.productName }
+      : {}),
+    ...(listingData.productImageUrl
+      ? { productImageUrl: listingData.productImageUrl }
+      : {}),
+    ...(listingData.brand ? { brand: listingData.brand } : {}),
     ...(listingData.photos ? { photos: listingData.photos } : {}),
   };
 

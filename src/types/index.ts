@@ -158,7 +158,9 @@ export interface Listing {
   tradeValue: number;
   location: string;
   responseTime: string;
-
+  productName?: string;
+  productImageUrl?: string;
+  brand?: string;
   hasBox?: boolean;
   hasInsoles?: boolean;
   hasLaces?: boolean;
