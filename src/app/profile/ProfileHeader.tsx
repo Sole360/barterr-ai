@@ -2,6 +2,13 @@ import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+type ProfileHeaderStats = {
+  collectionCount: number;
+  wishlistCount: number;
+  tradesCount: number;
+  pendingCount?: number;
+};
+
 type Props = {
   displayName: string;
   location?: string;
@@ -9,16 +16,18 @@ type Props = {
   bio?: string;
   avatarUrl?: string;
   onSettingsClick?: () => void;
+  stats?: ProfileHeaderStats;
 };
 
-export function ProfileHeader({
+export const ProfileHeader = ({
   displayName,
   location,
   rating = 0,
   bio,
   avatarUrl,
   onSettingsClick,
-}: Props) {
+  stats,
+}: Props) => {
   const initials = displayName
     .split(" ")
     .filter(Boolean)
@@ -65,7 +74,35 @@ export function ProfileHeader({
         {bio ? (
           <p className="mt-3 max-w-md text-sm text-muted-foreground">{bio}</p>
         ) : null}
+
+        {stats ? (
+          <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border bg-card p-3">
+            <div className="text-center">
+              <div className="text-lg font-semibold text-foreground">
+                {stats.collectionCount}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Collection
+                {stats.pendingCount ? ` • ${stats.pendingCount} pending` : ""}
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-lg font-semibold text-foreground">
+                {stats.wishlistCount}
+              </div>
+              <div className="text-xs text-muted-foreground">Wishlist</div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-lg font-semibold text-foreground">
+                {stats.tradesCount}
+              </div>
+              <div className="text-xs text-muted-foreground">Trades</div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
-}
+};

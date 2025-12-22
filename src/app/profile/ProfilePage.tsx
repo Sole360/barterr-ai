@@ -35,6 +35,12 @@ export const ProfilePage = () => {
 
   const bio = userProfile?.biography ?? "Add a bio so people know you.";
 
+  const collectionCount = items.length;
+  const pendingCount = items.filter((i) => i.status === "pending").length;
+
+  const wishlistCount = userProfile?.wishlistCount ?? 0;
+  const tradesCount = 0;
+
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto w-full max-w-2xl px-4 py-6 lg:max-w-4xl xl:max-w-5xl">
@@ -44,6 +50,12 @@ export const ProfilePage = () => {
           rating={5}
           bio={bio}
           onSettingsClick={() => setEditProfileOpen(true)}
+          stats={{
+            collectionCount,
+            wishlistCount,
+            tradesCount,
+            pendingCount,
+          }}
         />
 
         <div className="mt-5">

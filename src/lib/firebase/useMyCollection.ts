@@ -8,6 +8,8 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import type { Listing } from "@/types";
+import { getDoc, doc } from "firebase/firestore";
+import type { Post } from "@/types";
 
 export type MyCollectionItem = {
   id: string; // listingId
@@ -39,21 +41,33 @@ export function useMyCollection(userId?: string) {
       orderBy("createdAt", "desc")
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      const results: MyCollectionItem[] = snap.docs.map((docSnap) => {
+    const unsub = onSnapshot(q, async (snap) => {
+      const results: MyCollectionItem[] = [];
+
+      for (const docSnap of snap.docs) {
         const listing = docSnap.data() as Listing;
 
-        return {
+        let post: Post | null = null;
+        try {
+          const postSnap = await getDoc(doc(db, "posts", listing.postId));
+          if (postSnap.exists()) {
+            post = { ...(postSnap.data() as Post), postId: listing.postId };
+          }
+        } catch (e) {
+          console.warn("Failed to load post", listing.postId);
+        }
+
+        results.push({
           id: docSnap.id,
           postId: listing.postId,
-          name: listing.productName ?? "Unknown Sneaker",
-          imageUrl: listing.productImageUrl,
-          brand: listing.brand,
+          name: post?.title ?? "Unknown Sneaker",
+          imageUrl: post?.productImageUrl,
+          brand: post?.brand,
           size: `US ${listing.size}`,
           value: `$${listing.tradeValue}`,
           status: listing.approvalStatus,
-        };
-      });
+        });
+      }
 
       setItems(results);
       setLoading(false);
