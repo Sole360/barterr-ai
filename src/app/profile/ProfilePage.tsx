@@ -5,8 +5,10 @@ import { CollectionGrid } from "./CollectionGrid";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
+import { useMyWishlist } from "@/lib/firebase/useMyWishlist";
 import { MyListingModal } from "@/components/dialogs/MyListingModal";
 import { EditProfileDialog } from "@/components/dialogs/EditProfileDialog";
+import { MyWishlistModal } from "@/components/dialogs/MyWishlistModal";
 
 export const ProfilePage = () => {
   const [tab, setTab] = useState<ProfileTabKey>("collection");
@@ -17,6 +19,22 @@ export const ProfilePage = () => {
   const [editListingId, setEditListingId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const { items: wishlistItems, loading: wishlistLoading } = useMyWishlist(
+    currentUser?.uid
+  );
+  const [wishlistOpen, setWishlistOpen] = useState(false);
+  const [wishlistPostId, setWishlistPostId] = useState<string | null>(null);
+  const [wishlistSize, setWishlistSize] = useState<number>(0);
+
+  const wishlistGridItems = wishlistItems.map((w) => ({
+    id: w.postId,
+    postId: w.postId,
+    name: w.name,
+    size: `US ${w.size}`,
+    value: "—",
+    imageUrl: w.imageUrl,
+    status: undefined,
+  }));
 
   const gridItems = items.map((item) => ({
     id: item.id,
@@ -38,7 +56,7 @@ export const ProfilePage = () => {
   const collectionCount = items.length;
   const pendingCount = items.filter((i) => i.status === "pending").length;
 
-  const wishlistCount = userProfile?.wishlistCount ?? 0;
+  const wishlistCount = wishlistItems.length;
   const tradesCount = 0;
 
   return (
@@ -78,6 +96,26 @@ export const ProfilePage = () => {
                 }}
               />
             )
+          ) : tab === "wishlist" ? (
+            wishlistLoading ? (
+              <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
+                Loading your wishlist…
+              </div>
+            ) : (
+              <CollectionGrid
+                items={wishlistGridItems}
+                onSelectItem={(item) => {
+                  const full = wishlistItems.find(
+                    (w) => w.postId === item.postId
+                  );
+                  if (!full) return;
+
+                  setWishlistPostId(full.postId);
+                  setWishlistSize(full.size);
+                  setWishlistOpen(true);
+                }}
+              />
+            )
           ) : tab === "fashion" ? (
             <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
               Fashion Photos (placeholder)
@@ -104,6 +142,18 @@ export const ProfilePage = () => {
           onClose={() => {
             setEditOpen(false);
             setEditListingId(null);
+          }}
+        />
+      )}
+      {wishlistPostId && (
+        <MyWishlistModal
+          open={wishlistOpen}
+          postId={wishlistPostId}
+          size={wishlistSize}
+          onClose={() => {
+            setWishlistOpen(false);
+            setWishlistPostId(null);
+            setWishlistSize(0);
           }}
         />
       )}

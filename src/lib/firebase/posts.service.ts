@@ -11,6 +11,7 @@ import {
   Timestamp,
   Unsubscribe,
   updateDoc,
+  deleteDoc,
   setDoc,
 } from "firebase/firestore";
 import { db } from "./config";
@@ -18,14 +19,14 @@ import { Post, Listing, WisherOwner } from "@/types";
 import { arrayUnion, arrayRemove } from "firebase/firestore";
 
 // Add user to wishlist
-export async function addToWishlist(
+export const addToWishlist = async (
   postId: string,
   userId: string,
   displayName: string,
   email: string,
   photoURL: string,
   size: number
-): Promise<void> {
+): Promise<void> => {
   const postRef = doc(db, "posts", postId);
 
   const wisherData = {
@@ -41,18 +42,27 @@ export async function addToWishlist(
     wishers: arrayUnion(wisherData),
     updatedAt: Timestamp.now(),
   });
-}
+
+  const wishlistDocId = `${postId}_${size}`;
+  await setDoc(doc(db, "users", userId, "wishlist", wishlistDocId), {
+    postId,
+    size,
+    addedAt: Timestamp.now(),
+  });
+};
 
 // Remove from wishlist
-export async function removeFromWishlist(
+export const removeFromWishlist = async (
   postId: string,
   userId: string,
+  size: number,
   currentWishers: WisherOwner[]
-): Promise<void> {
+): Promise<void> => {
   const postRef = doc(db, "posts", postId);
 
-  // Find exact wisher object to remove
-  const wisherToRemove = currentWishers.find((w) => w.userId === userId);
+  const wisherToRemove = currentWishers.find(
+    (w) => w.userId === userId && w.size === size
+  );
 
   if (wisherToRemove) {
     await updateDoc(postRef, {
@@ -60,7 +70,10 @@ export async function removeFromWishlist(
       updatedAt: Timestamp.now(),
     });
   }
-}
+
+  const wishlistDocId = `${postId}_${size}`;
+  await deleteDoc(doc(db, "users", userId, "wishlist", wishlistDocId));
+};
 
 // Add to collection (creates listing + adds to owners)
 export async function addToCollection(

@@ -53,14 +53,18 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
 
   // Check if current user is in wishlist
   useEffect(() => {
-    if (!currentUser || !post.wishers) {
+    if (!currentUser) {
       setIsWishlisted(false);
       return;
     }
 
-    const inWishlist = post.wishers.some((w) => w.userId === currentUser.uid);
+    const wishers = post.wishers ?? [];
+    const inWishlist = wishers.some(
+      (w) => w.userId === currentUser.uid && w.size === selectedSize
+    );
+
     setIsWishlisted(inWishlist);
-  }, [currentUser, post.wishers]);
+  }, [currentUser, currentUser?.uid, post.wishers, selectedSize]);
 
   // Subscribe to real listings
   useEffect(() => {
@@ -85,12 +89,16 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
       return;
     }
 
+    const was = isWishlisted;
+    setIsWishlisted(!was); // instant fill/unfill
     setLoading(true);
+
     try {
-      if (isWishlisted) {
+      if (was) {
         await removeFromWishlist(
           post.postId,
           currentUser.uid,
+          selectedSize,
           post.wishers ?? []
         );
         toast({ title: "Removed from wishlist" });
@@ -105,11 +113,11 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
         );
         toast({ title: "Added to wishlist ❤️" });
       }
-    } catch (error) {
-      console.error("Wishlist error:", error);
+    } catch (e) {
+      setIsWishlisted(was); // revert
       toast({
         title: "Error",
-        description: "Failed to update wishlist",
+        description: `Failed to update wishlist: ${e}`,
         variant: "destructive",
       });
     } finally {
