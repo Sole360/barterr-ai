@@ -9,8 +9,13 @@ import { useMyWishlist } from "@/lib/firebase/useMyWishlist";
 import { MyListingModal } from "@/components/dialogs/MyListingModal";
 import { EditProfileDialog } from "@/components/dialogs/EditProfileDialog";
 import { MyWishlistModal } from "@/components/dialogs/MyWishlistModal";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 export const ProfilePage = () => {
+  const navigate = useNavigate();
+
   const [tab, setTab] = useState<ProfileTabKey>("collection");
   const [addOpen, setAddOpen] = useState(false);
   const { currentUser, userProfile } = useAuth();
@@ -99,6 +104,16 @@ export const ProfilePage = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto w-full max-w-2xl px-4 py-6 lg:max-w-4xl xl:max-w-5xl">
+        <Button
+          type="button"
+          variant="ghost"
+          className="-ml-2 mb-2 h-9 px-2"
+          onClick={() => navigate(-1)}
+          aria-label="Back to dashboard"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
         <ProfileHeader
           displayName={displayName}
           location={location}
