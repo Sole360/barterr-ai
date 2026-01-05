@@ -25,6 +25,7 @@ import {
   addToWishlist,
   removeFromWishlist,
 } from "@/lib/firebase/posts.service";
+import { createTradeRequest } from "@/lib/firebase/trades.service";
 
 interface PostDetailModalProps {
   open: boolean;
@@ -239,6 +240,7 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
                   key={listing.id}
                   listing={listing}
                   showPhotos={selectedCondition === "used"}
+                  post={post}
                 />
               ))
             )}
@@ -253,10 +255,15 @@ export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
 function ListingCard({
   listing,
   showPhotos,
+  post,
 }: {
   listing: Listing;
   showPhotos: boolean;
+  post: Post;
 }) {
+  const { currentUser, userProfile } = useAuth();
+  const { toast } = useToast();
+  const [creatingTrade, setCreatingTrade] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   const photos = listing.photos
@@ -314,7 +321,6 @@ function ListingCard({
           </div>
         </div>
       )}
-
       {/* Listing Header */}
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -344,7 +350,6 @@ function ListingCard({
           </span>
         </div>
       </div>
-
       {/* Listing Details */}
       <div className="space-y-2 mb-4">
         <div className="flex items-center text-sm text-gray-600">
@@ -356,17 +361,57 @@ function ListingCard({
           {listing.responseTime}
         </div>
       </div>
-
       {/* Action Button */}
       <Button
         className="w-full bg-[#3366FF] hover:bg-[#3366FF]/90"
-        onClick={() => {
-          // TODO: Handle trade request - Phase 6
-          console.log("Request trade with:", listing.userId);
+        disabled={creatingTrade}
+        onClick={async () => {
+          if (!currentUser?.uid || !userProfile) {
+            toast({
+              title: "Login required",
+              description: "Please login to request a trade",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          if (currentUser.uid === listing.userId) {
+            toast({
+              title: "Not allowed",
+              description: "You can't request a trade with yourself",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          setCreatingTrade(true);
+          try {
+            await createTradeRequest({
+              post,
+              listing,
+              senderId: currentUser.uid,
+              senderProfile: userProfile,
+            });
+
+            toast({
+              title: "Trade request sent",
+              description: "Check Trades to continue the conversation",
+            });
+          } catch (err) {
+            console.error("Create trade error:", err);
+            toast({
+              title: "Error",
+              description: "Failed to create trade request",
+              variant: "destructive",
+            });
+          } finally {
+            setCreatingTrade(false);
+          }
         }}
       >
-        Request Trade
+        {creatingTrade ? "Requesting…" : "Request Trade"}
       </Button>
+      ;
     </div>
   );
 }

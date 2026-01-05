@@ -49,10 +49,8 @@ export const EditProfileDialog = ({ open, onClose }: Props) => {
       let photoURL = userProfile?.photoURL ?? "";
 
       if (avatarFile) {
-        const avatarRef = ref(
-          storage,
-          `users/${currentUser.uid}/avatar_${Date.now()}`
-        );
+        const avatarPath = `users/${currentUser.uid}/avatar`;
+        const avatarRef = ref(storage, avatarPath);
 
         await uploadBytes(avatarRef, avatarFile, {
           contentType: avatarFile.type,
