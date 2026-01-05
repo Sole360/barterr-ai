@@ -119,6 +119,7 @@ export const ProfilePage = () => {
           location={location}
           rating={5}
           bio={bio}
+          avatarUrl={userProfile?.photoURL ?? ""}
           onSettingsClick={() => setEditProfileOpen(true)}
           stats={{
             collectionCount,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,9 @@ import { useAuth } from "@/lib/contexts/auth.context";
 import { db } from "@/lib/firebase/config";
 import { doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { storage, auth } from "@/lib/firebase/config";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { updateProfile } from "firebase/auth";
 
 type Props = {
   open: boolean;
@@ -27,6 +30,8 @@ export const EditProfileDialog = ({ open, onClose }: Props) => {
   const [biography, setBiography] = useState("");
   const [location, setLocation] = useState("");
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!open || !userProfile) return;
@@ -41,11 +46,34 @@ export const EditProfileDialog = ({ open, onClose }: Props) => {
 
     setSaving(true);
     try {
+      let photoURL = userProfile?.photoURL ?? "";
+
+      if (avatarFile) {
+        const avatarRef = ref(
+          storage,
+          `users/${currentUser.uid}/avatar_${Date.now()}`
+        );
+
+        await uploadBytes(avatarRef, avatarFile, {
+          contentType: avatarFile.type,
+        });
+
+        photoURL = await getDownloadURL(avatarRef);
+      }
+
       await updateDoc(doc(db, "users", currentUser.uid), {
         displayName: displayName.trim(),
         biography: biography.trim(),
         location: location.trim(),
+        photoURL,
       });
+
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: displayName.trim(),
+          photoURL,
+        });
+      }
 
       toast({ title: "Profile updated" });
       onClose();
@@ -69,6 +97,35 @@ export const EditProfileDialog = ({ open, onClose }: Props) => {
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-1">
+            <Label>Profile Photo</Label>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={saving}
+              >
+                Change photo
+              </Button>
+
+              {avatarFile && (
+                <span className="text-sm text-muted-foreground">
+                  {avatarFile.name}
+                </span>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
+
           <div className="space-y-1">
             <Label htmlFor="displayName">Display Name</Label>
             <Input
