@@ -25,7 +25,7 @@ import {
   addToWishlist,
   removeFromWishlist,
 } from "@/lib/firebase/posts.service";
-import { createTradeRequest } from "@/lib/firebase/trades.service";
+import { createTradeRequest } from "@/lib/firebase/tradeRequests.service";
 
 interface PostDetailModalProps {
   open: boolean;
@@ -386,7 +386,7 @@ function ListingCard({
 
           setCreatingTrade(true);
           try {
-            await createTradeRequest({
+            const tradeId = await createTradeRequest({
               post,
               listing,
               senderId: currentUser.uid,
@@ -395,7 +395,7 @@ function ListingCard({
 
             toast({
               title: "Trade request sent",
-              description: "Check Trades to continue the conversation",
+              description: `Trade created: ${tradeId}`,
             });
           } catch (err) {
             console.error("Create trade error:", err);
