@@ -65,7 +65,7 @@ export const useMyWishlist = (userId?: string) => {
         }
 
         results.push({
-          id: `${wl.postId}_${wl.size}`,
+          id: `${wl.postId}_${Number(wl.size).toString()}`,
           postId: wl.postId,
           name: post?.title ?? "Unknown Sneaker",
           brand: post?.brand,

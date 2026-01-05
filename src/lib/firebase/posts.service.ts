@@ -34,7 +34,7 @@ export const addToWishlist = async (
     displayName,
     email,
     userPhoto: photoURL || "",
-    size,
+    size: Number(size),
     condition: 10,
   };
 
@@ -43,10 +43,18 @@ export const addToWishlist = async (
     updatedAt: Timestamp.now(),
   });
 
-  const wishlistDocId = `${postId}_${size}`;
-  await setDoc(doc(db, "users", userId, "wishlist", wishlistDocId), {
+  const wishlistDocId = makeWishlistDocId(postId, Number(size));
+  const wishlistRef = doc(db, "users", userId, "wishlist", wishlistDocId);
+
+  const existing = await getDoc(wishlistRef);
+  if (existing.exists()) {
+    // Already wishlisted for this exact size — do nothing (idempotent)
+    return;
+  }
+
+  await setDoc(wishlistRef, {
     postId,
-    size,
+    size: Number(size),
     addedAt: Timestamp.now(),
   });
 };
@@ -61,7 +69,7 @@ export const removeFromWishlist = async (
   const postRef = doc(db, "posts", postId);
 
   const wisherToRemove = currentWishers.find(
-    (w) => w.userId === userId && w.size === size
+    (w) => w.userId === userId && Number(w.size) === Number(size)
   );
 
   if (wisherToRemove) {
@@ -71,7 +79,7 @@ export const removeFromWishlist = async (
     });
   }
 
-  const wishlistDocId = `${postId}_${size}`;
+  const wishlistDocId = makeWishlistDocId(postId, Number(size));
   await deleteDoc(doc(db, "users", userId, "wishlist", wishlistDocId));
 };
 
@@ -368,3 +376,8 @@ export async function updatePostImage(
     updatedAt: Timestamp.now(),
   });
 }
+
+const makeWishlistDocId = (postId: string, size: number) => {
+  const sizeKey = Number(size).toString(); // normalizes 10.0 -> "10", 10.50 -> "10.5"
+  return `${postId}_${sizeKey}`;
+};
