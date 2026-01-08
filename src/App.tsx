@@ -9,6 +9,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { ForgotPasswordPage } from "@/app/auth/ForgotPasswordPage";
 import { VerifyEmailPage } from "@/app/auth/VerifyEmailPage";
 import { ProfilePage } from "@/app/profile/ProfilePage";
+import { TradesInboxPage } from "@/app/trades/TradesInboxPage";
+import { TradeDetailPage } from "@/app/trades/TradeDetailPage";
 
 function App() {
   return (
@@ -20,6 +22,23 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route
+            path="/trades"
+            element={
+              <ProtectedRoute>
+                <TradesInboxPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/trades/:tradeId"
+            element={
+              <ProtectedRoute>
+                <TradeDetailPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/onboarding"
