@@ -14,6 +14,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { Button } from "@/components/ui/button";
+
 import type { Listing, Post } from "@/types";
 import { ArrowLeft } from "lucide-react";
 
@@ -28,7 +29,7 @@ type TheirListingRow = {
   approvalStatus?: "approved" | "pending" | "rejected";
   title: string;
   brand: string;
-  productImageUrl: string;
+  imageUrl: string;
 };
 
 export const TradeComposePage = () => {
@@ -38,7 +39,12 @@ export const TradeComposePage = () => {
 
   const postId = params.get("postId") ?? "";
   const listingId = params.get("listingId") ?? "";
-  const posterId = params.get("posterId") ?? "";
+
+  const { items: myCollectionItems, loading: myCollectionLoading } =
+    useMyCollection(currentUser?.uid);
+
+  const [theirListings, setTheirListings] = useState<TheirListingRow[]>([]);
+  const [theirLoading, setTheirLoading] = useState(true);
 
   const [requestedPost, setRequestedPost] = useState<Post | null>(null);
   const [requestedListing, setRequestedListing] = useState<Listing | null>(
@@ -46,26 +52,18 @@ export const TradeComposePage = () => {
   );
   const [requestedLoading, setRequestedLoading] = useState(true);
 
-  const [theirListings, setTheirListings] = useState<TheirListingRow[]>([]);
-  const [theirLoading, setTheirLoading] = useState(true);
-
   const [selectedYourListingIds, setSelectedYourListingIds] = useState<
     string[]
   >([]);
 
-  const { items: myCollectionItems, loading: myCollectionLoading } =
-    useMyCollection(currentUser?.uid ?? "");
-
-  const effectivePosterId = posterId || requestedListing?.userId || "";
+  const posterId = requestedListing?.userId ?? "";
 
   useEffect(() => {
     let alive = true;
 
     const run = async () => {
       if (!postId || !listingId) {
-        setRequestedPost(null);
-        setRequestedListing(null);
-        setRequestedLoading(false);
+        if (alive) setRequestedLoading(false);
         return;
       }
 
@@ -93,6 +91,11 @@ export const TradeComposePage = () => {
               } as Listing)
             : null
         );
+      } catch (e) {
+        console.error("TradeCompose load requested listing/post error:", e);
+        if (!alive) return;
+        setRequestedPost(null);
+        setRequestedListing(null);
       } finally {
         if (alive) setRequestedLoading(false);
       }
@@ -105,7 +108,7 @@ export const TradeComposePage = () => {
   }, [postId, listingId]);
 
   useEffect(() => {
-    if (!effectivePosterId) {
+    if (!posterId) {
       setTheirListings([]);
       setTheirLoading(false);
       return;
@@ -115,48 +118,60 @@ export const TradeComposePage = () => {
 
     const q = query(
       collection(db, "listings"),
-      where("userId", "==", effectivePosterId),
+      where("userId", "==", posterId),
       orderBy("createdAt", "desc")
     );
 
-    const unsub = onSnapshot(q, async (snap) => {
-      try {
-        const rows: TheirListingRow[] = await Promise.all(
-          snap.docs.map(async (d) => {
-            const data = d.data() as Listing;
-            const postSnap = await getDoc(doc(db, "posts", data.postId));
-            const postData = postSnap.exists()
-              ? (postSnap.data() as Post)
-              : null;
+    const unsub = onSnapshot(
+      q,
+      async (snap) => {
+        const rows: TheirListingRow[] = [];
 
-            return {
-              id: d.id,
-              postId: data.postId,
-              userId: data.userId,
-              size: data.size,
-              condition: data.condition,
-              conditionGrade: data.conditionGrade,
-              tradeValue: data.tradeValue,
-              approvalStatus: data.approvalStatus,
-              title: postData?.title ?? "",
-              brand: postData?.brand ?? "",
-              productImageUrl: postData?.productImageUrl ?? "",
-            };
-          })
-        );
+        for (const d of snap.docs) {
+          const l = d.data() as Listing;
+
+          let p: Post | null = null;
+          try {
+            const ps = await getDoc(doc(db, "posts", l.postId));
+            if (ps.exists()) {
+              p = { ...(ps.data() as Post), postId: l.postId } as Post;
+            }
+          } catch (e) {
+            console.error("TradeCompose their listings fetch post error:", e);
+          }
+
+          rows.push({
+            id: d.id,
+            postId: l.postId,
+            userId: l.userId,
+            size: l.size,
+            condition: l.condition,
+            conditionGrade: l.conditionGrade,
+            tradeValue: l.tradeValue,
+            approvalStatus: l.approvalStatus,
+            title: p?.title ?? "Unknown Sneaker",
+            brand: p?.brand ?? "",
+            imageUrl: p?.productImageUrl ?? "",
+          });
+        }
 
         setTheirListings(rows);
-      } finally {
+        setTheirLoading(false);
+      },
+      (err) => {
+        console.error("TradeCompose their listings snapshot error:", err);
+        setTheirListings([]);
         setTheirLoading(false);
       }
-    });
+    );
 
     return () => unsub();
-  }, [effectivePosterId]);
+  }, [posterId]);
 
   const requestedTheirLabel = useMemo(() => {
     if (!requestedPost || !requestedListing) return "";
-    return `${requestedPost.title} • Size ${requestedListing.size}`;
+    const size = requestedListing.size ? `US ${requestedListing.size}` : "";
+    return `${requestedPost.title} • ${size}`;
   }, [requestedPost, requestedListing]);
 
   const toggleYourListing = (id: string) => {
@@ -165,40 +180,71 @@ export const TradeComposePage = () => {
     );
   };
 
-  return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+  const sendDisabled = selectedYourListingIds.length === 0;
+
+  if (!postId || !listingId) {
+    return (
+      <div className="min-h-[100dvh] bg-white">
+        <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-6">
           <Button
             variant="ghost"
-            className="-ml-2 h-9 px-2"
+            className="gap-2"
             onClick={() => navigate(-1)}
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
 
-          <h1 className="text-lg font-semibold">Create Trade</h1>
-          <div className="w-16" />
+          <div className="mt-4 text-sm text-muted-foreground">
+            Missing trade parameters. Please start from a listing and tap
+            “Request Trade”.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-[100dvh] bg-white">
+      <div className="flex min-h-[100dvh] w-full flex-col px-4 py-4 md:mx-auto md:max-w-6xl md:px-6 md:py-6">
+        {/* Header */}
+        <div className="relative flex w-full items-center">
+          <Button
+            variant="ghost"
+            className="-ml-2 gap-2"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+
+          <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-base font-semibold md:text-lg">
+            Create Trade
+          </h1>
         </div>
 
         {/* Requested */}
-        <div className="mt-4 rounded-xl border border-[#3366FF]/30 bg-[#3366FF]/5 p-4">
+        <div className="mt-3 rounded-xl border border-[#3366FF]/30 bg-[#3366FF]/5 p-4">
           <div className="text-xs text-muted-foreground">Requested listing</div>
           <div className="mt-1 text-sm font-semibold">
-            {requestedLoading ? "Loading…" : requestedTheirLabel}
+            {requestedLoading ? "Loading…" : requestedTheirLabel || "Not found"}
           </div>
         </div>
 
-        <div className="mt-6 grid flex-1 min-h-0 gap-6 md:grid-cols-2">
-          {/* Your Offer */}
+        {/* Content */}
+        <div className="mt-4 grid flex-1 min-h-0 gap-4 pb-28 md:mt-6 md:grid-cols-2 md:gap-6 md:pb-0">
+          {/* LEFT */}
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-gray-200 p-4">
-            <h2 className="text-sm font-semibold text-[#3366FF]">
-              Your Offer ({selectedYourListingIds.length})
-            </h2>
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-sm font-semibold text-[#3366FF]">
+                Your Offer
+              </h2>
+              <div className="text-xs text-muted-foreground">
+                Selected: {selectedYourListingIds.length}
+              </div>
+            </div>
 
-            <div className="flex-1 min-h-0 overflow-auto space-y-3">
+            <div className="flex-1 min-h-0 overflow-auto">
               {myCollectionLoading ? (
                 <div className="text-sm text-muted-foreground">
                   Loading your collection…
@@ -208,64 +254,84 @@ export const TradeComposePage = () => {
                   You have no listings yet.
                 </div>
               ) : (
-                myCollectionItems.map((item) => {
-                  const selected = selectedYourListingIds.includes(item.id);
+                <div className="space-y-3">
+                  {myCollectionItems.map((item) => {
+                    const selected = selectedYourListingIds.includes(item.id);
 
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => toggleYourListing(item.id)}
-                      className={`w-full rounded-lg border p-4 text-left transition ${
-                        selected
-                          ? "border-[#3366FF] bg-[#3366FF]/5"
-                          : "border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        {/* IMAGE: contain (no crop) */}
-                        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-24">
-                          {item.imageUrl ? (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="h-full w-full object-contain"
-                            />
-                          ) : null}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="truncate text-base font-semibold">
-                            {item.name}
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => toggleYourListing(item.id)}
+                        className={`w-full rounded-xl border p-3 text-left transition md:p-4 ${
+                          selected
+                            ? "border-[#3366FF] bg-[#3366FF]/10"
+                            : "border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          {/* Image */}
+                          <div className="flex h-20 w-24 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-28">
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="h-full w-full object-contain"
+                              />
+                            ) : null}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {item.size} • {item.value}
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="truncate text-base font-semibold md:text-lg">
+                                  {item.name}
+                                </div>
+                                <div className="mt-0.5 text-sm text-muted-foreground">
+                                  {item.size} • {item.value}
+                                </div>
+                              </div>
+
+                              {/* Selected pill */}
+                              {selected ? (
+                                <span className="shrink-0 rounded-full bg-[#3366FF]/10 px-3 py-1 text-xs font-semibold text-[#3366FF]">
+                                  Selected
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {/* Keep the dot indicator too */}
+                          <div
+                            className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                              selected ? "border-[#3366FF]" : "border-gray-300"
+                            }`}
+                          >
+                            {selected ? (
+                              <div className="h-3 w-3 rounded-full bg-[#3366FF]" />
+                            ) : null}
                           </div>
                         </div>
-
-                        <div
-                          className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                            selected ? "border-[#3366FF]" : "border-gray-300"
-                          }`}
-                        >
-                          {selected ? (
-                            <div className="h-3 w-3 rounded-full bg-[#3366FF]" />
-                          ) : null}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </section>
 
-          {/* Their Listing */}
+          {/* RIGHT */}
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-gray-200 p-4">
-            <h2 className="text-sm font-semibold text-[#3366FF]">
-              Their Listing
-            </h2>
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-sm font-semibold text-[#3366FF]">
+                Their Listing
+              </h2>
+              <div className="text-xs text-muted-foreground">
+                {requestedListing?.userName ?? ""}
+              </div>
+            </div>
 
-            <div className="flex-1 min-h-0 overflow-auto space-y-3">
+            <div className="flex-1 min-h-0 overflow-auto">
               {theirLoading || requestedLoading ? (
                 <div className="text-sm text-muted-foreground">
                   Loading their listings…
@@ -275,59 +341,82 @@ export const TradeComposePage = () => {
                   This user has no listings.
                 </div>
               ) : (
-                theirListings.map((l) => {
-                  const isRequested = l.id === listingId;
+                <div className="space-y-3">
+                  {theirListings.map((l) => {
+                    const isRequested = l.id === listingId;
 
-                  return (
-                    <div
-                      key={l.id}
-                      className={`rounded-lg border p-4 ${
-                        isRequested
-                          ? "border-[#3366FF] bg-[#3366FF]/5"
-                          : "border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        {/* IMAGE: contain (no crop) */}
-                        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-24">
-                          {l.productImageUrl ? (
-                            <img
-                              src={l.productImageUrl}
-                              alt={l.title}
-                              className="h-full w-full object-contain"
-                            />
+                    return (
+                      <div
+                        key={l.id}
+                        className={`rounded-xl border p-3 md:p-4 ${
+                          isRequested
+                            ? "border-[#3366FF] bg-[#3366FF]/10"
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-20 w-24 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-28">
+                            {l.imageUrl ? (
+                              <img
+                                src={l.imageUrl}
+                                alt={l.title}
+                                className="h-full w-full object-contain"
+                              />
+                            ) : null}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-base font-semibold md:text-lg">
+                              {l.title}
+                            </div>
+                            <div className="mt-0.5 text-sm text-muted-foreground">
+                              Size {l.size} • {l.condition}
+                            </div>
+                          </div>
+
+                          {isRequested ? (
+                            <div className="shrink-0 rounded-full border border-[#3366FF] px-3 py-1 text-xs text-[#3366FF]">
+                              Requested
+                            </div>
                           ) : null}
                         </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="truncate text-base font-semibold">
-                            {l.title}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Size {l.size} • {l.condition}
-                          </div>
-                        </div>
-
-                        {isRequested ? (
-                          <span className="rounded-full border border-[#3366FF] px-3 py-1 text-xs text-[#3366FF]">
-                            Requested
-                          </span>
-                        ) : null}
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </div>
 
-            <Button
-              variant="outline"
-              disabled
-              className="mt-2 w-full border-[#3366FF]/40 text-[#3366FF]"
-            >
-              Send Trade (next step)
-            </Button>
+            {/* Desktop action */}
+            <div className="hidden pt-2 md:block">
+              <Button
+                className="w-full border-[#3366FF]/40 text-[#3366FF]"
+                variant="outline"
+                disabled={sendDisabled}
+              >
+                {sendDisabled
+                  ? "Select at least 1 sneaker"
+                  : "Send Trade (next step)"}
+              </Button>
+            </div>
           </section>
+        </div>
+
+        {/* Mobile sticky action bar */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+          <div className="border-t border-gray-200 bg-white/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
+            <div className="mx-auto w-full max-w-6xl">
+              <Button
+                className="w-full border-[#3366FF]/40 text-[#3366FF]"
+                variant="outline"
+                disabled={sendDisabled}
+              >
+                {sendDisabled
+                  ? "Select at least 1 sneaker"
+                  : "Send Trade (next step)"}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
