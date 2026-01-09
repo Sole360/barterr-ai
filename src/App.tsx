@@ -11,6 +11,7 @@ import { VerifyEmailPage } from "@/app/auth/VerifyEmailPage";
 import { ProfilePage } from "@/app/profile/ProfilePage";
 import { TradesInboxPage } from "@/app/trades/TradesInboxPage";
 import { TradeDetailPage } from "@/app/trades/TradeDetailPage";
+import { TradeComposePage } from "@/app/trades/TradeComposePage";
 
 function App() {
   return (
@@ -27,6 +28,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <TradesInboxPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trades/new"
+            element={
+              <ProtectedRoute>
+                <TradeComposePage />
               </ProtectedRoute>
             }
           />

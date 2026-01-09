@@ -25,7 +25,7 @@ import {
   addToWishlist,
   removeFromWishlist,
 } from "@/lib/firebase/posts.service";
-import { createTradeRequest } from "@/lib/firebase/tradeRequests.service";
+import { useNavigate } from "react-router-dom";
 
 interface PostDetailModalProps {
   open: boolean;
@@ -263,8 +263,8 @@ function ListingCard({
 }) {
   const { currentUser, userProfile } = useAuth();
   const { toast } = useToast();
-  const [creatingTrade, setCreatingTrade] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const navigate = useNavigate();
 
   const photos = listing.photos
     ? Object.values(listing.photos).filter(Boolean)
@@ -364,8 +364,7 @@ function ListingCard({
       {/* Action Button */}
       <Button
         className="w-full bg-[#3366FF] hover:bg-[#3366FF]/90"
-        disabled={creatingTrade}
-        onClick={async () => {
+        onClick={() => {
           if (!currentUser?.uid || !userProfile) {
             toast({
               title: "Login required",
@@ -384,32 +383,10 @@ function ListingCard({
             return;
           }
 
-          setCreatingTrade(true);
-          try {
-            const tradeId = await createTradeRequest({
-              post,
-              listing,
-              senderId: currentUser.uid,
-              senderProfile: userProfile,
-            });
-
-            toast({
-              title: "Trade request sent",
-              description: `Trade created: ${tradeId}`,
-            });
-          } catch (err) {
-            console.error("Create trade error:", err);
-            toast({
-              title: "Error",
-              description: "Failed to create trade request",
-              variant: "destructive",
-            });
-          } finally {
-            setCreatingTrade(false);
-          }
+          navigate(`/trades/new?postId=${post.postId}&listingId=${listing.id}`);
         }}
       >
-        {creatingTrade ? "Requesting…" : "Request Trade"}
+        Request Trade
       </Button>
       ;
     </div>
