@@ -54,7 +54,7 @@ export function useMyCollection(userId?: string) {
             post = { ...(postSnap.data() as Post), postId: listing.postId };
           }
         } catch (e) {
-          console.warn("Failed to load post", listing.postId);
+          console.warn(`Failed to load post: ${e} `, listing.postId);
         }
 
         results.push({

@@ -14,7 +14,6 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { Button } from "@/components/ui/button";
-
 import type { Listing, Post } from "@/types";
 import { ArrowLeft } from "lucide-react";
 
@@ -27,10 +26,9 @@ type TheirListingRow = {
   conditionGrade: number;
   tradeValue: number;
   approvalStatus?: "approved" | "pending" | "rejected";
-  // display helpers (from post)
   title: string;
   brand: string;
-  imageUrl: string;
+  productImageUrl: string;
 };
 
 export const TradeComposePage = () => {
@@ -40,12 +38,7 @@ export const TradeComposePage = () => {
 
   const postId = params.get("postId") ?? "";
   const listingId = params.get("listingId") ?? "";
-
-  const { items: myCollectionItems, loading: myCollectionLoading } =
-    useMyCollection(currentUser?.uid);
-
-  const [theirListings, setTheirListings] = useState<TheirListingRow[]>([]);
-  const [theirLoading, setTheirLoading] = useState(true);
+  const posterId = params.get("posterId") ?? "";
 
   const [requestedPost, setRequestedPost] = useState<Post | null>(null);
   const [requestedListing, setRequestedListing] = useState<Listing | null>(
@@ -53,20 +46,26 @@ export const TradeComposePage = () => {
   );
   const [requestedLoading, setRequestedLoading] = useState(true);
 
-  // selection
+  const [theirListings, setTheirListings] = useState<TheirListingRow[]>([]);
+  const [theirLoading, setTheirLoading] = useState(true);
+
   const [selectedYourListingIds, setSelectedYourListingIds] = useState<
     string[]
   >([]);
 
-  const posterId = requestedListing?.userId ?? "";
+  const { items: myCollectionItems, loading: myCollectionLoading } =
+    useMyCollection(currentUser?.uid ?? "");
 
-  // Load the requested post + requested listing (the sneaker you tapped "Request Trade" on)
+  const effectivePosterId = posterId || requestedListing?.userId || "";
+
   useEffect(() => {
     let alive = true;
 
     const run = async () => {
       if (!postId || !listingId) {
-        if (alive) setRequestedLoading(false);
+        setRequestedPost(null);
+        setRequestedListing(null);
+        setRequestedLoading(false);
         return;
       }
 
@@ -94,11 +93,6 @@ export const TradeComposePage = () => {
               } as Listing)
             : null
         );
-      } catch (e) {
-        console.error("TradeCompose load requested listing/post error:", e);
-        if (!alive) return;
-        setRequestedPost(null);
-        setRequestedListing(null);
       } finally {
         if (alive) setRequestedLoading(false);
       }
@@ -110,9 +104,8 @@ export const TradeComposePage = () => {
     };
   }, [postId, listingId]);
 
-  // Subscribe to THEIR collection (listings by posterId)
   useEffect(() => {
-    if (!posterId) {
+    if (!effectivePosterId) {
       setTheirListings([]);
       setTheirLoading(false);
       return;
@@ -122,61 +115,48 @@ export const TradeComposePage = () => {
 
     const q = query(
       collection(db, "listings"),
-      where("userId", "==", posterId),
+      where("userId", "==", effectivePosterId),
       orderBy("createdAt", "desc")
     );
 
-    const unsub = onSnapshot(
-      q,
-      async (snap) => {
-        const rows: TheirListingRow[] = [];
+    const unsub = onSnapshot(q, async (snap) => {
+      try {
+        const rows: TheirListingRow[] = await Promise.all(
+          snap.docs.map(async (d) => {
+            const data = d.data() as Listing;
+            const postSnap = await getDoc(doc(db, "posts", data.postId));
+            const postData = postSnap.exists()
+              ? (postSnap.data() as Post)
+              : null;
 
-        // We fetch each listing's post doc for title/image
-        for (const d of snap.docs) {
-          const l = d.data() as Listing;
-
-          let p: Post | null = null;
-          try {
-            const ps = await getDoc(doc(db, "posts", l.postId));
-            if (ps.exists()) {
-              p = { ...(ps.data() as Post), postId: l.postId } as Post;
-            }
-          } catch (e) {
-            console.error("TradeCompose their listings fetch post error:", e);
-          }
-
-          rows.push({
-            id: d.id,
-            postId: l.postId,
-            userId: l.userId,
-            size: l.size,
-            condition: l.condition,
-            conditionGrade: l.conditionGrade,
-            tradeValue: l.tradeValue,
-            approvalStatus: l.approvalStatus,
-            title: p?.title ?? "Unknown Sneaker",
-            brand: p?.brand ?? "",
-            imageUrl: p?.productImageUrl ?? "",
-          });
-        }
+            return {
+              id: d.id,
+              postId: data.postId,
+              userId: data.userId,
+              size: data.size,
+              condition: data.condition,
+              conditionGrade: data.conditionGrade,
+              tradeValue: data.tradeValue,
+              approvalStatus: data.approvalStatus,
+              title: postData?.title ?? "",
+              brand: postData?.brand ?? "",
+              productImageUrl: postData?.productImageUrl ?? "",
+            };
+          })
+        );
 
         setTheirListings(rows);
-        setTheirLoading(false);
-      },
-      (err) => {
-        console.error("TradeCompose their listings snapshot error:", err);
-        setTheirListings([]);
+      } finally {
         setTheirLoading(false);
       }
-    );
+    });
 
     return () => unsub();
-  }, [posterId]);
+  }, [effectivePosterId]);
 
   const requestedTheirLabel = useMemo(() => {
     if (!requestedPost || !requestedListing) return "";
-    const size = requestedListing.size ? `US ${requestedListing.size}` : "";
-    return `${requestedPost.title} • ${size}`;
+    return `${requestedPost.title} • Size ${requestedListing.size}`;
   }, [requestedPost, requestedListing]);
 
   const toggleYourListing = (id: string) => {
@@ -185,40 +165,17 @@ export const TradeComposePage = () => {
     );
   };
 
-  // Basic guards
-  if (!postId || !listingId) {
-    return (
-      <div className="min-h-screen bg-white">
-        <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-6">
-          <Button
-            variant="ghost"
-            className="gap-2"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-
-          <div className="mt-4 text-sm text-muted-foreground">
-            Missing trade parameters. Please start from a listing and tap
-            “Request Trade”.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto w-full max-w-5xl px-4 py-6">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
-            className="gap-2"
+            className="-ml-2 h-9 px-2"
             onClick={() => navigate(-1)}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
 
@@ -226,75 +183,68 @@ export const TradeComposePage = () => {
           <div className="w-16" />
         </div>
 
-        {/* Requested listing summary */}
+        {/* Requested */}
         <div className="mt-4 rounded-xl border border-[#3366FF]/30 bg-[#3366FF]/5 p-4">
           <div className="text-xs text-muted-foreground">Requested listing</div>
           <div className="mt-1 text-sm font-semibold">
-            {requestedLoading ? "Loading…" : requestedTheirLabel || "Not found"}
+            {requestedLoading ? "Loading…" : requestedTheirLabel}
           </div>
         </div>
 
-        {/* Split screen */}
-        <div className="mt-6 grid flex-1 gap-6 md:grid-cols-2">
-          {/* LEFT: Your offer */}
-          <section className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 p-4">
-            <div className="flex-1 overflow-auto space-y-2">
-              <h2 className="text-sm font-semibold text-[#3366FF]">
-                Your Offer
-              </h2>
-              <div className="text-xs text-muted-foreground">
-                Selected: {selectedYourListingIds.length}
-              </div>
-            </div>
+        <div className="mt-6 grid flex-1 min-h-0 gap-6 md:grid-cols-2">
+          {/* Your Offer */}
+          <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-gray-200 p-4">
+            <h2 className="text-sm font-semibold text-[#3366FF]">
+              Your Offer ({selectedYourListingIds.length})
+            </h2>
 
-            {myCollectionLoading ? (
-              <div className="text-sm text-muted-foreground">
-                Loading your collection…
-              </div>
-            ) : myCollectionItems.length === 0 ? (
-              <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                Your collection is empty. Add sneakers to your collection before
-                sending trades.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {myCollectionItems.map((item) => {
+            <div className="flex-1 min-h-0 overflow-auto space-y-3">
+              {myCollectionLoading ? (
+                <div className="text-sm text-muted-foreground">
+                  Loading your collection…
+                </div>
+              ) : myCollectionItems.length === 0 ? (
+                <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                  You have no listings yet.
+                </div>
+              ) : (
+                myCollectionItems.map((item) => {
                   const selected = selectedYourListingIds.includes(item.id);
+
                   return (
                     <button
                       key={item.id}
-                      type="button"
                       onClick={() => toggleYourListing(item.id)}
-                      className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                      className={`w-full rounded-lg border p-4 text-left transition ${
                         selected
                           ? "border-[#3366FF] bg-[#3366FF]/5"
-                          : "border-gray-200 hover:border-gray-300"
+                          : "border-gray-200 hover:bg-gray-50"
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={item.imageUrl ?? ""}
-                          alt={item.name}
-                          className="h-12 w-12 rounded object-cover bg-gray-100"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium">
+                      <div className="flex items-center gap-4">
+                        {/* IMAGE: contain (no crop) */}
+                        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-24">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : null}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate text-base font-semibold">
                             {item.name}
                           </div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {item.brand ? `${item.brand} • ` : ""}
+                          <div className="text-sm text-muted-foreground">
                             {item.size} • {item.value}
-                            {item.status ? ` • ${item.status}` : ""}
                           </div>
                         </div>
 
                         <div
-                          className={`h-5 w-5 rounded-full border flex items-center justify-center ${
-                            selected
-                              ? "border-[#3366FF] bg-[#3366FF]/10 shadow-sm"
-                              : "border-gray-200 hover:border-[#3366FF]/40"
+                          className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                            selected ? "border-[#3366FF]" : "border-gray-300"
                           }`}
                         >
                           {selected ? (
@@ -304,83 +254,79 @@ export const TradeComposePage = () => {
                       </div>
                     </button>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
           </section>
 
-          {/* RIGHT: Their offer / their closet */}
-          <section className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 p-4">
-            <div className="flex-1 overflow-auto space-y-2">
-              <h2 className="text-sm font-semibold text-[#3366FF]">
-                Their Listing
-              </h2>
-              <div className="text-xs text-muted-foreground">
-                {requestedListing?.userName ?? ""}
-              </div>
-            </div>
+          {/* Their Listing */}
+          <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-gray-200 p-4">
+            <h2 className="text-sm font-semibold text-[#3366FF]">
+              Their Listing
+            </h2>
 
-            {theirLoading || requestedLoading ? (
-              <div className="text-sm text-muted-foreground">
-                Loading their listings…
-              </div>
-            ) : theirListings.length === 0 ? (
-              <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                This user has no listings.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {theirListings.map((l) => {
+            <div className="flex-1 min-h-0 overflow-auto space-y-3">
+              {theirLoading || requestedLoading ? (
+                <div className="text-sm text-muted-foreground">
+                  Loading their listings…
+                </div>
+              ) : theirListings.length === 0 ? (
+                <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                  This user has no listings.
+                </div>
+              ) : (
+                theirListings.map((l) => {
                   const isRequested = l.id === listingId;
+
                   return (
                     <div
                       key={l.id}
-                      className={`rounded-lg border p-3 ${
+                      className={`rounded-lg border p-4 ${
                         isRequested
                           ? "border-[#3366FF] bg-[#3366FF]/5"
                           : "border-gray-200"
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={l.imageUrl}
-                          alt={l.title}
-                          className="h-12 w-12 rounded object-cover bg-gray-100"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium">
+                      <div className="flex items-center gap-4">
+                        {/* IMAGE: contain (no crop) */}
+                        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-24">
+                          {l.productImageUrl ? (
+                            <img
+                              src={l.productImageUrl}
+                              alt={l.title}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : null}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate text-base font-semibold">
                             {l.title}
                           </div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {l.brand ? `${l.brand} • ` : ""}
-                            US {l.size} • ${l.tradeValue} •{" "}
-                            {l.condition === "new"
-                              ? "Deadstock"
-                              : `${l.conditionGrade}/10`}
-                            {l.approvalStatus ? ` • ${l.approvalStatus}` : ""}
+                          <div className="text-sm text-muted-foreground">
+                            Size {l.size} • {l.condition}
                           </div>
                         </div>
 
                         {isRequested ? (
-                          <div className="shrink-0 rounded-full border border-[#3366FF] px-2 py-1 text-xs text-[#3366FF]">
+                          <span className="rounded-full border border-[#3366FF] px-3 py-1 text-xs text-[#3366FF]">
                             Requested
-                          </div>
+                          </span>
                         ) : null}
                       </div>
                     </div>
                   );
-                })}
-              </div>
-            )}
-
-            {/* bottom action placeholder (no sending yet) */}
-            <div className="pt-2">
-              <Button className="w-full" variant="outline" disabled>
-                Send Trade (next step)
-              </Button>
+                })
+              )}
             </div>
+
+            <Button
+              variant="outline"
+              disabled
+              className="mt-2 w-full border-[#3366FF]/40 text-[#3366FF]"
+            >
+              Send Trade (next step)
+            </Button>
           </section>
         </div>
       </div>
