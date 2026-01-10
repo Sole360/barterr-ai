@@ -234,6 +234,7 @@ export const TradeComposePage = () => {
   const myValueById = useMemo(() => {
     const m = new Map<string, number>();
     for (const item of myCollectionItems) {
+      console.log("ITEML ", item);
       const n = Number(String(item.value).replace(/[^0-9.]/g, ""));
       m.set(item.id, Number.isFinite(n) ? n : 0);
     }
@@ -274,16 +275,19 @@ export const TradeComposePage = () => {
   // Trade likelihood (MVP formula)
   // -----------------------------
   const tradeLikelihood = useMemo(() => {
-    const your = yourSneakerTotal + addCash - askCash;
-    const their = theirSneakerTotal;
+    const yourTotal = yourSneakerTotal + addCash;
+    const theirTotal = theirSneakerTotal + askCash;
 
-    if (your <= 0 || their <= 0) return 0;
+    const sum = yourTotal + theirTotal;
 
-    const diff = Math.abs(your - their);
-    const avg = (your + their) / 2;
+    // Legacy parity: if both sides are 0, treat as neutral
+    if (sum === 0) return 50;
 
-    const closeness = 1 - diff / Math.max(avg, 1);
-    return Math.round(clamp(closeness * 100, 0, 100));
+    // Sole360-style directional factor + baseline
+    const shoeFactor = ((yourTotal - theirTotal) / sum) * 120;
+    const tradePercentage = shoeFactor + 68;
+
+    return Math.round(clamp(tradePercentage, 0, 100));
   }, [yourSneakerTotal, theirSneakerTotal, addCash, askCash]);
 
   // Animated likelihood number shown in the UI (counts up/down).
@@ -386,7 +390,7 @@ export const TradeComposePage = () => {
               <div>
                 <div className="text-xs text-white/80">Likelihood</div>
                 <div className="text-lg font-bold leading-none">
-                  {tradeLikelihood}%
+                  {animatedLikelihood}%
                 </div>
               </div>
             </div>
