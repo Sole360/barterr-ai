@@ -14,10 +14,19 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { Button } from "@/components/ui/button";
-
 import type { Listing, Post } from "@/types";
 import { ArrowLeft } from "lucide-react";
 
+/**
+ * Helper: clamp a number between min/max.
+ * Defined OUTSIDE the component so it can never be referenced before init.
+ */
+const clamp = (n: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, n));
+
+/**
+ * Right-side rows are listings + the extra post display fields we need.
+ */
 type TheirListingRow = {
   id: string;
   postId: string;
@@ -33,31 +42,56 @@ type TheirListingRow = {
 };
 
 export const TradeComposePage = () => {
+  // -----------------------------
+  // Routing / auth / query params
+  // -----------------------------
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { currentUser } = useAuth();
 
+  // These come from PostDetail -> Request Trade navigation
   const postId = params.get("postId") ?? "";
   const listingId = params.get("listingId") ?? "";
 
+  // -----------------------------
+  // Local state: selections + cash
+  // -----------------------------
+  const [selectedYourListingIds, setSelectedYourListingIds] = useState<
+    string[]
+  >([]);
+  const [selectedTheirListingIds, setSelectedTheirListingIds] = useState<
+    string[]
+  >([]);
+  const [addCash, setAddCash] = useState<number>(0);
+  const [askCash, setAskCash] = useState<number>(0);
+
+  // -----------------------------
+  // Data: my collection (left)
+  // -----------------------------
   const { items: myCollectionItems, loading: myCollectionLoading } =
     useMyCollection(currentUser?.uid);
 
-  const [theirListings, setTheirListings] = useState<TheirListingRow[]>([]);
-  const [theirLoading, setTheirLoading] = useState(true);
-
+  // -----------------------------
+  // Data: requested listing + post
+  // We use listing.userId to subscribe to their closet (right).
+  // -----------------------------
   const [requestedPost, setRequestedPost] = useState<Post | null>(null);
   const [requestedListing, setRequestedListing] = useState<Listing | null>(
     null
   );
   const [requestedLoading, setRequestedLoading] = useState(true);
 
-  const [selectedYourListingIds, setSelectedYourListingIds] = useState<
-    string[]
-  >([]);
-
   const posterId = requestedListing?.userId ?? "";
 
+  // -----------------------------
+  // Data: their listings (right)
+  // -----------------------------
+  const [theirListings, setTheirListings] = useState<TheirListingRow[]>([]);
+  const [theirLoading, setTheirLoading] = useState(true);
+
+  // -----------------------------------------
+  // EFFECT 1: Load requested post + listing doc
+  // -----------------------------------------
   useEffect(() => {
     let alive = true;
 
@@ -83,6 +117,7 @@ export const TradeComposePage = () => {
             : null
         );
 
+        // Listing type includes `id`; we inject it from doc id
         setRequestedListing(
           listingSnap.exists()
             ? ({
@@ -107,6 +142,21 @@ export const TradeComposePage = () => {
     };
   }, [postId, listingId]);
 
+  // ---------------------------------------------------
+  // EFFECT 2: Always preselect the requested listing (right)
+  // ---------------------------------------------------
+  useEffect(() => {
+    if (!listingId) return;
+
+    setSelectedTheirListingIds((prev) => {
+      if (prev.includes(listingId)) return prev;
+      return [listingId, ...prev];
+    });
+  }, [listingId]);
+
+  // -----------------------------------------
+  // EFFECT 3: Subscribe to their listings (right)
+  // -----------------------------------------
   useEffect(() => {
     if (!posterId) {
       setTheirListings([]);
@@ -130,6 +180,7 @@ export const TradeComposePage = () => {
         for (const d of snap.docs) {
           const l = d.data() as Listing;
 
+          // Load the post for display fields (title/brand/productImageUrl)
           let p: Post | null = null;
           try {
             const ps = await getDoc(doc(db, "posts", l.postId));
@@ -168,20 +219,129 @@ export const TradeComposePage = () => {
     return () => unsub();
   }, [posterId]);
 
-  const requestedTheirLabel = useMemo(() => {
-    if (!requestedPost || !requestedListing) return "";
-    const size = requestedListing.size ? `US ${requestedListing.size}` : "";
-    return `${requestedPost.title} • ${size}`;
-  }, [requestedPost, requestedListing]);
-
+  // -----------------------------
+  // Selection toggles
+  // -----------------------------
   const toggleYourListing = (id: string) => {
     setSelectedYourListingIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
-  const sendDisabled = selectedYourListingIds.length === 0;
+  const toggleTheirListing = (id: string) => {
+    setSelectedTheirListingIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
 
+  // -----------------------------
+  // Totals + net calculations
+  // -----------------------------
+  /**
+   * Left items currently store value as a formatted string like "$300".
+   * We parse it to number for calculations.
+   */
+  const myValueById = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const item of myCollectionItems) {
+      const n = Number(String(item.value).replace(/[^0-9.]/g, ""));
+      m.set(item.id, Number.isFinite(n) ? n : 0);
+    }
+    return m;
+  }, [myCollectionItems]);
+
+  const theirValueById = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of theirListings) {
+      m.set(l.id, l.tradeValue ?? 0);
+    }
+    return m;
+  }, [theirListings]);
+
+  const yourSneakerTotal = useMemo(() => {
+    return selectedYourListingIds.reduce(
+      (sum, id) => sum + (myValueById.get(id) ?? 0),
+      0
+    );
+  }, [selectedYourListingIds, myValueById]);
+
+  const theirSneakerTotal = useMemo(() => {
+    return selectedTheirListingIds.reduce(
+      (sum, id) => sum + (theirValueById.get(id) ?? 0),
+      0
+    );
+  }, [selectedTheirListingIds, theirValueById]);
+
+  /**
+   * Net: positive => your side is offering more total value.
+   * Net: negative => their side is offering more total value.
+   */
+  const netTotal = useMemo(() => {
+    return yourSneakerTotal + addCash - askCash - theirSneakerTotal;
+  }, [yourSneakerTotal, theirSneakerTotal, addCash, askCash]);
+
+  // -----------------------------
+  // Trade likelihood (MVP formula)
+  // -----------------------------
+  /**
+   * MVP trade likelihood:
+   * - Compare "your total" vs "their total"
+   * - The closer they are, the higher the %.
+   * - Clamped 0..100.
+   */
+  const tradeLikelihood = useMemo(() => {
+    const your = yourSneakerTotal + addCash - askCash;
+    const their = theirSneakerTotal;
+
+    if (your <= 0 || their <= 0) return 0;
+
+    const diff = Math.abs(your - their);
+    const avg = (your + their) / 2;
+
+    const closeness = 1 - diff / Math.max(avg, 1);
+    return Math.round(clamp(closeness * 100, 0, 100));
+  }, [yourSneakerTotal, theirSneakerTotal, addCash, askCash]);
+
+  // Animated likelihood number shown in the UI (counts up/down).
+  const [animatedLikelihood, setAnimatedLikelihood] = useState<number>(0);
+
+  useEffect(() => {
+    // Smooth count animation using requestAnimationFrame
+    let raf = 0;
+    const start = animatedLikelihood;
+    const end = tradeLikelihood;
+
+    // Keep it snappy: short duration
+    const durationMs = 220;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - startTime) / durationMs);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      const next = Math.round(start + (end - start) * eased);
+
+      setAnimatedLikelihood(next);
+
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tradeLikelihood]);
+
+  // -----------------------------
+  // Gate: must have both sides + >=50% likelihood
+  // -----------------------------
+  const continueDisabled =
+    selectedYourListingIds.length === 0 ||
+    selectedTheirListingIds.length === 0 ||
+    tradeLikelihood < 50;
+
+  // -----------------------------
+  // Guard: missing URL params
+  // -----------------------------
   if (!postId || !listingId) {
     return (
       <div className="min-h-[100dvh] bg-white">
@@ -204,9 +364,17 @@ export const TradeComposePage = () => {
     );
   }
 
+  // -----------------------------
+  // Render
+  // -----------------------------
   return (
     <div className="min-h-[100dvh] bg-white">
-      <div className="flex min-h-[100dvh] w-full flex-col px-4 py-4 md:mx-auto md:max-w-6xl md:px-6 md:py-6">
+      {/* 
+        CHANGE #1:
+        - Use more desktop width: max-w-7xl (was max-w-6xl)
+        - Slightly larger desktop padding: md:px-8 (was md:px-6)
+      */}
+      <div className="flex min-h-[100dvh] w-full flex-col px-4 py-4 md:mx-auto md:max-w-8xl md:px-8 md:py-6">
         {/* Header */}
         <div className="relative flex w-full items-center">
           <Button
@@ -223,17 +391,94 @@ export const TradeComposePage = () => {
           </h1>
         </div>
 
-        {/* Requested */}
-        <div className="mt-3 rounded-xl border border-[#3366FF]/30 bg-[#3366FF]/5 p-4">
-          <div className="text-xs text-muted-foreground">Requested listing</div>
-          <div className="mt-1 text-sm font-semibold">
-            {requestedLoading ? "Loading…" : requestedTheirLabel || "Not found"}
+        {/* Sticky Trade Summary (gradient) */}
+        <div className="sticky top-0 z-40 mt-3 rounded-xl border border-[#3366FF]/20 bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99] p-4 text-white shadow-sm">
+          <div className="flex items-start justify-between gap-6">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold">Trade Summary</div>
+              {/* <div className="mt-0.5 text-xs text-white/80">
+                Your total = sneakers + add cash − ask cash
+              </div> */}
+            </div>
+
+            {/* Right-side metrics */}
+            <div className="flex shrink-0 items-start gap-6 text-right">
+              <div>
+                <div className="text-xs text-white/80">Net</div>
+                <div className="text-lg font-bold leading-none">
+                  {netTotal >= 0 ? "+" : "-"}${Math.abs(netTotal).toFixed(0)}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs text-white/80">Likelihood</div>
+                <div className="text-lg font-bold leading-none">
+                  {tradeLikelihood}%
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="rounded-lg bg-white/10 p-3">
+              <div className="text-xs text-white/80">Your sneakers</div>
+              <div className="mt-0.5 text-sm font-semibold">
+                ${yourSneakerTotal.toFixed(0)}
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-white/10 p-3">
+              <div className="text-xs text-white/80">Their sneakers</div>
+              <div className="mt-0.5 text-sm font-semibold">
+                ${theirSneakerTotal.toFixed(0)}
+              </div>
+            </div>
+          </div>
+
+          {/* Cash sliders */}
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg bg-white/10 p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">Add cash</div>
+                <div className="text-sm font-semibold">${addCash}</div>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={500}
+                step={10}
+                value={addCash}
+                onChange={(e) => setAddCash(Number(e.target.value))}
+                className="mt-2 w-full accent-white"
+              />
+            </div>
+
+            <div className="rounded-lg bg-white/10 p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">Ask cash</div>
+                <div className="text-sm font-semibold">${askCash}</div>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={500}
+                step={10}
+                value={askCash}
+                onChange={(e) => setAskCash(Number(e.target.value))}
+                className="mt-2 w-full accent-white"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="mt-4 grid flex-1 min-h-0 gap-4 pb-28 md:mt-6 md:grid-cols-2 md:gap-6 md:pb-0">
-          {/* LEFT */}
+        {/* Content (LEFT | METER | RIGHT) */}
+        {/*
+          CHANGE #2:
+          - Use explicit columns so the meter doesn't steal width from listings.
+          - Left and right: flexible (1fr), meter: fixed (320px).
+        */}
+        <div className="mt-4 grid flex-1 min-h-0 grid-cols-1 gap-4 pb-28 md:mt-6 md:grid-cols-[1fr_320px_1fr] md:gap-6 md:pb-0">
+          {/* LEFT: Your Offer */}
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-gray-200 p-4">
             <div className="flex items-baseline justify-between">
               <h2 className="text-sm font-semibold text-[#3366FF]">
@@ -270,8 +515,11 @@ export const TradeComposePage = () => {
                         }`}
                       >
                         <div className="flex items-center gap-4">
-                          {/* Image */}
-                          <div className="flex h-20 w-24 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-28">
+                          {/*
+                            CHANGE #4 (optional but included):
+                            - Slightly smaller image box on desktop so the title gets more room.
+                          */}
+                          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-24">
                             {item.imageUrl ? (
                               <img
                                 src={item.imageUrl}
@@ -284,15 +532,19 @@ export const TradeComposePage = () => {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <div className="truncate text-base font-semibold md:text-lg">
+                                {/*
+                                  CHANGE #3:
+                                  - Use line-clamp-2 instead of truncate so titles are readable.
+                                  NOTE: line-clamp requires Tailwind line-clamp plugin.
+                                */}
+                                <div className="line-clamp-2 text-base font-semibold md:text-lg">
                                   {item.name}
                                 </div>
-                                <div className="mt-0.5 text-sm text-muted-foreground">
+                                <div className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
                                   {item.size} • {item.value}
                                 </div>
                               </div>
 
-                              {/* Selected pill */}
                               {selected ? (
                                 <span className="shrink-0 rounded-full bg-[#3366FF]/10 px-3 py-1 text-xs font-semibold text-[#3366FF]">
                                   Selected
@@ -301,7 +553,6 @@ export const TradeComposePage = () => {
                             </div>
                           </div>
 
-                          {/* Keep the dot indicator too */}
                           <div
                             className={`flex h-5 w-5 items-center justify-center rounded-full border ${
                               selected ? "border-[#3366FF]" : "border-gray-300"
@@ -320,7 +571,54 @@ export const TradeComposePage = () => {
             </div>
           </section>
 
-          {/* RIGHT */}
+          {/* CENTER: Trade Likelihood Meter */}
+          <section className="flex min-h-0 flex-col items-center justify-start">
+            <div className="w-full rounded-2xl border border-[#3366FF]/20 bg-white p-5 text-center shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-[#3366FF]">
+                Trade Likelihood
+              </div>
+
+              <div className="mt-2 flex items-baseline justify-center gap-1">
+                <span className="text-5xl font-extrabold text-[#111]">
+                  {animatedLikelihood}
+                </span>
+                <span className="text-lg font-semibold text-muted-foreground">
+                  %
+                </span>
+              </div>
+
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                <div
+                  className="h-full bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99] transition-[width] duration-200"
+                  style={{ width: `${clamp(animatedLikelihood, 0, 100)}%` }}
+                />
+              </div>
+
+              <div className="mt-2 text-xs text-muted-foreground">
+                Aim for{" "}
+                <span className="font-semibold text-[#3366FF]">50%+</span> to
+                continue.
+              </div>
+
+              {/* Tiny breakdown so the meter doesn't feel "floating" */}
+              <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-left text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">You</span>
+                  <span className="font-semibold">
+                    ${(yourSneakerTotal + addCash - askCash).toFixed(0)}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-muted-foreground">Them</span>
+                  <span className="font-semibold">
+                    ${theirSneakerTotal.toFixed(0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* RIGHT: Their Listing */}
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-gray-200 p-4">
             <div className="flex items-baseline justify-between">
               <h2 className="text-sm font-semibold text-[#3366FF]">
@@ -344,18 +642,22 @@ export const TradeComposePage = () => {
                 <div className="space-y-3">
                   {theirListings.map((l) => {
                     const isRequested = l.id === listingId;
+                    const selected = selectedTheirListingIds.includes(l.id);
 
                     return (
-                      <div
+                      <button
                         key={l.id}
-                        className={`rounded-xl border p-3 md:p-4 ${
-                          isRequested
+                        type="button"
+                        onClick={() => toggleTheirListing(l.id)}
+                        className={`w-full rounded-xl border p-3 text-left transition md:p-4 ${
+                          selected
                             ? "border-[#3366FF] bg-[#3366FF]/10"
-                            : "border-gray-200"
+                            : "border-gray-200 hover:bg-gray-50"
                         }`}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="flex h-20 w-24 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-28">
+                          {/* Match left image sizing */}
+                          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-24">
                             {l.imageUrl ? (
                               <img
                                 src={l.imageUrl}
@@ -366,21 +668,30 @@ export const TradeComposePage = () => {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-base font-semibold md:text-lg">
+                            {/* CHANGE #3 applied here too */}
+                            <div className="line-clamp-2 text-base font-semibold md:text-lg">
                               {l.title}
                             </div>
-                            <div className="mt-0.5 text-sm text-muted-foreground">
+                            <div className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
                               Size {l.size} • {l.condition}
                             </div>
                           </div>
 
-                          {isRequested ? (
-                            <div className="shrink-0 rounded-full border border-[#3366FF] px-3 py-1 text-xs text-[#3366FF]">
-                              Requested
-                            </div>
-                          ) : null}
+                          <div className="flex flex-col items-end gap-2">
+                            {isRequested ? (
+                              <span className="rounded-full border border-[#3366FF] px-3 py-1 text-xs text-[#3366FF]">
+                                Requested
+                              </span>
+                            ) : null}
+
+                            {selected ? (
+                              <span className="rounded-full bg-[#3366FF]/10 px-3 py-1 text-xs font-semibold text-[#3366FF]">
+                                Selected
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -392,11 +703,9 @@ export const TradeComposePage = () => {
               <Button
                 className="w-full border-[#3366FF]/40 text-[#3366FF]"
                 variant="outline"
-                disabled={sendDisabled}
+                disabled={continueDisabled}
               >
-                {sendDisabled
-                  ? "Select at least 1 sneaker"
-                  : "Send Trade (next step)"}
+                {continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
               </Button>
             </div>
           </section>
@@ -405,15 +714,13 @@ export const TradeComposePage = () => {
         {/* Mobile sticky action bar */}
         <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
           <div className="border-t border-gray-200 bg-white/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
-            <div className="mx-auto w-full max-w-6xl">
+            <div className="mx-auto w-full max-w-7xl">
               <Button
                 className="w-full border-[#3366FF]/40 text-[#3366FF]"
                 variant="outline"
-                disabled={sendDisabled}
+                disabled={continueDisabled}
               >
-                {sendDisabled
-                  ? "Select at least 1 sneaker"
-                  : "Send Trade (next step)"}
+                {continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
               </Button>
             </div>
           </div>
