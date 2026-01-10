@@ -72,10 +72,10 @@ export const TradeComposePage = () => {
     useMyCollection(currentUser?.uid);
 
   // -----------------------------
-  // Data: requested listing + post
-  // We use listing.userId to subscribe to their closet (right).
+  // Data: requested listing
+  // We only need listing.userId to subscribe to their closet (right).
+  // (requestedPost was unused and removed to fix strict builds)
   // -----------------------------
-  const [requestedPost, setRequestedPost] = useState<Post | null>(null);
   const [requestedListing, setRequestedListing] = useState<Listing | null>(
     null
   );
@@ -90,7 +90,7 @@ export const TradeComposePage = () => {
   const [theirLoading, setTheirLoading] = useState(true);
 
   // -----------------------------------------
-  // EFFECT 1: Load requested post + listing doc
+  // EFFECT 1: Load requested listing doc
   // -----------------------------------------
   useEffect(() => {
     let alive = true;
@@ -104,20 +104,11 @@ export const TradeComposePage = () => {
       setRequestedLoading(true);
 
       try {
-        const [postSnap, listingSnap] = await Promise.all([
-          getDoc(doc(db, "posts", postId)),
-          getDoc(doc(db, "listings", listingId)),
-        ]);
-
+        // We intentionally do NOT fetch the post doc here anymore,
+        // because it wasn't used and was failing strict builds.
+        const listingSnap = await getDoc(doc(db, "listings", listingId));
         if (!alive) return;
 
-        setRequestedPost(
-          postSnap.exists()
-            ? ({ ...(postSnap.data() as Post), postId: postSnap.id } as Post)
-            : null
-        );
-
-        // Listing type includes `id`; we inject it from doc id
         setRequestedListing(
           listingSnap.exists()
             ? ({
@@ -127,9 +118,8 @@ export const TradeComposePage = () => {
             : null
         );
       } catch (e) {
-        console.error("TradeCompose load requested listing/post error:", e);
+        console.error("TradeCompose load requested listing error:", e);
         if (!alive) return;
-        setRequestedPost(null);
         setRequestedListing(null);
       } finally {
         if (alive) setRequestedLoading(false);
@@ -283,12 +273,6 @@ export const TradeComposePage = () => {
   // -----------------------------
   // Trade likelihood (MVP formula)
   // -----------------------------
-  /**
-   * MVP trade likelihood:
-   * - Compare "your total" vs "their total"
-   * - The closer they are, the higher the %.
-   * - Clamped 0..100.
-   */
   const tradeLikelihood = useMemo(() => {
     const your = yourSneakerTotal + addCash - askCash;
     const their = theirSneakerTotal;
@@ -306,18 +290,15 @@ export const TradeComposePage = () => {
   const [animatedLikelihood, setAnimatedLikelihood] = useState<number>(0);
 
   useEffect(() => {
-    // Smooth count animation using requestAnimationFrame
     let raf = 0;
     const start = animatedLikelihood;
     const end = tradeLikelihood;
 
-    // Keep it snappy: short duration
     const durationMs = 220;
     const startTime = performance.now();
 
     const tick = (now: number) => {
       const t = Math.min(1, (now - startTime) / durationMs);
-      // Ease-out cubic
       const eased = 1 - Math.pow(1 - t, 3);
       const next = Math.round(start + (end - start) * eased);
 
@@ -369,12 +350,8 @@ export const TradeComposePage = () => {
   // -----------------------------
   return (
     <div className="min-h-[100dvh] bg-white">
-      {/* 
-        CHANGE #1:
-        - Use more desktop width: max-w-7xl (was max-w-6xl)
-        - Slightly larger desktop padding: md:px-8 (was md:px-6)
-      */}
-      <div className="flex min-h-[100dvh] w-full flex-col px-4 py-4 md:mx-auto md:max-w-8xl md:px-8 md:py-6">
+      {/* Use real Tailwind max width (7xl) */}
+      <div className="flex min-h-[100dvh] w-full flex-col px-4 py-4 md:mx-auto md:px-8 md:py-6">
         {/* Header */}
         <div className="relative flex w-full items-center">
           <Button
@@ -392,16 +369,12 @@ export const TradeComposePage = () => {
         </div>
 
         {/* Sticky Trade Summary (gradient) */}
-        <div className="sticky top-0 z-40 mt-3 rounded-xl border border-[#3366FF]/20 bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99] p-4 text-white shadow-sm">
+        <div className="mt-3 rounded-xl border border-[#3366FF]/20 bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99] p-4 text-white shadow-sm">
           <div className="flex items-start justify-between gap-6">
             <div className="min-w-0">
               <div className="text-sm font-semibold">Trade Summary</div>
-              {/* <div className="mt-0.5 text-xs text-white/80">
-                Your total = sneakers + add cash − ask cash
-              </div> */}
             </div>
 
-            {/* Right-side metrics */}
             <div className="flex shrink-0 items-start gap-6 text-right">
               <div>
                 <div className="text-xs text-white/80">Net</div>
@@ -435,7 +408,6 @@ export const TradeComposePage = () => {
             </div>
           </div>
 
-          {/* Cash sliders */}
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg bg-white/10 p-3">
               <div className="flex items-center justify-between">
@@ -471,13 +443,8 @@ export const TradeComposePage = () => {
           </div>
         </div>
 
-        {/* Content (LEFT | METER | RIGHT) */}
-        {/*
-          CHANGE #2:
-          - Use explicit columns so the meter doesn't steal width from listings.
-          - Left and right: flexible (1fr), meter: fixed (320px).
-        */}
-        <div className="mt-4 grid flex-1 min-h-0 grid-cols-1 gap-4 pb-28 md:mt-6 md:grid-cols-[1fr_320px_1fr] md:gap-6 md:pb-0">
+        {/* Content: stack on mobile, 3 columns on desktop */}
+        <div className="mt-4 grid flex-1 min-h-0 grid-cols-1 gap-4 pb-28 md:mt-6 md:grid-cols-[1fr_340px_1fr] md:gap-6 md:pb-0">
           {/* LEFT: Your Offer */}
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-gray-200 p-4">
             <div className="flex items-baseline justify-between">
@@ -515,11 +482,8 @@ export const TradeComposePage = () => {
                         }`}
                       >
                         <div className="flex items-center gap-4">
-                          {/*
-                            CHANGE #4 (optional but included):
-                            - Slightly smaller image box on desktop so the title gets more room.
-                          */}
-                          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-24">
+                          {/* BIGGER IMAGE */}
+                          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2 md:h-32 md:w-32">
                             {item.imageUrl ? (
                               <img
                                 src={item.imageUrl}
@@ -532,11 +496,7 @@ export const TradeComposePage = () => {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                {/*
-                                  CHANGE #3:
-                                  - Use line-clamp-2 instead of truncate so titles are readable.
-                                  NOTE: line-clamp requires Tailwind line-clamp plugin.
-                                */}
+                                {/* Prefer 2-line readability over tiny truncation */}
                                 <div className="line-clamp-2 text-base font-semibold md:text-lg">
                                   {item.name}
                                 </div>
@@ -571,7 +531,7 @@ export const TradeComposePage = () => {
             </div>
           </section>
 
-          {/* CENTER: Trade Likelihood Meter */}
+          {/* CENTER: Likelihood Meter */}
           <section className="flex min-h-0 flex-col items-center justify-start">
             <div className="w-full rounded-2xl border border-[#3366FF]/20 bg-white p-5 text-center shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-wide text-[#3366FF]">
@@ -598,22 +558,6 @@ export const TradeComposePage = () => {
                 Aim for{" "}
                 <span className="font-semibold text-[#3366FF]">50%+</span> to
                 continue.
-              </div>
-
-              {/* Tiny breakdown so the meter doesn't feel "floating" */}
-              <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-left text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">You</span>
-                  <span className="font-semibold">
-                    ${(yourSneakerTotal + addCash - askCash).toFixed(0)}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center justify-between">
-                  <span className="text-muted-foreground">Them</span>
-                  <span className="font-semibold">
-                    ${theirSneakerTotal.toFixed(0)}
-                  </span>
-                </div>
               </div>
             </div>
           </section>
@@ -656,8 +600,8 @@ export const TradeComposePage = () => {
                         }`}
                       >
                         <div className="flex items-center gap-4">
-                          {/* Match left image sizing */}
-                          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-gray-100 p-2 sm:h-24 sm:w-24">
+                          {/* BIGGER IMAGE */}
+                          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2 md:h-32 md:w-32">
                             {l.imageUrl ? (
                               <img
                                 src={l.imageUrl}
@@ -668,7 +612,6 @@ export const TradeComposePage = () => {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            {/* CHANGE #3 applied here too */}
                             <div className="line-clamp-2 text-base font-semibold md:text-lg">
                               {l.title}
                             </div>
