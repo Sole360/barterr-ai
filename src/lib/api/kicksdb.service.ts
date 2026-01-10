@@ -6,6 +6,11 @@ export interface KicksDBProduct {
   id?: string;
   title?: string;
   image?: string;
+  rank?: number;
+  weekly_orders?: number;
+  min_price?: number;
+  max_price?: number;
+  avg_price?: number;
 
   // GOAT fields (different names)
   name?: string;
@@ -25,6 +30,11 @@ export interface SearchResult {
   styleId: string;
   imageUrl: string;
   source: "stockx" | "goat";
+  rank?: number;
+  weekly_orders?: number;
+  min_price?: number;
+  max_price?: number;
+  avg_price?: number;
 }
 
 // Map StockX product to SearchResult
@@ -36,6 +46,11 @@ function mapStockXProduct(product: KicksDBProduct): SearchResult {
     styleId: product.sku,
     imageUrl: product.image!,
     source: "stockx",
+    rank: product.rank,
+    weekly_orders: product.weekly_orders,
+    min_price: product.min_price,
+    max_price: product.max_price,
+    avg_price: product.avg_price,
   };
 }
 
@@ -48,6 +63,8 @@ function mapGoatProduct(product: KicksDBProduct): SearchResult {
     styleId: product.sku,
     imageUrl: product.image_url!,
     source: "goat",
+    rank: product.rank,
+    weekly_orders: product.weekly_orders,
   };
 }
 

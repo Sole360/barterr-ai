@@ -20,6 +20,11 @@ export type MyCollectionItem = {
   imageUrl?: string;
   brand?: string;
   status?: "approved" | "pending" | "rejected";
+  rank?: number;
+  weekly_orders?: number;
+  min_price?: number;
+  max_price?: number;
+  avg_price?: number;
 };
 
 export function useMyCollection(userId?: string) {

@@ -12,6 +12,7 @@ import { ProfilePage } from "@/app/profile/ProfilePage";
 import { TradesInboxPage } from "@/app/trades/TradesInboxPage";
 import { TradeDetailPage } from "@/app/trades/TradeDetailPage";
 import { TradeComposePage } from "@/app/trades/TradeComposePage";
+import { TradeReviewPage } from "@/app/trades/TradeReviewPage";
 
 function App() {
   return (
@@ -36,6 +37,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <TradeComposePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trades/new/review"
+            element={
+              <ProtectedRoute>
+                <TradeReviewPage />
               </ProtectedRoute>
             }
           />

@@ -16,6 +16,11 @@ import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { Button } from "@/components/ui/button";
 import type { Listing, Post } from "@/types";
 import { ArrowLeft } from "lucide-react";
+import {
+  TradeReviewDraft,
+  TradeReviewTheirItem,
+  TradeReviewYourItem,
+} from "@/types/index";
 
 /**
  * Helper: clamp a number between min/max.
@@ -234,7 +239,7 @@ export const TradeComposePage = () => {
   const myValueById = useMemo(() => {
     const m = new Map<string, number>();
     for (const item of myCollectionItems) {
-      console.log("ITEML ", item);
+      console.log("ITEM ", item);
       const n = Number(String(item.value).replace(/[^0-9.]/g, ""));
       m.set(item.id, Number.isFinite(n) ? n : 0);
     }
@@ -325,6 +330,51 @@ export const TradeComposePage = () => {
     tradeLikelihood < 50;
 
   // -----------------------------
+  // Continue -> Review (no Firestore writes yet)
+  // -----------------------------
+  const handleContinue = () => {
+    if (continueDisabled) return;
+
+    const yourItems: TradeReviewYourItem[] = myCollectionItems
+      .filter((i) => selectedYourListingIds.includes(i.id))
+      .map((i) => ({
+        id: i.id,
+        postId: i.postId,
+        name: i.name,
+        size: i.size,
+        value: i.value,
+        imageUrl: i.imageUrl,
+        brand: i.brand,
+        status: i.status,
+      }));
+
+    const theirItems: TradeReviewTheirItem[] = theirListings
+      .filter((l) => selectedTheirListingIds.includes(l.id))
+      .map((l) => ({
+        id: l.id,
+        postId: l.postId,
+        userId: l.userId,
+        size: l.size,
+        condition: l.condition,
+        tradeValue: l.tradeValue,
+        title: l.title,
+        brand: l.brand,
+        imageUrl: l.imageUrl,
+      }));
+
+    const draft: TradeReviewDraft = {
+      yourItems,
+      theirItems,
+      addCash,
+      askCash,
+      netTotal,
+      likelihood: tradeLikelihood,
+    };
+
+    navigate("/trades/new/review", { state: { draft } });
+  };
+
+  // -----------------------------
   // Guard: missing URL params
   // -----------------------------
   if (!postId || !listingId) {
@@ -373,7 +423,7 @@ export const TradeComposePage = () => {
         </div>
 
         {/* Sticky Trade Summary (gradient) */}
-        <div className="mt-3 rounded-xl border border-[#3366FF]/20 bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99] p-4 text-white shadow-sm">
+        <div className="mt-3 rounded-xl border bg-[#3366FF] p-4 text-white shadow-sm">
           <div className="flex items-start justify-between gap-6">
             <div className="min-w-0">
               <div className="text-sm font-semibold">Trade Summary</div>
@@ -644,18 +694,17 @@ export const TradeComposePage = () => {
                 </div>
               )}
             </div>
-
-            {/* Desktop action */}
-            <div className="hidden pt-2 md:block">
-              <Button
-                className="w-full border-[#3366FF]/40 text-[#3366FF]"
-                variant="outline"
-                disabled={continueDisabled}
-              >
-                {continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
-              </Button>
-            </div>
           </section>
+        </div>
+        {/* Desktop action */}
+        <div className="hidden pt-2 md:block mx-auto w-64">
+          <Button
+            className="w-full bg-[#3366FF]"
+            disabled={continueDisabled}
+            onClick={handleContinue}
+          >
+            {continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
+          </Button>
         </div>
 
         {/* Mobile sticky action bar */}
@@ -663,9 +712,10 @@ export const TradeComposePage = () => {
           <div className="border-t border-gray-200 bg-white/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
             <div className="mx-auto w-full max-w-7xl">
               <Button
-                className="w-full border-[#3366FF]/40 text-[#3366FF]"
+                className="w-full bg-[#3366FF]"
                 variant="outline"
                 disabled={continueDisabled}
+                onClick={handleContinue}
               >
                 {continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
               </Button>

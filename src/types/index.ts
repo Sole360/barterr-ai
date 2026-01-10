@@ -186,3 +186,49 @@ export interface WisherOwner {
   size: number;
   condition: number;
 }
+
+/**
+ * Trade draft payload passed from Compose -> Review.
+ *
+ * Important constraints:
+ * - No Firestore writes on Compose or Review (yet)
+ * - Keep this payload minimal and UI-focused
+ * - No "any" and no unused fields
+ */
+
+export interface TradeReviewYourItem {
+  id: string; // listingId
+  postId: string;
+  name: string;
+  size: string;
+  value: string;
+  imageUrl?: string;
+  brand?: string;
+  status?: "approved" | "pending" | "rejected";
+}
+
+export interface TradeReviewTheirItem {
+  id: string; // listingId
+  postId: string;
+  userId: string;
+  size: number;
+  condition: "new" | "used";
+  tradeValue: number;
+  title: string;
+  brand: string;
+  imageUrl: string;
+}
+
+export interface TradeReviewDraft {
+  // Needed to render the Review page without refetching
+  yourItems: TradeReviewYourItem[];
+  theirItems: TradeReviewTheirItem[];
+
+  // Cash inputs
+  addCash: number;
+  askCash: number;
+
+  // Summary numbers shown on Review
+  netTotal: number;
+  likelihood: number;
+}
