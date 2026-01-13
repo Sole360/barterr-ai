@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ProfileHeader } from "./ProfileHeader";
-import { ProfileTabs, type ProfileTabKey } from "./ProfileTabs";
+import { ProfileTabs } from "./ProfileTabs";
 import { CollectionGrid } from "./CollectionGrid";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
 import { useAuth } from "@/lib/contexts/auth.context";
@@ -12,6 +12,7 @@ import { MyWishlistModal } from "@/components/dialogs/MyWishlistModal";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import type { ProfileTabKey } from "@/types";
 
 export const ProfilePage = () => {
   const navigate = useNavigate();

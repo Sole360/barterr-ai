@@ -14,13 +14,15 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { Button } from "@/components/ui/button";
-import type { Listing, Post } from "@/types";
-import { ArrowLeft } from "lucide-react";
-import {
+import type {
+  Listing,
+  Post,
   TradeReviewDraft,
   TradeReviewTheirItem,
   TradeReviewYourItem,
-} from "@/types/index";
+  TheirListingRow,
+} from "@/types";
+import { ArrowLeft } from "lucide-react";
 
 /**
  * Helper: clamp a number between min/max.
@@ -28,23 +30,6 @@ import {
  */
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
-
-/**
- * Right-side rows are listings + the extra post display fields we need.
- */
-type TheirListingRow = {
-  id: string;
-  postId: string;
-  userId: string;
-  size: number;
-  condition: "new" | "used";
-  conditionGrade: number;
-  tradeValue: number;
-  approvalStatus?: "approved" | "pending" | "rejected";
-  title: string;
-  brand: string;
-  imageUrl: string;
-};
 
 export const TradeComposePage = () => {
   // -----------------------------

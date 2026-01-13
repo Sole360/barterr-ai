@@ -1,6 +1,5 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-export type ProfileTabKey = "collection" | "wishlist" | "fashion" | "trades";
+import type { ProfileTabKey } from "@/types";
 
 type Props = {
   value: ProfileTabKey;

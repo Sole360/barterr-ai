@@ -3,17 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, X } from "lucide-react";
 import { searchClient, ALGOLIA_INDEX } from "@/lib/algolia/config";
+import type { AlgoliaHit } from "@/types";
 
 interface SearchBarProps {
   onSelectPost: (postId: string) => void;
-}
-
-interface AlgoliaHit {
-  objectID: string;
-  title: string;
-  brand: string;
-  styleId?: string;
-  productImageUrl: string;
 }
 
 export function SearchBar({ onSelectPost }: SearchBarProps) {

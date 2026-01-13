@@ -9,17 +9,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
-import type { Post } from "@/types";
-
-export type MyWishlistItem = {
-  id: string; // `${postId}_${size}`
-  postId: string;
-  name: string;
-  brand?: string;
-  imageUrl?: string;
-  size: number;
-  addedAt?: Timestamp;
-};
+import type { Post, MyWishlistItem } from "@/types";
 
 export const useMyWishlist = (userId?: string) => {
   const [items, setItems] = useState<MyWishlistItem[]>([]);

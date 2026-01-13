@@ -232,3 +232,214 @@ export interface TradeReviewDraft {
   netTotal: number;
   likelihood: number;
 }
+
+// ============================================
+// API & External Service Types
+// ============================================
+
+/**
+ * KicksDB API product response
+ * Represents product data from StockX or GOAT
+ */
+export interface KicksDBProduct {
+  // StockX fields
+  id?: string;
+  title?: string;
+  image?: string;
+  rank?: number;
+  weekly_orders?: number;
+  min_price?: number;
+  max_price?: number;
+  avg_price?: number;
+
+  // GOAT fields (different names)
+  name?: string;
+  image_url?: string;
+
+  // Common fields
+  brand: string;
+  model: string;
+  sku: string;
+  slug: string;
+}
+
+/**
+ * Unified search result from KicksDB API
+ * Normalized format for both StockX and GOAT results
+ */
+export interface SearchResult {
+  id: string;
+  name: string;
+  brand: string;
+  styleId: string;
+  imageUrl: string;
+  source: "stockx" | "goat";
+  rank?: number;
+  weekly_orders?: number;
+  min_price?: number;
+  max_price?: number;
+  avg_price?: number;
+}
+
+/**
+ * Image upload job for Firebase processing queue
+ */
+export interface ImageJob {
+  postId: string;
+  styleId: string;
+  imageUrl: string;
+  source: "stockx" | "goat";
+  status: "pending" | "processing" | "complete" | "failed";
+  createdAt?: any;
+  error?: string;
+  firebaseUrl?: string;
+}
+
+/**
+ * Algolia search hit format
+ */
+export interface AlgoliaHit {
+  objectID: string;
+  title: string;
+  brand: string;
+  styleId?: string;
+  productImageUrl: string;
+}
+
+// ============================================
+// Collection & Wishlist Types
+// ============================================
+
+/**
+ * User's collection item (listings they own)
+ */
+export interface MyCollectionItem {
+  id: string; // listingId
+  postId: string;
+  name: string;
+  size: string;
+  value: string;
+  imageUrl?: string;
+  brand?: string;
+  status?: "approved" | "pending" | "rejected";
+  rank?: number;
+  weekly_orders?: number;
+  min_price?: number;
+  max_price?: number;
+  avg_price?: number;
+}
+
+/**
+ * User's wishlist item (sneakers they want)
+ */
+export interface MyWishlistItem {
+  id: string; // `${postId}_${size}`
+  postId: string;
+  name: string;
+  brand?: string;
+  imageUrl?: string;
+  size: number;
+  addedAt?: Timestamp;
+}
+
+/**
+ * Collection item with optional post reference
+ * Used in collection grid display
+ */
+export interface CollectionItem {
+  id: string; // listingId
+  postId: string;
+  post?: Post;
+  name: string;
+  size: string;
+  value: string;
+  imageUrl?: string;
+  status?: "approved" | "pending" | "rejected";
+}
+
+// ============================================
+// Trade Composition Types
+// ============================================
+
+/**
+ * Listing row for trade composition page
+ * Includes post details for display
+ */
+export interface TheirListingRow {
+  id: string;
+  postId: string;
+  userId: string;
+  size: number;
+  condition: "new" | "used";
+  conditionGrade: number;
+  tradeValue: number;
+  approvalStatus?: "approved" | "pending" | "rejected";
+  title: string;
+  brand: string;
+  imageUrl: string;
+}
+
+/**
+ * Extended sneaker with all form data for add dialog
+ */
+export interface SelectedSneaker extends SearchResult {
+  listingId?: string;
+  size: string;
+  condition: number;
+  tradeValue: string;
+  hasBox: boolean;
+  hasInsoles: boolean;
+  hasLaces: boolean;
+  flaws: string;
+  photos?: {
+    appearance?: string;
+    boxLabel?: string;
+    insoles?: string;
+    boxFrontal?: string;
+    insoleStitching?: string;
+    dateCode?: string;
+  };
+}
+
+// ============================================
+// UI & Navigation Types
+// ============================================
+
+/**
+ * Brand filter options for dashboard
+ */
+export type BrandFilter =
+  | "All"
+  | "Nike"
+  | "Adidas"
+  | "Jordan"
+  | "New Balance"
+  | "Other";
+
+/**
+ * Profile tab keys
+ */
+export type ProfileTabKey = "collection" | "wishlist" | "fashion" | "trades";
+
+// ============================================
+// Context Types
+// ============================================
+
+/**
+ * Authentication context interface
+ */
+export interface AuthContextType {
+  currentUser: any; // Firebase User
+  userProfile: User | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    userData: Partial<User>
+  ) => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateUserProfile: (updates: Partial<User>) => Promise<void>;
+  resendEmailVerification: () => Promise<void>;
+}

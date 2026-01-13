@@ -19,7 +19,8 @@ import {
   createListing,
 } from "@/lib/firebase/posts.service";
 import { queueImageUpload } from "@/lib/firebase/imageQueue.service";
-import { searchSneakers, SearchResult } from "@/lib/api/kicksdb.service";
+import { searchSneakers } from "@/lib/api/kicksdb.service";
+import type { SearchResult, SelectedSneaker } from "@/types";
 import { CategoryPhotoUpload } from "@/components/shared/CategoryPhotoUpload";
 import {
   updateDoc,
@@ -34,26 +35,6 @@ import { deleteFolder } from "@/lib/firebase/storageCleanup";
 interface AddSneakerDialogProps {
   open: boolean;
   onClose: () => void;
-}
-
-// Extended interface for selected sneakers with form data
-interface SelectedSneaker extends SearchResult {
-  listingId?: string;
-  size: string;
-  condition: number;
-  tradeValue: string;
-  hasBox: boolean;
-  hasInsoles: boolean;
-  hasLaces: boolean;
-  flaws: string;
-  photos?: {
-    appearance?: string;
-    boxLabel?: string;
-    insoles?: string;
-    boxFrontal?: string;
-    insoleStitching?: string;
-    dateCode?: string;
-  };
 }
 
 export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {

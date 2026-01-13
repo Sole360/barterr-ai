@@ -11,8 +11,8 @@ import {
 } from "firebase/auth";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/config";
-import type { User } from "@/types";
-import { AuthContext, type AuthContextType } from "./auth.context";
+import type { User, AuthContextType } from "@/types";
+import { AuthContext } from "./auth.context";
 
 type AuthProviderProps = { children: ReactNode };
 

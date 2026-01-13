@@ -3,19 +3,11 @@ import { Plus } from "lucide-react";
 import { Navbar } from "@/components/shared/Navbar";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
-import { Post } from "@/types";
+import type { Post, BrandFilter } from "@/types";
 import {
   subscribeToPosts,
   subscribeToPostsByBrand,
 } from "@/lib/firebase/posts.service";
-
-type BrandFilter =
-  | "All"
-  | "Nike"
-  | "Adidas"
-  | "Jordan"
-  | "New Balance"
-  | "Other";
 
 export function DashboardPage() {
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");

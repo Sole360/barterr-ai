@@ -1,41 +1,7 @@
+import type { KicksDBProduct, SearchResult } from "@/types";
+
 const KICKSDB_API_KEY = import.meta.env.VITE_KICKSDB_API_KEY;
 const BASE_URL = "https://api.kicks.dev/v3";
-
-export interface KicksDBProduct {
-  // StockX fields
-  id?: string;
-  title?: string;
-  image?: string;
-  rank?: number;
-  weekly_orders?: number;
-  min_price?: number;
-  max_price?: number;
-  avg_price?: number;
-
-  // GOAT fields (different names)
-  name?: string;
-  image_url?: string;
-
-  // Common fields
-  brand: string;
-  model: string;
-  sku: string;
-  slug: string;
-}
-
-export interface SearchResult {
-  id: string;
-  name: string;
-  brand: string;
-  styleId: string;
-  imageUrl: string;
-  source: "stockx" | "goat";
-  rank?: number;
-  weekly_orders?: number;
-  min_price?: number;
-  max_price?: number;
-  avg_price?: number;
-}
 
 // Map StockX product to SearchResult
 function mapStockXProduct(product: KicksDBProduct): SearchResult {

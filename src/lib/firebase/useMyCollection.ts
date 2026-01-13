@@ -5,27 +5,11 @@ import {
   orderBy,
   query,
   where,
+  getDoc,
+  doc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
-import type { Listing } from "@/types";
-import { getDoc, doc } from "firebase/firestore";
-import type { Post } from "@/types";
-
-export type MyCollectionItem = {
-  id: string; // listingId
-  postId: string;
-  name: string;
-  size: string;
-  value: string;
-  imageUrl?: string;
-  brand?: string;
-  status?: "approved" | "pending" | "rejected";
-  rank?: number;
-  weekly_orders?: number;
-  min_price?: number;
-  max_price?: number;
-  avg_price?: number;
-};
+import type { Listing, Post, MyCollectionItem } from "@/types";
 
 export function useMyCollection(userId?: string) {
   const [items, setItems] = useState<MyCollectionItem[]>([]);

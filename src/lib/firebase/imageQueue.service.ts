@@ -1,16 +1,6 @@
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { db } from "./config";
-
-export interface ImageJob {
-  postId: string;
-  styleId: string;
-  imageUrl: string;
-  source: "stockx" | "goat";
-  status: "pending" | "processing" | "complete" | "failed";
-  createdAt?: any;
-  error?: string;
-  firebaseUrl?: string;
-}
+import type { ImageJob } from "@/types";
 
 export async function queueImageUpload(
   postId: string,
