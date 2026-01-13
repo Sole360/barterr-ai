@@ -21,7 +21,7 @@ const onboardingSchema = z.object({
 
 type OnboardingFormValues = z.infer<typeof onboardingSchema>;
 
-export function OnboardingPage() {
+export const OnboardingPage = () => {
   const [loading, setLoading] = useState(false);
   const { updateUserProfile } = useAuth();
   const navigate = useNavigate();
@@ -112,4 +112,4 @@ export function OnboardingPage() {
       </div>
     </div>
   );
-}
+};

@@ -33,7 +33,7 @@ interface PostDetailModalProps {
   post: Post;
 }
 
-export function PostDetailModal({ open, onClose, post }: PostDetailModalProps) {
+export const PostDetailModal = ({ open, onClose, post }: PostDetailModalProps) => {
   const { currentUser, userProfile } = useAuth();
   const { toast } = useToast();
 
@@ -388,7 +388,6 @@ function ListingCard({
       >
         Request Trade
       </Button>
-      ;
     </div>
   );
-}
+};

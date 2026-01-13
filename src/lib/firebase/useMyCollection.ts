@@ -11,7 +11,7 @@ import {
 import { db } from "@/lib/firebase/config";
 import type { Listing, Post, MyCollectionItem } from "@/types";
 
-export function useMyCollection(userId?: string) {
+export const useMyCollection = (userId?: string) => {
   const [items, setItems] = useState<MyCollectionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,4 +66,4 @@ export function useMyCollection(userId?: string) {
   }, [userId]);
 
   return { items, loading };
-}
+};

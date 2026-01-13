@@ -84,7 +84,7 @@ export const removeFromWishlist = async (
 };
 
 // Add to collection (creates listing + adds to owners)
-export async function addToCollection(
+export const addToCollection = async (
   postId: string,
   userId: string,
   displayName: string,
@@ -102,7 +102,7 @@ export async function addToCollection(
     insoleStitching?: string;
     dateCode?: string;
   }
-): Promise<void> {
+): Promise<void> => {
   const condition = conditionGrade === 10 ? "new" : "used";
 
   // Create listing using the shared function
@@ -134,13 +134,13 @@ export async function addToCollection(
     }),
     updatedAt: Timestamp.now(),
   });
-}
+};
 
 // Subscribe to all active posts (real-time)
-export function subscribeToPosts(
+export const subscribeToPosts = (
   callback: (posts: Post[]) => void,
   onError?: (error: Error) => void
-): Unsubscribe {
+): Unsubscribe => {
   const postsRef = collection(db, "posts");
   const q = query(
     postsRef,
@@ -159,14 +159,14 @@ export function subscribeToPosts(
     },
     onError
   );
-}
+};
 
 // Subscribe to posts by brand (real-time)
-export function subscribeToPostsByBrand(
+export const subscribeToPostsByBrand = (
   brand: string,
   callback: (posts: Post[]) => void,
   onError?: (error: Error) => void
-): Unsubscribe {
+): Unsubscribe => {
   const postsRef = collection(db, "posts");
   const q = query(
     postsRef,
@@ -186,14 +186,14 @@ export function subscribeToPostsByBrand(
     },
     onError
   );
-}
+};
 
 // Subscribe to a single post (real-time)
-export function subscribeToPost(
+export const subscribeToPost = (
   postId: string,
   callback: (post: Post | null) => void,
   onError?: (error: Error) => void
-): Unsubscribe {
+): Unsubscribe => {
   const postRef = doc(db, "posts", postId);
 
   return onSnapshot(
@@ -211,10 +211,10 @@ export function subscribeToPost(
     },
     onError
   );
-}
+};
 
 // Subscribe to listings for a post (real-time)
-export function subscribeToListings(
+export const subscribeToListings = (
   postId: string,
   callback: (listings: Listing[]) => void,
   filters?: {
@@ -222,7 +222,7 @@ export function subscribeToListings(
     condition?: "new" | "used";
   },
   onError?: (error: Error) => void
-): Unsubscribe {
+): Unsubscribe => {
   const listingsRef = collection(db, "listings");
 
   const constraints = [
@@ -252,11 +252,11 @@ export function subscribeToListings(
     },
     onError
   );
-}
+};
 
 // One-time read operations (for when you don't need real-time)
 // Get a single post by ID (one-time read)
-export async function getPostById(postId: string): Promise<Post | null> {
+export const getPostById = async (postId: string): Promise<Post | null> => {
   const postRef = doc(db, "posts", postId);
   const snapshot = await getDoc(postRef);
 
@@ -266,16 +266,16 @@ export async function getPostById(postId: string): Promise<Post | null> {
     ...snapshot.data(),
     postId: snapshot.id,
   } as Post;
-}
+};
 
 // Create or update a post
-export async function createOrUpdatePost(postData: {
+export const createOrUpdatePost = async (postData: {
   styleId: string;
   title: string;
   brand: string;
   productImageUrl: string;
   userId: string;
-}): Promise<string> {
+}): Promise<string> => {
   const postsRef = collection(db, "posts");
 
   // Check if post already exists for this styleId
@@ -300,11 +300,11 @@ export async function createOrUpdatePost(postData: {
 
   const docRef = await addDoc(postsRef, newPost);
   return docRef.id;
-}
+};
 
 // src/lib/firebase/posts.service.ts - FIX createListing
 
-export async function createListing(listingData: {
+export const createListing = async (listingData: {
   listingId?: string;
   postId: string;
   userId: string;
@@ -328,7 +328,7 @@ export async function createListing(listingData: {
     dateCode?: string;
   };
   approvalStatus?: "pending" | "approved" | "rejected";
-}): Promise<string> {
+}): Promise<string> => {
   const listingsRef = collection(db, "listings");
 
   const newListing: Partial<Listing> = {
@@ -363,19 +363,19 @@ export async function createListing(listingData: {
 
   const docRef = await addDoc(listingsRef, newListing);
   return docRef.id;
-}
+};
 
 // Update an existing post's image URL
-export async function updatePostImage(
+export const updatePostImage = async (
   postId: string,
   firebaseImageUrl: string
-): Promise<void> {
+): Promise<void> => {
   const postRef = doc(db, "posts", postId);
   await updateDoc(postRef, {
     productImageUrl: firebaseImageUrl,
     updatedAt: Timestamp.now(),
   });
-}
+};
 
 const makeWishlistDocId = (postId: string, size: number) => {
   const sizeKey = Number(size).toString(); // normalizes 10.0 -> "10", 10.50 -> "10.5"

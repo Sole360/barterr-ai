@@ -9,7 +9,7 @@ import {
   subscribeToPostsByBrand,
 } from "@/lib/firebase/posts.service";
 
-export function DashboardPage() {
+export const DashboardPage = () => {
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [addSneakerOpen, setAddSneakerOpen] = useState(false);
@@ -212,4 +212,4 @@ export function DashboardPage() {
       />
     </div>
   );
-}
+};

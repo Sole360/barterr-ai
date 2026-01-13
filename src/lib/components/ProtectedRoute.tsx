@@ -5,7 +5,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { currentUser, userProfile, loading } = useAuth();
   const location = useLocation();
 
@@ -55,4 +55,4 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // All checks passed - show the protected content
   return <>{children}</>;
-}
+};

@@ -1,20 +1,20 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-export function cn(...inputs: ClassValue[]) {
+export const cn = (...inputs: ClassValue[]) => {
   return twMerge(clsx(inputs));
-}
+};
 
 // Format currency
-export function formatCurrency(amount: number): string {
+export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
   }).format(amount);
-}
+};
 
 // Format date
-export function formatDate(date: Date | string | number): string {
+export const formatDate = (date: Date | string | number): string => {
   const d =
     typeof date === "string" || typeof date === "number"
       ? new Date(date)
@@ -24,10 +24,10 @@ export function formatDate(date: Date | string | number): string {
     day: "numeric",
     year: "numeric",
   }).format(d);
-}
+};
 
 // Format relative time (e.g., "2 hours ago")
-export function formatRelativeTime(date: Date | string | number): string {
+export const formatRelativeTime = (date: Date | string | number): string => {
   const d =
     typeof date === "string" || typeof date === "number"
       ? new Date(date)
@@ -44,36 +44,36 @@ export function formatRelativeTime(date: Date | string | number): string {
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
 
   return formatDate(d);
-}
+};
 
 // Truncate text
-export function truncate(text: string, length: number): string {
+export const truncate = (text: string, length: number): string => {
   if (text.length <= length) return text;
   return text.slice(0, length) + "...";
-}
+};
 
 // Generate initials from name
-export function getInitials(name: string): string {
+export const getInitials = (name: string): string => {
   return name
     .split(" ")
     .map((n) => n[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
-}
+};
 
 // Validate email
-export function isValidEmail(email: string): boolean {
+export const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
-}
+};
 
 // Sleep utility (for delays)
-export function sleep(ms: number): Promise<void> {
+export const sleep = (ms: number): Promise<void> => {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
+};
 
 // Generate unique ID
-export function generateId(): string {
+export const generateId = (): string => {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
-}
+};

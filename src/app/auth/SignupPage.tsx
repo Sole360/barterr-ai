@@ -34,7 +34,7 @@ const signupSchema = z
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
-export function SignupPage() {
+export const SignupPage = () => {
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -254,4 +254,4 @@ export function SignupPage() {
       </div>
     </div>
   );
-}
+};

@@ -14,7 +14,7 @@ import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
 import { getPostById } from "@/lib/firebase/posts.service";
 import { Post } from "@/types";
 
-export function Navbar() {
+export const Navbar = () => {
   const { currentUser, userProfile, logout } = useAuth();
   const navigate = useNavigate();
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -127,4 +127,4 @@ export function Navbar() {
       )}
     </>
   );
-}
+};

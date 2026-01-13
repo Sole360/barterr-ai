@@ -23,7 +23,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginPage() {
+export const LoginPage = () => {
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
@@ -131,4 +131,4 @@ export function LoginPage() {
       </div>
     </div>
   );
-}
+};

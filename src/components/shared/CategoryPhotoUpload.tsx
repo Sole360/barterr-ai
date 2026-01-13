@@ -17,7 +17,7 @@ interface CategoryPhotoUploadProps {
   onUploadError: (error: Error) => void;
 }
 
-export function CategoryPhotoUpload({
+export const CategoryPhotoUpload = ({
   category,
   categoryLabel,
   userId,
@@ -25,7 +25,7 @@ export function CategoryPhotoUpload({
   existingPhotoUrl,
   onUploadComplete,
   onUploadError,
-}: CategoryPhotoUploadProps) {
+}: CategoryPhotoUploadProps) => {
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(
     existingPhotoUrl
   );
@@ -157,4 +157,4 @@ export function CategoryPhotoUpload({
       )}
     </div>
   );
-}
+};

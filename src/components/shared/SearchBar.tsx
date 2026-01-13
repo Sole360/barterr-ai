@@ -9,7 +9,7 @@ interface SearchBarProps {
   onSelectPost: (postId: string) => void;
 }
 
-export function SearchBar({ onSelectPost }: SearchBarProps) {
+export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AlgoliaHit[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -162,4 +162,4 @@ export function SearchBar({ onSelectPost }: SearchBarProps) {
       )}
     </div>
   );
-}
+};

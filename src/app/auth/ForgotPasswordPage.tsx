@@ -22,7 +22,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export function ForgotPasswordPage() {
+export const ForgotPasswordPage = () => {
   const { resetPassword } = useAuth();
   const [serverError, setServerError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -124,4 +124,4 @@ export function ForgotPasswordPage() {
       </div>
     </div>
   );
-}
+};

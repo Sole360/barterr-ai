@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/contexts/auth.context";
 
-export function VerifyEmailPage() {
+export const VerifyEmailPage = () => {
   const { currentUser, resendEmailVerification } = useAuth();
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle"
@@ -70,4 +70,4 @@ export function VerifyEmailPage() {
       </div>
     </div>
   );
-}
+};

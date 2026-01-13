@@ -37,7 +37,7 @@ interface AddSneakerDialogProps {
   onClose: () => void;
 }
 
-export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
+export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
   const { toast } = useToast();
   const { currentUser, userProfile } = useAuth();
   const [draftListingId, setDraftListingId] = useState<string>("");
@@ -785,4 +785,4 @@ export function AddSneakerDialog({ open, onClose }: AddSneakerDialogProps) {
       </DialogContent>
     </Dialog>
   );
-}
+};
