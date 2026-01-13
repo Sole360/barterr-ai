@@ -41,10 +41,12 @@ export const Navbar = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/dashboard" className="flex items-center space-x-2">
-              <div className="text-2xl font-bold bg-gradient-to-r from-[#33FF99] to-[#3366FF] bg-clip-text text-transparent">
-                Barterr
-              </div>
+            <Link to="/dashboard" className="flex items-center">
+              <img
+                src="/barterr-main-icon.png"
+                alt="Barterr"
+                className="h-8 w-auto md:h-10 lg:h-12"
+              />
             </Link>
 
             {/* Desktop Search Bar */}
