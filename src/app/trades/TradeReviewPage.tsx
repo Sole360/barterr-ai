@@ -1,9 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
+import { db } from "@/lib/firebase/config";
+import { useAuth } from "@/lib/contexts/auth.context";
 import { Button } from "@/components/ui/button";
 import type { TradeReviewDraft } from "@/types/index";
+import { useToast } from "@/hooks/use-toast";
 
 type TradeReviewLocationState = {
   draft?: TradeReviewDraft;
@@ -15,6 +19,7 @@ export const TradeReviewPage = () => {
   // -----------------------------
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
 
   const state = (location.state as TradeReviewLocationState | null) ?? null;
   const draft = state?.draft;
@@ -23,6 +28,87 @@ export const TradeReviewPage = () => {
   useEffect(() => {
     if (!draft) navigate("/trades/new", { replace: true });
   }, [draft, navigate]);
+
+  // -----------------------------
+  // Send Trade (first Firestore write)
+  // -----------------------------
+  const { currentUser } = useAuth();
+
+  const [sending, setSending] = useState(false);
+
+  const handleSendTrade = async () => {
+    if (!draft || sending) return;
+
+    const fromUserId = currentUser?.uid ?? "";
+    const toUserId = draft.theirItems[0]?.userId ?? "";
+
+    if (!fromUserId || !toUserId) {
+      toast({
+        title: "Couldn’t send trade",
+        description:
+          "Missing sender or recipient. Please go back and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSending(true);
+
+    try {
+      // Keep payload minimal and stable — we can evolve this when we wire backend triggers.
+      const tradeDoc = {
+        fromUserId,
+        toUserId,
+        status: "pending", // legacy parity concept: pending until accepted/declined
+        createdAt: serverTimestamp(),
+
+        // Items + cash summary (source of truth for review/send)
+        addCash: draft.addCash,
+        askCash: draft.askCash,
+        netTotal: draft.netTotal,
+        likelihood: draft.likelihood,
+
+        yourListingIds: draft.yourItems.map((i) => i.id),
+        theirListingIds: draft.theirItems.map((i) => i.id),
+
+        // Optional: keep lightweight item snapshots for rendering without refetch
+        yourItems: draft.yourItems.map((i) => ({
+          listingId: i.id,
+          postId: i.postId,
+          name: i.name,
+          size: i.size,
+          value: i.value,
+          imageUrl: i.imageUrl ?? "",
+          brand: i.brand ?? "",
+        })),
+        theirItems: draft.theirItems.map((i) => ({
+          listingId: i.id,
+          postId: i.postId,
+          userId: i.userId,
+          size: i.size,
+          condition: i.condition,
+          tradeValue: i.tradeValue,
+          title: i.title,
+          brand: i.brand,
+          imageUrl: i.imageUrl,
+        })),
+      };
+
+      const ref = await addDoc(collection(db, "trades"), tradeDoc);
+
+      // Navigate to trade detail page (already exists in your routes)
+      navigate(`/trades/${ref.id}`, { replace: true });
+    } catch (e) {
+      console.error("Send trade error:", e);
+      toast({
+        title: "Couldn’t send trade",
+        description: "Failed to send trade. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
 
   if (!draft) return null;
 
@@ -192,11 +278,11 @@ export const TradeReviewPage = () => {
           <div className="border-t border-gray-200 bg-white/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
             <div className="mx-auto w-full max-w-7xl">
               <Button
-                className="w-full border-[#3366FF]/40 text-[#3366FF]"
-                variant="outline"
-                disabled
+                className="w-full bg-[#3366FF]"
+                disabled={sending}
+                onClick={handleSendTrade}
               >
-                Send Trade (next)
+                {sending ? "Sending…" : "Send Trade"}
               </Button>
             </div>
           </div>
