@@ -254,6 +254,8 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
             brand: sneaker.brand,
             productImageUrl: sneaker.imageUrl, // Temporary URL
             userId: currentUser!.uid,
+            apiID: sneaker.id,
+            source: sneaker.source,
           });
 
           // Create listing with photos if used
@@ -276,6 +278,8 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
             productName: sneaker.name,
             productImageUrl: sneaker.imageUrl,
             brand: sneaker.brand,
+            apiID: sneaker.id,
+            source: sneaker.source,
           });
 
           // Add to owners array in post

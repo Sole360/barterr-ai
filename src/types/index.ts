@@ -111,6 +111,7 @@ export interface Post {
   owners?: WisherOwner[];
   apiID?: string;
   styleId?: string;
+  source?: "stockx" | "goat";
   title: string;
   brand: string;
   productImageUrl: string;
@@ -161,6 +162,8 @@ export interface Listing {
   productName?: string;
   productImageUrl?: string;
   brand?: string;
+  apiID?: string;
+  source?: "stockx" | "goat";
   hasBox?: boolean;
   hasInsoles?: boolean;
   hasLaces?: boolean;
@@ -327,6 +330,8 @@ export interface MyCollectionItem {
   min_price?: number;
   max_price?: number;
   avg_price?: number;
+  apiID?: string;
+  source?: "stockx" | "goat";
 }
 
 /**
@@ -377,6 +382,8 @@ export interface TheirListingRow {
   title: string;
   brand: string;
   imageUrl: string;
+  apiID?: string;
+  source?: "stockx" | "goat";
 }
 
 /**

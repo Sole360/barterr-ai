@@ -95,3 +95,55 @@ export async function searchSneakers(query: string): Promise<SearchResult[]> {
     throw error;
   }
 }
+
+// Fetch current market price for a product
+export const fetchCurrentPrice = async (
+  apiID: string,
+  source: "stockx" | "goat",
+  fallbackPrice?: number
+): Promise<number | null> => {
+  try {
+    if (source === "stockx") {
+      // For StockX, fetch the product details and get avg_price
+      const response = await fetch(`${BASE_URL}/stockx/products/${apiID}`, {
+        headers: {
+          Authorization: `Bearer ${KICKSDB_API_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.warn(`StockX product fetch failed for ${apiID}`);
+        return fallbackPrice ?? null;
+      }
+
+      const data = await response.json();
+      return data.data?.avg_price ?? fallbackPrice ?? null;
+    } else {
+      // For GOAT, fetch sales and get most recent amount
+      const response = await fetch(`${BASE_URL}/goat/products/${apiID}/sales`, {
+        headers: {
+          Authorization: `Bearer ${KICKSDB_API_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.warn(`GOAT sales fetch failed for ${apiID}`);
+        return fallbackPrice ?? null;
+      }
+
+      const data = await response.json();
+      const sales = data.data;
+
+      if (!sales || sales.length === 0) {
+        console.warn(`No GOAT sales data for ${apiID}`);
+        return fallbackPrice ?? null;
+      }
+
+      // Get the most recent sale (first item)
+      return sales[0]?.amount ?? fallbackPrice ?? null;
+    }
+  } catch (error) {
+    console.error(`Error fetching price for ${apiID}:`, error);
+    return fallbackPrice ?? null;
+  }
+};

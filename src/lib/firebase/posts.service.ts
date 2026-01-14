@@ -275,6 +275,8 @@ export const createOrUpdatePost = async (postData: {
   brand: string;
   productImageUrl: string;
   userId: string;
+  apiID?: string;
+  source?: "stockx" | "goat";
 }): Promise<string> => {
   const postsRef = collection(db, "posts");
 
@@ -289,7 +291,13 @@ export const createOrUpdatePost = async (postData: {
 
   // Create new post
   const newPost: Partial<Post> = {
-    ...postData,
+    styleId: postData.styleId,
+    title: postData.title,
+    brand: postData.brand,
+    productImageUrl: postData.productImageUrl,
+    userId: postData.userId,
+    ...(postData.apiID ? { apiID: postData.apiID } : {}),
+    ...(postData.source ? { source: postData.source } : {}),
     wishers: [],
     owners: [],
     postedAt: Timestamp.now(),
@@ -319,6 +327,8 @@ export const createListing = async (listingData: {
   productName?: string;
   productImageUrl?: string;
   brand?: string;
+  apiID?: string;
+  source?: "stockx" | "goat";
   photos?: {
     appearance?: string;
     boxLabel?: string;
@@ -351,6 +361,8 @@ export const createListing = async (listingData: {
       ? { productImageUrl: listingData.productImageUrl }
       : {}),
     ...(listingData.brand ? { brand: listingData.brand } : {}),
+    ...(listingData.apiID ? { apiID: listingData.apiID } : {}),
+    ...(listingData.source ? { source: listingData.source } : {}),
     ...(listingData.photos ? { photos: listingData.photos } : {}),
   };
 

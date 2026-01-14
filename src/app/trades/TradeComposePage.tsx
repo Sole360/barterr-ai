@@ -13,6 +13,7 @@ import {
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
+import { fetchCurrentPrice } from "@/lib/api/kicksdb.service";
 import { Button } from "@/components/ui/button";
 import type {
   Listing,
@@ -54,6 +55,14 @@ export const TradeComposePage = () => {
   >([]);
   const [addCash, setAddCash] = useState<number>(0);
   const [askCash, setAskCash] = useState<number>(0);
+
+  // -----------------------------
+  // Pricing state
+  // -----------------------------
+  const [fetchedPrices, setFetchedPrices] = useState<Map<string, number>>(
+    new Map()
+  );
+  const [pricesFetching, setPricesFetching] = useState(false);
 
   // -----------------------------
   // Data: my collection (left)
@@ -183,6 +192,8 @@ export const TradeComposePage = () => {
             title: p?.title ?? "Unknown Sneaker",
             brand: p?.brand ?? "",
             imageUrl: p?.productImageUrl ?? "",
+            apiID: l.apiID ?? p?.apiID,
+            source: l.source ?? p?.source,
           });
         }
 
@@ -198,6 +209,71 @@ export const TradeComposePage = () => {
 
     return () => unsub();
   }, [posterId]);
+
+  // -----------------------------------------
+  // EFFECT 4: Fetch current prices for all listings
+  // -----------------------------------------
+  useEffect(() => {
+    const allListings = [
+      ...myCollectionItems.map((item) => ({
+        id: item.id,
+        apiID: item.apiID,
+        source: item.source,
+        tradeValue: Number(String(item.value).replace(/[^0-9.]/g, "")),
+      })),
+      ...theirListings.map((l) => ({
+        id: l.id,
+        apiID: l.apiID,
+        source: l.source,
+        tradeValue: l.tradeValue,
+      })),
+    ];
+
+    const fetchPrices = async () => {
+      setPricesFetching(true);
+      const priceMap = new Map<string, number>();
+
+      await Promise.all(
+        allListings.map(async (listing) => {
+          if (!listing.apiID || !listing.source) {
+            // No API data, use tradeValue
+            if (listing.tradeValue) {
+              priceMap.set(listing.id, listing.tradeValue);
+            }
+            return;
+          }
+
+          try {
+            const price = await fetchCurrentPrice(
+              listing.apiID,
+              listing.source,
+              listing.tradeValue
+            );
+            if (price !== null) {
+              priceMap.set(listing.id, price);
+            } else if (listing.tradeValue) {
+              priceMap.set(listing.id, listing.tradeValue);
+            }
+          } catch (e) {
+            console.error(
+              `Error fetching price for ${listing.id}:`,
+              e
+            );
+            if (listing.tradeValue) {
+              priceMap.set(listing.id, listing.tradeValue);
+            }
+          }
+        })
+      );
+
+      setFetchedPrices(priceMap);
+      setPricesFetching(false);
+    };
+
+    if (allListings.length > 0) {
+      fetchPrices();
+    }
+  }, [myCollectionItems, theirListings]);
 
   // -----------------------------
   // Selection toggles
@@ -218,26 +294,34 @@ export const TradeComposePage = () => {
   // Totals + net calculations
   // -----------------------------
   /**
-   * Left items currently store value as a formatted string like "$300".
-   * We parse it to number for calculations.
+   * Use fetched API prices when available, fallback to user-entered values.
    */
   const myValueById = useMemo(() => {
     const m = new Map<string, number>();
     for (const item of myCollectionItems) {
-      console.log("ITEM ", item);
-      const n = Number(String(item.value).replace(/[^0-9.]/g, ""));
-      m.set(item.id, Number.isFinite(n) ? n : 0);
+      const fetchedPrice = fetchedPrices.get(item.id);
+      if (fetchedPrice !== undefined) {
+        m.set(item.id, fetchedPrice);
+      } else {
+        const n = Number(String(item.value).replace(/[^0-9.]/g, ""));
+        m.set(item.id, Number.isFinite(n) ? n : 0);
+      }
     }
     return m;
-  }, [myCollectionItems]);
+  }, [myCollectionItems, fetchedPrices]);
 
   const theirValueById = useMemo(() => {
     const m = new Map<string, number>();
     for (const l of theirListings) {
-      m.set(l.id, l.tradeValue ?? 0);
+      const fetchedPrice = fetchedPrices.get(l.id);
+      if (fetchedPrice !== undefined) {
+        m.set(l.id, fetchedPrice);
+      } else {
+        m.set(l.id, l.tradeValue ?? 0);
+      }
     }
     return m;
-  }, [theirListings]);
+  }, [theirListings, fetchedPrices]);
 
   const yourSneakerTotal = useMemo(() => {
     return selectedYourListingIds.reduce(
@@ -310,6 +394,7 @@ export const TradeComposePage = () => {
   // Gate: must have both sides + >=50% likelihood
   // -----------------------------
   const continueDisabled =
+    pricesFetching ||
     selectedYourListingIds.length === 0 ||
     selectedTheirListingIds.length === 0 ||
     tradeLikelihood < 50;
@@ -577,27 +662,40 @@ export const TradeComposePage = () => {
                 Trade Likelihood
               </div>
 
-              <div className="mt-2 flex items-baseline justify-center gap-1">
-                <span className="text-5xl font-extrabold text-[#111]">
-                  {animatedLikelihood}
-                </span>
-                <span className="text-lg font-semibold text-muted-foreground">
-                  %
-                </span>
-              </div>
+              {pricesFetching ? (
+                <div className="mt-4 space-y-2">
+                  <div className="text-sm text-muted-foreground">
+                    Fetching current prices...
+                  </div>
+                  <div className="mx-auto h-1 w-24 overflow-hidden rounded-full bg-gray-200">
+                    <div className="h-full w-1/2 animate-pulse bg-[#3366FF]" />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-2 flex items-baseline justify-center gap-1">
+                    <span className="text-5xl font-extrabold text-[#111]">
+                      {animatedLikelihood}
+                    </span>
+                    <span className="text-lg font-semibold text-muted-foreground">
+                      %
+                    </span>
+                  </div>
 
-              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                <div
-                  className="h-full bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99] transition-[width] duration-200"
-                  style={{ width: `${clamp(animatedLikelihood, 0, 100)}%` }}
-                />
-              </div>
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99] transition-[width] duration-200"
+                      style={{ width: `${clamp(animatedLikelihood, 0, 100)}%` }}
+                    />
+                  </div>
 
-              <div className="mt-2 text-xs text-muted-foreground">
-                Aim for{" "}
-                <span className="font-semibold text-[#3366FF]">50%+</span> to
-                continue.
-              </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Aim for{" "}
+                    <span className="font-semibold text-[#3366FF]">50%+</span> to
+                    continue.
+                  </div>
+                </>
+              )}
             </div>
           </section>
 
@@ -688,7 +786,11 @@ export const TradeComposePage = () => {
             disabled={continueDisabled}
             onClick={handleContinue}
           >
-            {continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
+            {pricesFetching
+              ? "Fetching prices..."
+              : continueDisabled
+              ? "Increase likelihood to 50%+"
+              : "Continue"}
           </Button>
         </div>
 
@@ -702,7 +804,11 @@ export const TradeComposePage = () => {
                 disabled={continueDisabled}
                 onClick={handleContinue}
               >
-                {continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
+                {pricesFetching
+                  ? "Fetching prices..."
+                  : continueDisabled
+                  ? "Increase likelihood to 50%+"
+                  : "Continue"}
               </Button>
             </div>
           </div>

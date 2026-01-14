@@ -55,6 +55,8 @@ export const useMyCollection = (userId?: string) => {
           size: `US ${listing.size}`,
           value: `$${listing.tradeValue}`,
           status: listing.approvalStatus,
+          apiID: listing.apiID,
+          source: listing.source,
         });
       }
 
