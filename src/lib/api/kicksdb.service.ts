@@ -117,7 +117,14 @@ export const fetchCurrentPrice = async (
       }
 
       const data = await response.json();
-      return data.data?.avg_price ?? fallbackPrice ?? null;
+      const avgPrice = data.data?.avg_price;
+
+      // Check if avg_price exists and is > 0
+      if (avgPrice && avgPrice > 0) {
+        return avgPrice;
+      }
+
+      return fallbackPrice ?? null;
     } else {
       // For GOAT, fetch sales and get most recent amount
       const response = await fetch(`${BASE_URL}/goat/products/${apiID}/sales`, {
@@ -139,8 +146,13 @@ export const fetchCurrentPrice = async (
         return fallbackPrice ?? null;
       }
 
-      // Get the most recent sale (first item)
-      return sales[0]?.amount ?? fallbackPrice ?? null;
+      // Get the most recent sale (first item) and check if > 0
+      const saleAmount = sales[0]?.amount;
+      if (saleAmount && saleAmount > 0) {
+        return saleAmount;
+      }
+
+      return fallbackPrice ?? null;
     }
   } catch (error) {
     console.error(`Error fetching price for ${apiID}:`, error);
