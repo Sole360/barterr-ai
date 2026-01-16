@@ -1,14 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import useEmblaCarousel from "embla-carousel-react";
+import {
+  Elements,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
 
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { Button } from "@/components/ui/button";
 import type { TradeReviewDraft } from "@/types/index";
 import { useToast } from "@/hooks/use-toast";
+import { stripePromise } from "@/lib/stripe/stripeClient";
+import app from "@/lib/firebase/config";
 
 const STRIPE_FEE_PCT = 0.029;
 const STRIPE_FEE_FIXED_CENTS = 30;
@@ -35,7 +51,7 @@ const serviceFeeDollarsForCount = (count: number) => {
  */
 const grossUpForStripe = (netCents: number) => {
   const gross = Math.ceil(
-    (netCents + STRIPE_FEE_FIXED_CENTS) / (1 - STRIPE_FEE_PCT)
+    (netCents + STRIPE_FEE_FIXED_CENTS) / (1 - STRIPE_FEE_PCT),
   );
   const fee = Math.max(0, gross - netCents);
   return { grossCents: gross, feeCents: fee };
@@ -43,6 +59,11 @@ const grossUpForStripe = (netCents: number) => {
 
 type TradeReviewLocationState = {
   draft?: TradeReviewDraft;
+};
+
+type BillingDoc = {
+  stripeCustomerId?: string;
+  defaultPaymentMethodId?: string;
 };
 
 type CarouselItem = {
@@ -118,54 +139,269 @@ const MiniCarousel = ({ items }: { items: CarouselItem[] }) => {
   );
 };
 
+type SetupPaymentProps = {
+  uid: string;
+  onSaved: (paymentMethodId: string) => void;
+};
+
+const SetupPaymentForm = ({ uid, onSaved }: SetupPaymentProps) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSave = async () => {
+    if (!stripe || !elements || submitting) return;
+
+    setSubmitting(true);
+
+    try {
+      const result = await stripe.confirmSetup({
+        elements,
+        confirmParams: {
+          return_url: window.location.href,
+        },
+        redirect: "if_required",
+      });
+
+      if (result.error) {
+        toast({
+          title: "Payment method not saved",
+          description: result.error.message ?? "Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const pm = result.setupIntent?.payment_method;
+      const paymentMethodId = typeof pm === "string" ? pm : (pm?.id ?? "");
+
+      if (!paymentMethodId) {
+        toast({
+          title: "Payment method not saved",
+          description: "Stripe did not return a payment method id.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await setDoc(
+        doc(db, `users/${uid}/private/billing`),
+        {
+          defaultPaymentMethodId: paymentMethodId,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      onSaved(paymentMethodId);
+
+      toast({
+        title: "Payment method saved",
+        description: "You can now send this binding offer.",
+      });
+    } catch (e) {
+      console.error("confirmSetup error:", e);
+
+      toast({
+        title: "Payment method not saved",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-gray-200 p-3">
+      <PaymentElement />
+      <div className="mt-3">
+        <Button
+          className="w-full bg-[#3366FF]"
+          type="button"
+          disabled={!stripe || !elements || submitting}
+          onClick={handleSave}
+        >
+          {submitting ? "Saving…" : "Save payment method"}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export const TradeReviewPage = () => {
-  // Hooks must be called at the top level, before any conditional returns
+  // -----------------------------
+  // Auth
+  // -----------------------------
   const { currentUser } = useAuth();
-  const [sending, setSending] = useState(false);
-  const [tosAccepted, setTosAccepted] = useState(false);
+  const uid = currentUser?.uid ?? "";
 
   // -----------------------------
-  // Routing state (Compose -> Review)
+  // Routing / location
   // -----------------------------
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
+  // Always compute draft (do NOT early-return before hooks)
   const state = (location.state as TradeReviewLocationState | null) ?? null;
-  const draft = state?.draft;
+  const draft = state?.draft ?? null;
 
-  // If user refreshes Review, navigate state is lost. MVP behavior: send them back.
+  // Redirect effect (safe even when draft is null)
   useEffect(() => {
     if (!draft) navigate("/trades/new", { replace: true });
   }, [draft, navigate]);
 
-  // Bail early (after the redirect effect fires)
-  if (!draft) return null;
+  // -----------------------------
+  // Billing doc (payment readiness)
+  // -----------------------------
+  const [billingLoading, setBillingLoading] = useState(true);
+  const [defaultPaymentMethodId, setDefaultPaymentMethodId] =
+    useState<string>("");
+
+  const paymentReady = Boolean(defaultPaymentMethodId);
+
+  useEffect(() => {
+    let alive = true;
+
+    const run = async () => {
+      if (!uid) {
+        if (alive) {
+          setDefaultPaymentMethodId("");
+          setBillingLoading(false);
+        }
+        return;
+      }
+
+      setBillingLoading(true);
+
+      try {
+        const snap = await getDoc(doc(db, `users/${uid}/private/billing`));
+        const data =
+          (snap.exists() ? (snap.data() as BillingDoc) : null) ?? null;
+
+        if (!alive) return;
+
+        setDefaultPaymentMethodId(data?.defaultPaymentMethodId ?? "");
+      } catch (e) {
+        console.error("Billing doc read error:", e);
+
+        if (!alive) return;
+
+        setDefaultPaymentMethodId("");
+      } finally {
+        if (alive) setBillingLoading(false);
+      }
+    };
+
+    run();
+
+    return () => {
+      alive = false;
+    };
+  }, [uid]);
 
   // -----------------------------
-  // Pricing (sender-side preview)
+  // Stripe setup UI state
   // -----------------------------
-  const senderSneakerCount = draft.yourItems.length;
-  const serviceFeeCents = toCents(
-    serviceFeeDollarsForCount(senderSneakerCount)
-  );
-  const cashDepositCents = toCents(draft.addCash);
-
-  // What Barterr wants to net (for sender charge) once both confirm:
-  const netCents = cashDepositCents + serviceFeeCents;
-
-  // Gross-up so user covers Stripe processing:
-  const { grossCents: totalCents, feeCents: processingFeeCents } =
-    grossUpForStripe(netCents);
+  const [setupClientSecret, setSetupClientSecret] = useState<string>("");
 
   // -----------------------------
   // Send Trade (Firestore write)
   // -----------------------------
+  const [sending, setSending] = useState(false);
+  const [tosAccepted, setTosAccepted] = useState(false);
+
+  // -----------------------------
+  // Derived values (guard draft null)
+  // -----------------------------
+  const senderSneakerCount = draft?.yourItems.length ?? 0;
+
+  const serviceFeeCents = toCents(
+    serviceFeeDollarsForCount(senderSneakerCount),
+  );
+  const cashDepositCents = toCents(draft?.addCash ?? 0);
+
+  const netCents = cashDepositCents + serviceFeeCents;
+  const { grossCents: totalCents, feeCents: processingFeeCents } =
+    grossUpForStripe(netCents);
+
+  const showStripeForm = Boolean(setupClientSecret) && !paymentReady;
+  const canSend = tosAccepted && paymentReady && !billingLoading;
+
+  const offeringCarouselItems: CarouselItem[] = useMemo(() => {
+    const items = draft?.yourItems ?? [];
+    return items.map((i) => ({
+      key: i.id,
+      imageUrl: i.imageUrl ?? "",
+      alt: i.name,
+    }));
+  }, [draft]);
+
+  const requestingCarouselItems: CarouselItem[] = useMemo(() => {
+    const items = draft?.theirItems ?? [];
+    return items.map((i) => ({
+      key: i.id,
+      imageUrl: i.imageUrl,
+      alt: i.title,
+    }));
+  }, [draft]);
+
+  const requestSetupIntent = async () => {
+    if (!uid) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add a payment method.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const functions = getFunctions(app, "us-central1");
+      const fn = httpsCallable(functions, "createSetupIntent");
+      const res = await fn();
+
+      const data = res.data as {
+        clientSecret?: string;
+        defaultPaymentMethodId?: string;
+      };
+
+      const existingPm = data.defaultPaymentMethodId ?? "";
+      const clientSecret = data.clientSecret ?? "";
+
+      if (existingPm) {
+        setDefaultPaymentMethodId(existingPm);
+        return;
+      }
+
+      if (!clientSecret) {
+        toast({
+          title: "Couldn’t start payment setup",
+          description: "Missing Stripe client secret.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSetupClientSecret(clientSecret);
+    } catch (e) {
+      console.error("createSetupIntent error:", e);
+
+      toast({
+        title: "Couldn’t start payment setup",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSendTrade = async () => {
-    if (sending) return;
+    if (!draft || !canSend || sending) return;
 
-    const fromUserId = currentUser?.uid ?? "";
+    const fromUserId = uid;
     const toUserId = draft.theirItems[0]?.userId ?? "";
 
     if (!fromUserId || !toUserId) {
@@ -187,13 +423,11 @@ export const TradeReviewPage = () => {
         status: "pending",
         createdAt: serverTimestamp(),
 
-        // Trade summary
         addCash: draft.addCash,
         askCash: draft.askCash,
         netTotal: draft.netTotal,
         likelihood: draft.likelihood,
 
-        // Pricing snapshot (sender side only for now; receiver-side comes on accept)
         pricingVersion: 1,
         senderSneakerCount,
         senderServiceFeeCents: serviceFeeCents,
@@ -204,7 +438,6 @@ export const TradeReviewPage = () => {
         yourListingIds: draft.yourItems.map((i) => i.id),
         theirListingIds: draft.theirItems.map((i) => i.id),
 
-        // Lightweight snapshots
         yourItems: draft.yourItems.map((i) => ({
           listingId: i.id,
           postId: i.postId,
@@ -242,20 +475,8 @@ export const TradeReviewPage = () => {
     }
   };
 
-  // -----------------------------
-  // Mobile carousel items
-  // -----------------------------
-  const offeringCarouselItems: CarouselItem[] = draft.yourItems.map((i) => ({
-    key: i.id,
-    imageUrl: i.imageUrl ?? "",
-    alt: i.name,
-  }));
-
-  const requestingCarouselItems: CarouselItem[] = draft.theirItems.map((i) => ({
-    key: i.id,
-    imageUrl: i.imageUrl,
-    alt: i.title,
-  }));
+  // Final guard render AFTER hooks
+  if (!draft) return null;
 
   return (
     <div className="min-h-screen bg-white">
@@ -278,76 +499,6 @@ export const TradeReviewPage = () => {
           <div className="w-16" />
         </div>
 
-        {/* -----------------------------
-            DESKTOP: Full trade summary + lists
-           ----------------------------- */}
-
-        {/* Desktop Trade Summary */}
-        <div className="mt-4 hidden rounded-xl border bg-[#3366FF] p-4 text-white shadow-sm md:block">
-          <div className="flex items-start justify-between gap-6">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold">Trade Summary</div>
-            </div>
-
-            <div className="flex shrink-0 items-start gap-6 text-right">
-              <div>
-                <div className="text-xs text-white/80">Net</div>
-                <div className="text-lg font-bold leading-none">
-                  {draft.netTotal >= 0 ? "+" : "-"}$
-                  {Math.abs(draft.netTotal).toFixed(0)}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs text-white/80">Likelihood</div>
-                <div className="text-lg font-bold leading-none">
-                  {draft.likelihood}%
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg bg-white/10 p-3">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Cash that you added</div>
-                <div className="text-sm font-semibold">${draft.addCash}</div>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={500}
-                step={10}
-                value={draft.addCash}
-                disabled
-                className="mt-2 w-full accent-white"
-              />
-            </div>
-
-            <div className="rounded-lg bg-white/10 p-3">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">
-                  Cash that you're asking for
-                </div>
-                <div className="text-sm font-semibold">${draft.askCash}</div>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={500}
-                step={10}
-                value={draft.askCash}
-                disabled
-                className="mt-2 w-full accent-white"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* -----------------------------
-            MOBILE: Compact trade meta + carousels + checkout
-           ----------------------------- */}
-
         {/* Mobile trade meta */}
         <div className="mt-3 flex items-center justify-between rounded-xl border border-gray-200 bg-white p-3 md:hidden">
           <div className="text-sm font-semibold">Trade</div>
@@ -368,68 +519,87 @@ export const TradeReviewPage = () => {
           </div>
         </div>
 
-        {/* Mobile compact trade panels (side-by-side) */}
+        {/* Mobile compact trade panels */}
         <div className="mt-3 grid grid-cols-2 gap-3 md:hidden">
-          {/* Offering */}
           <div className="rounded-2xl border border-gray-200 bg-white p-3">
             <div className="flex items-center justify-between">
               <div className="text-xs font-semibold text-[#3366FF]">
                 You’re offering
               </div>
-
               {draft.addCash > 0 ? (
                 <div className="text-xs font-semibold text-green-600">
                   +${draft.addCash}
                 </div>
               ) : null}
             </div>
-
             <div className="mt-2">
               <MiniCarousel items={offeringCarouselItems} />
             </div>
           </div>
 
-          {/* Requesting */}
           <div className="rounded-2xl border border-gray-200 bg-white p-3">
             <div className="flex items-center justify-between">
               <div className="text-xs font-semibold text-[#3366FF]">
                 You’re requesting
               </div>
-
               {draft.askCash > 0 ? (
                 <div className="text-xs font-semibold text-green-600">
                   +${draft.askCash}
                 </div>
               ) : null}
             </div>
-
             <div className="mt-2">
               <MiniCarousel items={requestingCarouselItems} />
             </div>
           </div>
         </div>
 
-        {/* Checkout (mobile + desktop) */}
+        {/* Checkout */}
         <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="text-sm font-semibold">Checkout</div>
 
-          {/* Payment Method row (placeholder for Stripe step) */}
+          {/* Payment Method row */}
           <div className="mt-3 flex items-center justify-between border-b border-gray-100 pb-3">
             <div className="text-sm text-muted-foreground">Payment Method</div>
 
-            <button
-              type="button"
-              onClick={() => {
-                toast({
-                  title: "Payment method",
-                  description: "Stripe setup is the next step.",
-                });
-              }}
-              className="text-sm font-semibold text-[#3366FF]"
-            >
-              Add
-            </button>
+            {billingLoading ? (
+              <div className="text-sm font-semibold text-muted-foreground">
+                Loading…
+              </div>
+            ) : paymentReady ? (
+              <div className="text-sm font-semibold text-green-600">
+                Card on file ✓
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={requestSetupIntent}
+                className="text-sm font-semibold text-[#3366FF]"
+              >
+                Add
+              </button>
+            )}
           </div>
+
+          {showStripeForm ? (
+            <div className="mt-3">
+              <Elements
+                stripe={stripePromise}
+                options={{
+                  clientSecret: setupClientSecret,
+                  appearance: { theme: "stripe" },
+                }}
+              >
+                <SetupPaymentForm
+                  uid={uid}
+                  onSaved={(pmId) => {
+                    setDefaultPaymentMethodId(pmId);
+                    setSetupClientSecret("");
+                  }}
+                />
+              </Elements>
+            </div>
+          ) : null}
 
           {/* Line items */}
           <div className="mt-3 space-y-2">
@@ -464,7 +634,6 @@ export const TradeReviewPage = () => {
             </div>
           </div>
 
-          {/* TOS */}
           <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm">
             <input
               type="checkbox"
@@ -477,85 +646,13 @@ export const TradeReviewPage = () => {
               if declined or countered.
             </span>
           </label>
+
+          {!paymentReady ? (
+            <div className="mt-3 text-xs text-muted-foreground">
+              Add a payment method to send this binding offer.
+            </div>
+          ) : null}
         </section>
-
-        {/* Desktop two-sided review */}
-        <div className="mt-4 hidden grid-cols-1 gap-4 md:grid md:grid-cols-2">
-          {/* Your side */}
-          <section className="rounded-2xl border border-gray-200 p-4">
-            <div className="text-sm font-semibold">You’re offering</div>
-
-            <div className="mt-3 space-y-3">
-              {draft.yourItems.map((i) => (
-                <div
-                  key={i.id}
-                  className="flex items-center gap-4 rounded-xl border border-gray-200 p-3"
-                >
-                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2">
-                    {i.imageUrl ? (
-                      <img
-                        src={i.imageUrl}
-                        alt={i.name}
-                        className="h-full w-full object-contain"
-                      />
-                    ) : null}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="line-clamp-2 text-base font-semibold">
-                      {i.name}
-                    </div>
-                    <div className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
-                      {i.brand ? `${i.brand} • ` : ""}
-                      {i.size}
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-sm font-semibold">{i.value}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Their side */}
-          <section className="rounded-2xl border border-gray-200 p-4">
-            <div className="text-sm font-semibold">You’re requesting</div>
-
-            <div className="mt-3 space-y-3">
-              {draft.theirItems.map((i) => (
-                <div
-                  key={i.id}
-                  className="flex items-center gap-4 rounded-xl border border-gray-200 p-3"
-                >
-                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2">
-                    {i.imageUrl ? (
-                      <img
-                        src={i.imageUrl}
-                        alt={i.title}
-                        className="h-full w-full object-contain"
-                      />
-                    ) : null}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="line-clamp-2 text-base font-semibold">
-                      {i.title}
-                    </div>
-                    <div className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
-                      Size {i.size} • {i.condition}
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-sm font-semibold">${i.tradeValue}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
 
         {/* Sticky action */}
         <div className="fixed bottom-0 left-0 right-0 z-50">
@@ -563,14 +660,16 @@ export const TradeReviewPage = () => {
             <div className="mx-auto w-full max-w-7xl">
               <Button
                 className="w-full bg-[#3366FF]"
-                disabled={sending || !tosAccepted}
+                disabled={sending || !canSend}
                 onClick={handleSendTrade}
               >
                 {sending
                   ? "Sending…"
-                  : tosAccepted
-                  ? "Send Trade"
-                  : "Agree to continue"}
+                  : !tosAccepted
+                    ? "Agree to continue"
+                    : !paymentReady
+                      ? "Add payment method to continue"
+                      : "Send Trade"}
               </Button>
             </div>
           </div>

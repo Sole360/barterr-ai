@@ -17,7 +17,10 @@ type BillingDoc = {
 };
 
 export const createSetupIntent = onCall(
-  { secrets: [STRIPE_SECRET_KEY] },
+  {
+    secrets: [STRIPE_SECRET_KEY],
+    cors: [/localhost/, "https://barterr.ai", "https://dev.barterr.ai"],
+  },
   async (request) => {
     const uid = request.auth?.uid;
 
