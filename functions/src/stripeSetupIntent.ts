@@ -19,7 +19,12 @@ type BillingDoc = {
 export const createSetupIntent = onCall(
   {
     secrets: [STRIPE_SECRET_KEY],
-    cors: [/localhost/, "https://barterr.ai", "https://dev.barterr.ai"],
+    cors: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "https://barterr.ai",
+      "https://dev.barterr.ai",
+    ],
   },
   async (request) => {
     const uid = request.auth?.uid;
@@ -32,7 +37,7 @@ export const createSetupIntent = onCall(
     if (!secret) {
       throw new HttpsError(
         "failed-precondition",
-        "Stripe is not configured (missing STRIPE_SECRET_KEY)."
+        "Stripe is not configured (missing STRIPE_SECRET_KEY).",
       );
     }
 
@@ -59,7 +64,7 @@ export const createSetupIntent = onCall(
           stripeCustomerId,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       );
     }
 
@@ -74,7 +79,7 @@ export const createSetupIntent = onCall(
     if (!setupIntent.client_secret) {
       throw new HttpsError(
         "internal",
-        "Stripe SetupIntent did not return a client secret."
+        "Stripe SetupIntent did not return a client secret.",
       );
     }
 
@@ -84,5 +89,5 @@ export const createSetupIntent = onCall(
       // helpful to return if we already have one (frontend can skip UI later)
       defaultPaymentMethodId: billing.defaultPaymentMethodId ?? "",
     };
-  }
+  },
 );
