@@ -9,7 +9,6 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
 import useEmblaCarousel from "embla-carousel-react";
 import {
   Elements,
@@ -24,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import type { TradeReviewDraft } from "@/types/index";
 import { useToast } from "@/hooks/use-toast";
 import { stripePromise } from "@/lib/stripe/stripeClient";
-import app from "@/lib/firebase/config";
 
 const STRIPE_FEE_PCT = 0.029;
 const STRIPE_FEE_FIXED_CENTS = 30;
@@ -350,7 +348,7 @@ export const TradeReviewPage = () => {
   }, [draft]);
 
   const requestSetupIntent = async () => {
-    if (!uid) {
+    if (!uid || !currentUser) {
       toast({
         title: "Sign in required",
         description: "Please sign in to add a payment method.",
@@ -360,11 +358,23 @@ export const TradeReviewPage = () => {
     }
 
     try {
-      const functions = getFunctions(app, "us-central1");
-      const fn = httpsCallable(functions, "createSetupIntent");
-      const res = await fn();
+      const idToken = await currentUser.getIdToken();
+      const response = await fetch(
+        "https://us-central1-barterr-dev-98dfd.cloudfunctions.net/createSetupIntent",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
 
-      const data = res.data as {
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+
+      const data = (await response.json()) as {
         clientSecret?: string;
         defaultPaymentMethodId?: string;
       };
@@ -379,7 +389,7 @@ export const TradeReviewPage = () => {
 
       if (!clientSecret) {
         toast({
-          title: "Couldn’t start payment setup",
+          title: "Couldn't start payment setup",
           description: "Missing Stripe client secret.",
           variant: "destructive",
         });
@@ -391,7 +401,7 @@ export const TradeReviewPage = () => {
       console.error("createSetupIntent error:", e);
 
       toast({
-        title: "Couldn’t start payment setup",
+        title: "Couldn't start payment setup",
         description: "Please try again.",
         variant: "destructive",
       });
