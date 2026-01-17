@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import useEmblaCarousel from "embla-carousel-react";
 import {
   Elements,
@@ -31,10 +32,6 @@ const toCents = (n: number) => Math.round(n * 100);
 const fromCents = (c: number) => c / 100;
 const formatUsd = (cents: number) => `$${fromCents(cents).toFixed(2)}`;
 
-/**
- * Service fee scales with sneaker count up to 5.
- * 1->$40, 2->$50, 3->$60, 4->$70, 5+->$80
- */
 const serviceFeeDollarsForCount = (count: number) => {
   if (count <= 1) return 40;
   if (count === 2) return 50;
@@ -43,10 +40,6 @@ const serviceFeeDollarsForCount = (count: number) => {
   return 80;
 };
 
-/**
- * Gross-up so the user covers Stripe processing fee.
- * Returns { grossCents, feeCents }.
- */
 const grossUpForStripe = (netCents: number) => {
   const gross = Math.ceil(
     (netCents + STRIPE_FEE_FIXED_CENTS) / (1 - STRIPE_FEE_PCT),
@@ -62,6 +55,17 @@ type TradeReviewLocationState = {
 type BillingDoc = {
   stripeCustomerId?: string;
   defaultPaymentMethodId?: string;
+  defaultPaymentMethodBrand?: string;
+  defaultPaymentMethodLast4?: string;
+  defaultPaymentMethodExpMonth?: number;
+  defaultPaymentMethodExpYear?: number;
+};
+
+type CardSummary = {
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
 };
 
 type CarouselItem = {
@@ -157,9 +161,7 @@ const SetupPaymentForm = ({ uid, onSaved }: SetupPaymentProps) => {
     try {
       const result = await stripe.confirmSetup({
         elements,
-        confirmParams: {
-          return_url: window.location.href,
-        },
+        confirmParams: { return_url: window.location.href },
         redirect: "if_required",
       });
 
@@ -184,6 +186,7 @@ const SetupPaymentForm = ({ uid, onSaved }: SetupPaymentProps) => {
         return;
       }
 
+      // Persist minimal state (backend will later be source-of-truth)
       await setDoc(
         doc(db, `users/${uid}/private/billing`),
         {
@@ -201,7 +204,6 @@ const SetupPaymentForm = ({ uid, onSaved }: SetupPaymentProps) => {
       });
     } catch (e) {
       console.error("confirmSetup error:", e);
-
       toast({
         title: "Payment method not saved",
         description: "Please try again.",
@@ -243,11 +245,9 @@ export const TradeReviewPage = () => {
   const location = useLocation();
   const { toast } = useToast();
 
-  // Always compute draft (do NOT early-return before hooks)
   const state = (location.state as TradeReviewLocationState | null) ?? null;
   const draft = state?.draft ?? null;
 
-  // Redirect effect (safe even when draft is null)
   useEffect(() => {
     if (!draft) navigate("/trades/new", { replace: true });
   }, [draft, navigate]);
@@ -258,6 +258,7 @@ export const TradeReviewPage = () => {
   const [billingLoading, setBillingLoading] = useState(true);
   const [defaultPaymentMethodId, setDefaultPaymentMethodId] =
     useState<string>("");
+  const [cardSummary, setCardSummary] = useState<CardSummary | null>(null);
 
   const paymentReady = Boolean(defaultPaymentMethodId);
 
@@ -268,6 +269,7 @@ export const TradeReviewPage = () => {
       if (!uid) {
         if (alive) {
           setDefaultPaymentMethodId("");
+          setCardSummary(null);
           setBillingLoading(false);
         }
         return;
@@ -283,19 +285,29 @@ export const TradeReviewPage = () => {
         if (!alive) return;
 
         setDefaultPaymentMethodId(data?.defaultPaymentMethodId ?? "");
+
+        const summary =
+          data?.defaultPaymentMethodLast4 && data?.defaultPaymentMethodBrand
+            ? {
+                brand: data.defaultPaymentMethodBrand ?? "",
+                last4: data.defaultPaymentMethodLast4 ?? "",
+                expMonth: data.defaultPaymentMethodExpMonth ?? 0,
+                expYear: data.defaultPaymentMethodExpYear ?? 0,
+              }
+            : null;
+
+        setCardSummary(summary);
       } catch (e) {
         console.error("Billing doc read error:", e);
-
         if (!alive) return;
-
         setDefaultPaymentMethodId("");
+        setCardSummary(null);
       } finally {
         if (alive) setBillingLoading(false);
       }
     };
 
     run();
-
     return () => {
       alive = false;
     };
@@ -348,7 +360,10 @@ export const TradeReviewPage = () => {
   }, [draft]);
 
   const requestSetupIntent = async () => {
-    if (!uid || !currentUser) {
+    // Small client-side guard to avoid repeat calls
+    if (billingLoading || paymentReady || setupClientSecret) return;
+
+    if (!uid) {
       toast({
         title: "Sign in required",
         description: "Please sign in to add a payment method.",
@@ -358,38 +373,28 @@ export const TradeReviewPage = () => {
     }
 
     try {
-      const idToken = await currentUser.getIdToken();
-      const response = await fetch(
-        "https://us-central1-barterr-dev-98dfd.cloudfunctions.net/createSetupIntent",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${idToken}`,
-          },
-        }
-      );
+      const functions = getFunctions(undefined, "us-central1");
+      const fn = httpsCallable(functions, "createSetupIntent");
 
-      if (!response.ok) {
-        throw new Error(`HTTP error: ${response.status}`);
-      }
-
-      const data = (await response.json()) as {
+      const res = await fn();
+      const data = res.data as {
         clientSecret?: string;
         defaultPaymentMethodId?: string;
+        card?: CardSummary | null;
       };
 
       const existingPm = data.defaultPaymentMethodId ?? "";
-      const clientSecret = data.clientSecret ?? "";
 
       if (existingPm) {
         setDefaultPaymentMethodId(existingPm);
+        setCardSummary(data.card ?? null);
         return;
       }
 
+      const clientSecret = data.clientSecret ?? "";
       if (!clientSecret) {
         toast({
-          title: "Couldn't start payment setup",
+          title: "Couldn’t start payment setup",
           description: "Missing Stripe client secret.",
           variant: "destructive",
         });
@@ -399,9 +404,8 @@ export const TradeReviewPage = () => {
       setSetupClientSecret(clientSecret);
     } catch (e) {
       console.error("createSetupIntent error:", e);
-
       toast({
-        title: "Couldn't start payment setup",
+        title: "Couldn’t start payment setup",
         description: "Please try again.",
         variant: "destructive",
       });
@@ -474,7 +478,6 @@ export const TradeReviewPage = () => {
       navigate(`/trades/${ref.id}`, { replace: true });
     } catch (e) {
       console.error("Send trade error:", e);
-
       toast({
         title: "Couldn’t send trade",
         description: "Failed to send trade. Please try again.",
@@ -485,7 +488,6 @@ export const TradeReviewPage = () => {
     }
   };
 
-  // Final guard render AFTER hooks
   if (!draft) return null;
 
   return (
@@ -509,7 +511,7 @@ export const TradeReviewPage = () => {
           <div className="w-16" />
         </div>
 
-        {/* Mobile trade meta */}
+        {/* MOBILE */}
         <div className="mt-3 flex items-center justify-between rounded-xl border border-gray-200 bg-white p-3 md:hidden">
           <div className="text-sm font-semibold">Trade</div>
 
@@ -529,7 +531,6 @@ export const TradeReviewPage = () => {
           </div>
         </div>
 
-        {/* Mobile compact trade panels */}
         <div className="mt-3 grid grid-cols-2 gap-3 md:hidden">
           <div className="rounded-2xl border border-gray-200 bg-white p-3">
             <div className="flex items-center justify-between">
@@ -564,11 +565,100 @@ export const TradeReviewPage = () => {
           </div>
         </div>
 
+        {/* DESKTOP sneaker display (restored) */}
+        <div className="mt-4 hidden grid-cols-1 gap-4 md:grid md:grid-cols-2">
+          <section className="rounded-2xl border border-gray-200 p-4">
+            <div className="text-sm font-semibold">
+              You’re offering{" "}
+              {draft.addCash > 0 ? (
+                <span className="ml-2 text-sm font-semibold text-green-600">
+                  +${draft.addCash}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-3 space-y-3">
+              {draft.yourItems.map((i) => (
+                <div
+                  key={i.id}
+                  className="flex items-center gap-4 rounded-xl border border-gray-200 p-3"
+                >
+                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2">
+                    {i.imageUrl ? (
+                      <img
+                        src={i.imageUrl}
+                        alt={i.name}
+                        className="h-full w-full object-contain"
+                      />
+                    ) : null}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="line-clamp-2 text-base font-semibold">
+                      {i.name}
+                    </div>
+                    <div className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+                      {i.brand ? `${i.brand} • ` : ""}
+                      {i.size}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-sm font-semibold">{i.value}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 p-4">
+            <div className="text-sm font-semibold">
+              You’re requesting{" "}
+              {draft.askCash > 0 ? (
+                <span className="ml-2 text-sm font-semibold text-green-600">
+                  +${draft.askCash}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-3 space-y-3">
+              {draft.theirItems.map((i) => (
+                <div
+                  key={i.id}
+                  className="flex items-center gap-4 rounded-xl border border-gray-200 p-3"
+                >
+                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2">
+                    {i.imageUrl ? (
+                      <img
+                        src={i.imageUrl}
+                        alt={i.title}
+                        className="h-full w-full object-contain"
+                      />
+                    ) : null}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="line-clamp-2 text-base font-semibold">
+                      {i.title}
+                    </div>
+                    <div className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+                      Size {i.size} • {i.condition}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-sm font-semibold">${i.tradeValue}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
         {/* Checkout */}
         <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="text-sm font-semibold">Checkout</div>
 
-          {/* Payment Method row */}
           <div className="mt-3 flex items-center justify-between border-b border-gray-100 pb-3">
             <div className="text-sm text-muted-foreground">Payment Method</div>
 
@@ -578,7 +668,9 @@ export const TradeReviewPage = () => {
               </div>
             ) : paymentReady ? (
               <div className="text-sm font-semibold text-green-600">
-                Card on file ✓
+                {cardSummary?.brand && cardSummary?.last4
+                  ? `${cardSummary.brand.toUpperCase()} •••• ${cardSummary.last4}`
+                  : "Card on file ✓"}
               </div>
             ) : (
               <button
@@ -611,7 +703,6 @@ export const TradeReviewPage = () => {
             </div>
           ) : null}
 
-          {/* Line items */}
           <div className="mt-3 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <div className="text-muted-foreground">Cash deposit</div>

@@ -1,9 +1,8 @@
-import { onRequest } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
 
-// Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
   admin.initializeApp();
 }
@@ -13,111 +12,147 @@ const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
 type BillingDoc = {
   stripeCustomerId?: string;
   defaultPaymentMethodId?: string;
+  defaultPaymentMethodBrand?: string;
+  defaultPaymentMethodLast4?: string;
+  defaultPaymentMethodExpMonth?: number;
+  defaultPaymentMethodExpYear?: number;
   updatedAt?: admin.firestore.FieldValue;
 };
 
-const ALLOWED_ORIGINS = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "https://barterr.ai",
-  "https://dev.barterr.ai",
-];
+const toCardSummary = (pm: Stripe.PaymentMethod) => {
+  const card = pm.card;
+  return {
+    id: pm.id,
+    brand: card?.brand ?? "",
+    last4: card?.last4 ?? "",
+    expMonth: card?.exp_month ?? 0,
+    expYear: card?.exp_year ?? 0,
+  };
+};
 
-export const createSetupIntent = onRequest(
+export const createSetupIntent = onCall(
   {
     region: "us-central1",
+    invoker: "public",
     secrets: [STRIPE_SECRET_KEY],
+    cors: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "https://barterr.ai",
+      "https://dev.barterr.ai",
+    ],
   },
-  async (req, res) => {
-    // Handle CORS
-    const origin = req.headers.origin ?? "";
-    if (ALLOWED_ORIGINS.includes(origin)) {
-      res.set("Access-Control-Allow-Origin", origin);
-    }
-    res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.set("Access-Control-Allow-Credentials", "true");
+  async (request) => {
+    const uid = request.auth?.uid;
 
-    // Handle preflight
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "You must be signed in.");
     }
 
-    try {
-      // Verify Firebase Auth token
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({ error: "Unauthorized - missing token" });
-        return;
-      }
+    const secret = STRIPE_SECRET_KEY.value();
+    if (!secret) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Stripe is not configured (missing STRIPE_SECRET_KEY).",
+      );
+    }
 
-      const idToken = authHeader.split("Bearer ")[1];
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const uid = decodedToken.uid;
+    const stripe = new Stripe(secret);
 
-      const secret = STRIPE_SECRET_KEY.value();
-      if (!secret) {
-        res.status(500).json({ error: "Stripe is not configured" });
-        return;
-      }
+    const db = admin.firestore();
+    const billingRef = db.doc(`users/${uid}/private/billing`);
+    const billingSnap = await billingRef.get();
+    const billing =
+      (billingSnap.exists ? (billingSnap.data() as BillingDoc) : {}) ?? {};
 
-      const stripe = new Stripe(secret);
+    // 1) Ensure Stripe customer exists
+    let stripeCustomerId = billing.stripeCustomerId;
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({ metadata: { uid } });
+      stripeCustomerId = customer.id;
 
-      const db = admin.firestore();
-      const billingRef = db.doc(`users/${uid}/private/billing`);
-      const billingSnap = await billingRef.get();
-      const billing =
-        (billingSnap.exists ? (billingSnap.data() as BillingDoc) : {}) ?? {};
+      await billingRef.set(
+        {
+          stripeCustomerId,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
 
-      let stripeCustomerId = billing.stripeCustomerId;
-
-      // 1) Ensure Stripe customer exists
-      if (!stripeCustomerId) {
-        const customer = await stripe.customers.create({
-          metadata: { uid },
-        });
-
-        stripeCustomerId = customer.id;
-
-        await billingRef.set(
-          {
-            stripeCustomerId,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        );
-      }
-
-      // 2) If user already has a default payment method, return it
-      if (billing.defaultPaymentMethodId) {
-        res.json({
-          defaultPaymentMethodId: billing.defaultPaymentMethodId,
-        });
-        return;
-      }
-
-      // 3) Create SetupIntent (saves payment method for later off-session charging)
-      const setupIntent = await stripe.setupIntents.create({
-        customer: stripeCustomerId,
-        usage: "off_session",
-        payment_method_types: ["card"],
-        metadata: { uid },
-      });
-
-      if (!setupIntent.client_secret) {
-        res.status(500).json({ error: "Failed to create SetupIntent" });
-        return;
-      }
-
-      res.json({
-        clientSecret: setupIntent.client_secret,
+    // 2) If we already have a default PM in Firestore, return it (+ summary if we have it)
+    if (billing.defaultPaymentMethodId) {
+      return {
         stripeCustomerId,
-        defaultPaymentMethodId: "",
-      });
-    } catch (error) {
-      console.error("createSetupIntent error:", error);
-      res.status(500).json({ error: "Internal server error" });
+        defaultPaymentMethodId: billing.defaultPaymentMethodId,
+        card: billing.defaultPaymentMethodLast4
+          ? {
+              brand: billing.defaultPaymentMethodBrand ?? "",
+              last4: billing.defaultPaymentMethodLast4 ?? "",
+              expMonth: billing.defaultPaymentMethodExpMonth ?? 0,
+              expYear: billing.defaultPaymentMethodExpYear ?? 0,
+            }
+          : null,
+      };
     }
+
+    // 3) Otherwise, try to discover an existing saved card in Stripe (so we don’t create a new SetupIntent unnecessarily)
+    //    Stripe: list customer payment methods (type: card)
+    const pms = await stripe.paymentMethods.list({
+      customer: stripeCustomerId,
+      type: "card",
+      limit: 1,
+    });
+
+    const existing = pms.data[0] ?? null;
+
+    if (existing) {
+      const summary = toCardSummary(existing);
+
+      await billingRef.set(
+        {
+          defaultPaymentMethodId: summary.id,
+          defaultPaymentMethodBrand: summary.brand,
+          defaultPaymentMethodLast4: summary.last4,
+          defaultPaymentMethodExpMonth: summary.expMonth,
+          defaultPaymentMethodExpYear: summary.expYear,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      return {
+        stripeCustomerId,
+        defaultPaymentMethodId: summary.id,
+        card: {
+          brand: summary.brand,
+          last4: summary.last4,
+          expMonth: summary.expMonth,
+          expYear: summary.expYear,
+        },
+      };
+    }
+
+    // 4) No existing card: create a SetupIntent (single-use) for Payment Element
+    const setupIntent = await stripe.setupIntents.create({
+      customer: stripeCustomerId,
+      usage: "off_session",
+      payment_method_types: ["card"],
+      metadata: { uid },
+    });
+
+    if (!setupIntent.client_secret) {
+      throw new HttpsError(
+        "internal",
+        "Stripe SetupIntent did not return a client secret.",
+      );
+    }
+
+    return {
+      stripeCustomerId,
+      clientSecret: setupIntent.client_secret,
+      defaultPaymentMethodId: "",
+      card: null,
+    };
   },
 );
