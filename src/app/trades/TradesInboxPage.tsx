@@ -15,14 +15,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-import type { Trade } from "@/types";
+import type { TradeDocument } from "@/types";
 
 export const TradesInboxPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
-  const [sent, setSent] = useState<Trade[]>([]);
-  const [received, setReceived] = useState<Trade[]>([]);
+  const [sent, setSent] = useState<(TradeDocument & { id: string })[]>([]);
+  const [received, setReceived] = useState<(TradeDocument & { id: string })[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,24 +32,27 @@ export const TradesInboxPage = () => {
 
     setLoading(true);
 
-    const tradeRequestsRef = collection(db, "tradeRequests");
+    const tradesRef = collection(db, "trades");
 
     const qSent = query(
-      tradeRequestsRef,
-      where("senderId", "==", currentUser.uid),
-      orderBy("sentAt", "desc")
+      tradesRef,
+      where("fromUserId", "==", currentUser.uid),
+      orderBy("createdAt", "desc")
     );
 
     const qReceived = query(
-      tradeRequestsRef,
-      where("posterId", "==", currentUser.uid),
-      orderBy("sentAt", "desc")
+      tradesRef,
+      where("toUserId", "==", currentUser.uid),
+      orderBy("createdAt", "desc")
     );
 
     const unsubSent = onSnapshot(
       qSent,
       (snap) => {
-        const rows = snap.docs.map((d) => d.data() as Trade);
+        const rows = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as TradeDocument),
+        }));
         setSent(rows);
         setLoading(false);
       },
@@ -61,7 +66,10 @@ export const TradesInboxPage = () => {
     const unsubReceived = onSnapshot(
       qReceived,
       (snap) => {
-        const rows = snap.docs.map((d) => d.data() as Trade);
+        const rows = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as TradeDocument),
+        }));
         setReceived(rows);
         setLoading(false);
       },
@@ -83,50 +91,82 @@ export const TradesInboxPage = () => {
     [sent, received]
   );
 
-  const TradeRow = ({ t, mode }: { t: Trade; mode: "sent" | "received" }) => {
-    const otherName = mode === "sent" ? t.posterName : t.senderName;
+  const TradeRow = ({
+    t,
+    mode,
+  }: {
+    t: TradeDocument & { id: string };
+    mode: "sent" | "received";
+  }) => {
+    // For display, we show sneaker counts and cash from the trade
+    const yourSneaks = t.yourItems?.length ?? 0;
+    const theirSneaks = t.theirItems?.length ?? 0;
+    const yourCash = t.addCash ?? 0;
+    const theirCash = t.askCash ?? 0;
 
-    const yourOffer = t.yourOffer;
-    const theirOffer = t.theirOffer;
+    // Derive status text from the new status field
+    const status = useMemo(() => {
+      if (t.status === "declined") return "Declined";
+      if (t.status === "completed") return "Completed";
+      if (t.status === "failed") return "Payment Failed";
+      if (t.status === "processing") return "Processing";
+      if (t.status === "both_confirmed") return "Confirmed";
 
-    const yourSneaks = yourOffer?.sneakers?.length ?? 0;
-    const theirSneaks = theirOffer?.sneakers?.length ?? 0;
+      // Pending state
+      if (mode === "sent") {
+        return t.receiverConfirmed ? "Accepted" : "Pending";
+      } else {
+        return t.receiverConfirmed ? "You accepted" : "Action needed";
+      }
+    }, [t.status, t.receiverConfirmed, mode]);
 
-    const yourCash = yourOffer?.cash ?? 0;
-    const theirCash = theirOffer?.cash ?? 0;
-
-    const status = t.declined
-      ? "Declined"
-      : t.senderConfirm && t.posterConfirm
-      ? "Accepted"
-      : mode === "sent"
-      ? t.posterConfirm
-        ? "Accepted"
-        : "Pending"
-      : t.posterConfirm
-      ? "You accepted"
-      : "Action needed";
+    // Status badge colors
+    const statusColor = useMemo(() => {
+      switch (t.status) {
+        case "completed":
+          return "border-green-200 bg-green-50 text-green-700";
+        case "failed":
+          return "border-red-200 bg-red-50 text-red-700";
+        case "declined":
+          return "border-gray-200 bg-gray-50 text-gray-500";
+        case "processing":
+        case "both_confirmed":
+          return "border-blue-200 bg-blue-50 text-blue-700";
+        default:
+          return t.receiverConfirmed
+            ? "border-green-200 bg-green-50 text-green-700"
+            : mode === "received"
+              ? "border-orange-200 bg-orange-50 text-orange-700"
+              : "";
+      }
+    }, [t.status, t.receiverConfirmed, mode]);
 
     return (
       <button
         type="button"
         className="w-full text-left"
-        onClick={() => navigate(`/trades/${t.tradeId}`)}
+        onClick={() => navigate(`/trades/${t.id}`)}
       >
         <Card className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold">{otherName}</div>
+              <div className="truncate text-sm font-semibold">
+                Trade #{t.id.slice(-6)}
+              </div>
               <div className="mt-1 text-xs text-muted-foreground">
-                Your offer: {yourSneaks} sneaker{yourSneaks === 1 ? "" : "s"}
+                {mode === "sent" ? "You offer" : "They offer"}: {yourSneaks}{" "}
+                sneaker{yourSneaks === 1 ? "" : "s"}
                 {yourCash ? ` + $${yourCash}` : ""}
                 {" • "}
-                Their offer: {theirSneaks} sneaker{theirSneaks === 1 ? "" : "s"}
+                {mode === "sent" ? "For" : "You give"}: {theirSneaks} sneaker
+                {theirSneaks === 1 ? "" : "s"}
                 {theirCash ? ` + $${theirCash}` : ""}
               </div>
             </div>
 
-            <div className="shrink-0 rounded-full border px-2 py-1 text-xs">
+            <div
+              className={`shrink-0 rounded-full border px-2 py-1 text-xs ${statusColor}`}
+            >
               {status}
             </div>
           </div>
@@ -159,7 +199,7 @@ export const TradesInboxPage = () => {
               <div className="text-sm font-semibold">Received</div>
               <div className="space-y-2">
                 {received.map((t) => (
-                  <TradeRow key={t.tradeId} t={t} mode="received" />
+                  <TradeRow key={t.id} t={t} mode="received" />
                 ))}
               </div>
             </div>
@@ -172,7 +212,7 @@ export const TradesInboxPage = () => {
               <div className="text-sm font-semibold">Sent</div>
               <div className="space-y-2">
                 {sent.map((t) => (
-                  <TradeRow key={t.tradeId} t={t} mode="sent" />
+                  <TradeRow key={t.id} t={t} mode="sent" />
                 ))}
               </div>
             </div>

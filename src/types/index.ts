@@ -63,6 +63,7 @@ export interface OfferHistory {
   initiatedBy: string;
 }
 
+/** @deprecated Use TradeDocument for new code */
 export interface Trade {
   tradeId: string;
   theirOffer?: TradeOffer;
@@ -94,6 +95,114 @@ export interface Trade {
   declined: boolean;
   reminderSent: boolean;
   tradeLikelihood?: number;
+}
+
+/**
+ * Trade document status values
+ */
+export type TradeStatus =
+  | "pending"
+  | "both_confirmed"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "declined";
+
+/**
+ * Payment status for each party
+ */
+export type PaymentStatus = "pending" | "succeeded" | "failed" | null;
+
+/**
+ * Item snapshot stored in trade document (sender's items)
+ */
+export interface TradeDocumentYourItem {
+  listingId: string;
+  postId: string;
+  name: string;
+  size: string;
+  value: number;
+  imageUrl: string;
+  brand: string;
+}
+
+/**
+ * Item snapshot stored in trade document (receiver's items)
+ */
+export interface TradeDocumentTheirItem {
+  listingId: string;
+  postId: string;
+  userId: string;
+  size: number;
+  condition: "new" | "used";
+  tradeValue: number;
+  title: string;
+  brand: string;
+  imageUrl: string;
+}
+
+/**
+ * New unified trade document schema for `trades` collection.
+ * Supports bilateral escrow where both parties are charged.
+ */
+export interface TradeDocument {
+  // Identification
+  id?: string;
+
+  // Participants
+  fromUserId: string;
+  toUserId: string;
+
+  // Status
+  status: TradeStatus;
+
+  // Sender confirmation & pricing (set on trade creation)
+  senderConfirmed: boolean;
+  senderConfirmedAt: Timestamp | null;
+  senderSneakerCount: number;
+  senderServiceFeeCents: number;
+  senderCashDepositCents: number;
+  senderProcessingFeeCents: number;
+  senderTotalCents: number;
+  senderPaymentMethodId: string;
+
+  // Receiver confirmation & pricing (set when receiver accepts)
+  receiverConfirmed: boolean;
+  receiverConfirmedAt: Timestamp | null;
+  receiverSneakerCount: number;
+  receiverServiceFeeCents: number;
+  receiverCashDepositCents: number;
+  receiverProcessingFeeCents: number;
+  receiverTotalCents: number;
+  receiverPaymentMethodId: string;
+
+  // Payment tracking
+  senderPaymentIntentId: string | null;
+  senderPaymentStatus: PaymentStatus;
+  senderPaymentError: string | null;
+  senderChargedAt: Timestamp | null;
+
+  receiverPaymentIntentId: string | null;
+  receiverPaymentStatus: PaymentStatus;
+  receiverPaymentError: string | null;
+  receiverChargedAt: Timestamp | null;
+
+  // Trade items
+  yourItems: TradeDocumentYourItem[];
+  theirItems: TradeDocumentTheirItem[];
+  yourListingIds: string[];
+  theirListingIds: string[];
+
+  // Cash flow
+  addCash: number;
+  askCash: number;
+  netTotal: number;
+
+  // Metadata
+  pricingVersion: number;
+  likelihood: number;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export interface UserReference {

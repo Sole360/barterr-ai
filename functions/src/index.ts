@@ -3,6 +3,7 @@ import { indexPost, unindexPost } from "./algoliaIndex";
 import { setGlobalOptions } from "firebase-functions";
 import { deleteListingPhotos } from "./cleanupPhotoStorage";
 import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
+import { acceptTrade, onTradeConfirmed, retryPayment } from "./tradePayments";
 
 setGlobalOptions({ maxInstances: 10 });
 
@@ -13,4 +14,7 @@ export {
   deleteListingPhotos,
   createSetupIntent,
   setDefaultPaymentMethod,
+  acceptTrade,
+  onTradeConfirmed,
+  retryPayment,
 };

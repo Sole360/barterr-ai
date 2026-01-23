@@ -274,11 +274,37 @@ export const TradeReviewPage = () => {
         likelihood: draft.likelihood,
 
         pricingVersion: 1,
+
+        // Sender confirmation (confirmed on send)
+        senderConfirmed: true,
+        senderConfirmedAt: serverTimestamp(),
         senderSneakerCount,
         senderServiceFeeCents: serviceFeeCents,
         senderCashDepositCents: cashDepositCents,
         senderProcessingFeeCents: processingFeeCents,
         senderTotalCents: totalCents,
+        senderPaymentMethodId: defaultPaymentMethodId,
+
+        // Receiver confirmation (set when they accept)
+        receiverConfirmed: false,
+        receiverConfirmedAt: null,
+        receiverSneakerCount: 0,
+        receiverServiceFeeCents: 0,
+        receiverCashDepositCents: 0,
+        receiverProcessingFeeCents: 0,
+        receiverTotalCents: 0,
+        receiverPaymentMethodId: "",
+
+        // Payment tracking (set when processing)
+        senderPaymentIntentId: null,
+        senderPaymentStatus: null,
+        senderPaymentError: null,
+        senderChargedAt: null,
+
+        receiverPaymentIntentId: null,
+        receiverPaymentStatus: null,
+        receiverPaymentError: null,
+        receiverChargedAt: null,
 
         yourListingIds: draft.yourItems.map((i) => i.id),
         theirListingIds: draft.theirItems.map((i) => i.id),
@@ -303,9 +329,6 @@ export const TradeReviewPage = () => {
           brand: i.brand,
           imageUrl: i.imageUrl,
         })),
-
-        // snapshot of payer’s default PM id so backend can reference later if needed
-        payerDefaultPaymentMethodId: defaultPaymentMethodId,
       };
 
       const ref = await addDoc(collection(db, "trades"), tradeDoc);
