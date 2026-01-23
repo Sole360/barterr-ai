@@ -2,7 +2,7 @@ import { processImageJobs } from "./processImageJobs";
 import { indexPost, unindexPost } from "./algoliaIndex";
 import { setGlobalOptions } from "firebase-functions";
 import { deleteListingPhotos } from "./cleanupPhotoStorage";
-import { createSetupIntent } from "./stripeSetupIntent";
+import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
 
 setGlobalOptions({ maxInstances: 10 });
 
@@ -12,4 +12,5 @@ export {
   unindexPost,
   deleteListingPhotos,
   createSetupIntent,
+  setDefaultPaymentMethod,
 };

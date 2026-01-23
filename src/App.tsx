@@ -13,6 +13,7 @@ import { TradesInboxPage } from "@/app/trades/TradesInboxPage";
 import { TradeDetailPage } from "@/app/trades/TradeDetailPage";
 import { TradeComposePage } from "@/app/trades/TradeComposePage";
 import { TradeReviewPage } from "@/app/trades/TradeReviewPage";
+import { TradePaymentMethodPage } from "./app/trades/TradePaymentMethodPage";
 
 function App() {
   return (
@@ -47,6 +48,10 @@ function App() {
                 <TradeReviewPage />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path="/trades/new/review/payment-method"
+            element={<TradePaymentMethodPage />}
           />
 
           <Route
