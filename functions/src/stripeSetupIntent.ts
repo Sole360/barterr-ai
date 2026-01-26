@@ -49,6 +49,9 @@ export const createSetupIntent = onCall(
       throw new HttpsError("unauthenticated", "You must be signed in.");
     }
 
+    // If forceNew is true, always create a new SetupIntent (for changing payment method)
+    const { forceNew = false } = (request.data as { forceNew?: boolean }) ?? {};
+
     const secret = STRIPE_SECRET_KEY.value();
     if (!secret) {
       throw new HttpsError(
@@ -80,60 +83,63 @@ export const createSetupIntent = onCall(
       );
     }
 
-    // 2) If we already have a default PM in Firestore, return it (+ summary if we have it)
-    if (billing.defaultPaymentMethodId) {
-      return {
-        stripeCustomerId,
-        defaultPaymentMethodId: billing.defaultPaymentMethodId,
-        card: billing.defaultPaymentMethodLast4
-          ? {
-              brand: billing.defaultPaymentMethodBrand ?? "",
-              last4: billing.defaultPaymentMethodLast4 ?? "",
-              expMonth: billing.defaultPaymentMethodExpMonth ?? 0,
-              expYear: billing.defaultPaymentMethodExpYear ?? 0,
-            }
-          : null,
-      };
-    }
+    // If not forcing new, check for existing payment method
+    if (!forceNew) {
+      // 2) If we already have a default PM in Firestore, return it (+ summary if we have it)
+      if (billing.defaultPaymentMethodId) {
+        return {
+          stripeCustomerId,
+          defaultPaymentMethodId: billing.defaultPaymentMethodId,
+          card: billing.defaultPaymentMethodLast4
+            ? {
+                brand: billing.defaultPaymentMethodBrand ?? "",
+                last4: billing.defaultPaymentMethodLast4 ?? "",
+                expMonth: billing.defaultPaymentMethodExpMonth ?? 0,
+                expYear: billing.defaultPaymentMethodExpYear ?? 0,
+              }
+            : null,
+        };
+      }
 
-    // 3) Otherwise, try to discover an existing saved card in Stripe (so we don’t create a new SetupIntent unnecessarily)
-    //    Stripe: list customer payment methods (type: card)
-    const pms = await stripe.paymentMethods.list({
-      customer: stripeCustomerId,
-      type: "card",
-      limit: 1,
-    });
+      // 3) Otherwise, try to discover an existing saved card in Stripe (so we don't create a new SetupIntent unnecessarily)
+      //    Stripe: list customer payment methods (type: card)
+      const pms = await stripe.paymentMethods.list({
+        customer: stripeCustomerId,
+        type: "card",
+        limit: 1,
+      });
 
-    const existing = pms.data[0] ?? null;
+      const existing = pms.data[0] ?? null;
 
-    if (existing) {
-      const summary = toCardSummary(existing);
+      if (existing) {
+        const summary = toCardSummary(existing);
 
-      await billingRef.set(
-        {
+        await billingRef.set(
+          {
+            defaultPaymentMethodId: summary.id,
+            defaultPaymentMethodBrand: summary.brand,
+            defaultPaymentMethodLast4: summary.last4,
+            defaultPaymentMethodExpMonth: summary.expMonth,
+            defaultPaymentMethodExpYear: summary.expYear,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+
+        return {
+          stripeCustomerId,
           defaultPaymentMethodId: summary.id,
-          defaultPaymentMethodBrand: summary.brand,
-          defaultPaymentMethodLast4: summary.last4,
-          defaultPaymentMethodExpMonth: summary.expMonth,
-          defaultPaymentMethodExpYear: summary.expYear,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
-
-      return {
-        stripeCustomerId,
-        defaultPaymentMethodId: summary.id,
-        card: {
-          brand: summary.brand,
-          last4: summary.last4,
-          expMonth: summary.expMonth,
-          expYear: summary.expYear,
-        },
-      };
+          card: {
+            brand: summary.brand,
+            last4: summary.last4,
+            expMonth: summary.expMonth,
+            expYear: summary.expYear,
+          },
+        };
+      }
     }
 
-    // 4) No existing card: create a SetupIntent (single-use) for Payment Element
+    // 4) Create a SetupIntent (single-use) for Payment Element
     const setupIntent = await stripe.setupIntents.create({
       customer: stripeCustomerId,
       usage: "off_session",

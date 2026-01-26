@@ -19,6 +19,7 @@ const DRAFT_STORAGE_KEY = "barterr.tradeReviewDraft.v1";
 
 type LocationState = {
   draft?: TradeReviewDraft;
+  returnTo?: string; // For receiver flow - where to go after saving PM
 };
 
 const readDraftFromSession = (): TradeReviewDraft | null => {
@@ -150,12 +151,15 @@ export const TradePaymentMethodPage = () => {
 
   const state = (location.state as LocationState | null) ?? null;
   const draft = state?.draft ?? readDraftFromSession();
+  const returnTo = state?.returnTo; // For receiver flow
 
   const [loading, setLoading] = useState(true);
   const [clientSecret, setClientSecret] = useState<string>("");
 
   useEffect(() => {
-    if (!draft) {
+    // For sender flow (creating trade): require draft
+    // For receiver flow (accepting trade): require returnTo
+    if (!draft && !returnTo) {
       navigate("/trades/new", { replace: true });
       return;
     }
@@ -166,7 +170,7 @@ export const TradePaymentMethodPage = () => {
         description: "Please sign in to add a payment method.",
         variant: "destructive",
       });
-      navigate("/trades/new", { replace: true });
+      navigate(returnTo || "/trades/new", { replace: true });
       return;
     }
 
@@ -178,28 +182,18 @@ export const TradePaymentMethodPage = () => {
       try {
         const functions = getFunctions(undefined, "us-central1");
         const fn = httpsCallable(functions, "createSetupIntent");
-        const res = await fn();
+        // Always force new SetupIntent since user explicitly navigated here to add/change card
+        const res = await fn({ forceNew: true });
 
         const data = res.data as SetupIntentResponse;
-
-        const existingPm = data.defaultPaymentMethodId ?? "";
         const secret = data.clientSecret ?? "";
 
         if (!alive) return;
 
-        if (existingPm) {
-          // They already have a default PM — no need to show form.
-          toast({
-            title: "Payment method already saved",
-            description: "Returning to your trade…",
-          });
-          navigate("/trades/new/review", { replace: true, state: { draft } });
-          return;
-        }
-
+        // Always show the form - user may want to change their payment method
         if (!secret) {
           toast({
-            title: "Couldn’t start payment setup",
+            title: "Couldn't start payment setup",
             description: "Missing Stripe client secret.",
             variant: "destructive",
           });
@@ -210,7 +204,7 @@ export const TradePaymentMethodPage = () => {
       } catch (e) {
         console.error("createSetupIntent error:", e);
         toast({
-          title: "Couldn’t start payment setup",
+          title: "Couldn't start payment setup",
           description: "Please try again.",
           variant: "destructive",
         });
@@ -224,14 +218,14 @@ export const TradePaymentMethodPage = () => {
     return () => {
       alive = false;
     };
-  }, [draft, navigate, toast, uid]);
+  }, [draft, returnTo, navigate, toast, uid]);
 
   const elementsOptions = useMemo(() => {
     if (!clientSecret) return null;
     return { clientSecret, appearance: { theme: "stripe" as const } };
   }, [clientSecret]);
 
-  if (!draft) return null;
+  if (!draft && !returnTo) return null;
 
   return (
     <div className="min-h-[100dvh] bg-white">
@@ -268,10 +262,16 @@ export const TradePaymentMethodPage = () => {
             <Elements stripe={stripePromise} options={elementsOptions}>
               <SetupPaymentForm
                 onSaved={() => {
-                  navigate("/trades/new/review", {
-                    replace: true,
-                    state: { draft },
-                  });
+                  if (returnTo) {
+                    // Receiver flow - go back to trade detail
+                    navigate(returnTo, { replace: true });
+                  } else {
+                    // Sender flow - go back to trade review
+                    navigate("/trades/new/review", {
+                      replace: true,
+                      state: { draft },
+                    });
+                  }
                 }}
               />
             </Elements>

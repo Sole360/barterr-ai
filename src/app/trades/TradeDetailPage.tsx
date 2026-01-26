@@ -41,7 +41,7 @@ function SneakerRow({
         <img
           src={imageUrl}
           alt={name}
-          className="h-12 w-12 rounded object-cover"
+          className="h-12 w-12 rounded object-contain"
           loading="lazy"
         />
       ) : (
@@ -407,7 +407,11 @@ export const TradeDetailPage = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => navigate("/trades/new/review/payment-method")}
+                    onClick={() =>
+                      navigate("/trades/new/review/payment-method", {
+                        state: { returnTo: `/trades/${tradeId}` },
+                      })
+                    }
                   >
                     Update Card
                   </Button>
@@ -546,7 +550,9 @@ export const TradeDetailPage = () => {
                       <button
                         type="button"
                         onClick={() =>
-                          navigate("/trades/new/review/payment-method")
+                          navigate("/trades/new/review/payment-method", {
+                            state: { returnTo: `/trades/${tradeId}` },
+                          })
                         }
                         className="text-sm font-semibold text-[#3366FF]"
                       >
@@ -557,7 +563,9 @@ export const TradeDetailPage = () => {
                     <button
                       type="button"
                       onClick={() =>
-                        navigate("/trades/new/review/payment-method")
+                        navigate("/trades/new/review/payment-method", {
+                          state: { returnTo: `/trades/${tradeId}` },
+                        })
                       }
                       className="text-sm font-semibold text-[#3366FF]"
                     >
