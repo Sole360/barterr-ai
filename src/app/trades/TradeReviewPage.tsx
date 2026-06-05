@@ -285,6 +285,10 @@ export const TradeReviewPage = () => {
         senderTotalCents: totalCents,
         senderPaymentMethodId: defaultPaymentMethodId,
 
+        // Read tracking
+        senderRead: true,
+        receiverRead: false,
+
         // Receiver confirmation (set when they accept)
         receiverConfirmed: false,
         receiverConfirmedAt: null,

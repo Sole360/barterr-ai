@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Trade declined</title>
+<!--[if mso]><style>body,table,td{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&family=Montserrat:wght@800;900&display=swap");
+  body { margin: 0; padding: 0; background: #efeff4; -webkit-font-smoothing: antialiased; }
+  table { border-collapse: collapse; }
+  a { text-decoration: none; }
+  .btn:hover { opacity: .92; }
+  @media (max-width: 620px) { .container { width: 100% !important; } .px { padding-left: 24px !important; padding-right: 24px !important; } }
+</style>
+</head>
+<body>
+<!-- Variables: firstName, counterpartyName, tradeId, inboxUrl -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">This trade didn't go through &mdash; keep browsing the drop.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#efeff4;">
+  <tr><td align="center" style="padding:32px 12px;">
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+
+      <!-- Header -->
+      <tr><td style="padding:28px 40px;border-bottom:1px solid #e5e5ea;" class="px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td align="left"><img src="../assets/barterr-main-icon.png" width="32" height="32" alt="Barterr" style="display:block;border:0;vertical-align:middle;"></td>
+          <td align="right" style="font-family:'Montserrat',Arial,sans-serif;font-weight:900;font-size:18px;color:#000;">Barterr</td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Status badge + title -->
+      <tr><td style="padding:36px 40px 8px;" class="px">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+          <tr><td style="background:#fff1f2;border:1px solid #fecdd3;border-radius:999px;padding:5px 14px;font-family:'Karla',Arial,sans-serif;font-size:12px;font-weight:700;color:#e11d48;letter-spacing:.04em;text-transform:uppercase;">Declined</td></tr>
+        </table>
+        <h1 style="margin:0 0 12px;font-family:'Montserrat',Arial,sans-serif;font-weight:900;font-size:26px;line-height:1.15;color:#000;letter-spacing:-0.01em;">This trade was declined</h1>
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:16px;line-height:1.6;color:#333;">Hey {{firstName}}, your trade with {{counterpartyName}} didn't go through. No charges were made &mdash; your payment method was never touched.</p>
+      </td></tr>
+
+      <!-- Trade ID chip -->
+      <tr><td style="padding:20px 40px 8px;" class="px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e5ea;border-radius:12px;">
+          <tr>
+            <td style="padding:16px 18px;font-family:'Karla',Arial,sans-serif;font-size:13px;color:#8e8e93;">Trade ID</td>
+            <td align="right" style="padding:16px 18px;font-family:'Karla',Arial,sans-serif;font-size:13px;font-weight:700;color:#000;">#{{tradeId}}</td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <!-- Encouragement -->
+      <tr><td style="padding:20px 40px 8px;" class="px">
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:15px;line-height:1.6;color:#333;">There are plenty of traders looking for what you've got. Head back to your inbox to find your next match.</p>
+      </td></tr>
+
+      <!-- CTA -->
+      <tr><td align="center" style="padding:20px 40px 8px;" class="px">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td align="center" bgcolor="#3366ff" style="border-radius:12px;background-image:linear-gradient(135deg,#33ff99 0%,#33c9bc 50%,#3366ff 100%);">
+            <a class="btn" href="{{inboxUrl}}" style="display:inline-block;padding:15px 32px;font-family:'Montserrat',Arial,sans-serif;font-weight:800;font-size:16px;color:#ffffff;border-radius:12px;">Back to Inbox</a>
+          </td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Footer -->
+      <tr><td style="padding:28px 40px 36px;" class="px">
+        <hr style="border:none;border-top:1px solid #e5e5ea;margin:0 0 20px;">
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:12px;line-height:1.6;color:#c7c7cc;">&copy; 2025 Barterr &middot; Sole360</p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

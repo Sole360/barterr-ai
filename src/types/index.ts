@@ -198,6 +198,10 @@ export interface TradeDocument {
   askCash: number;
   netTotal: number;
 
+  // Read tracking (for reminder email logic)
+  senderRead: boolean;
+  receiverRead: boolean;
+
   // Metadata
   pricingVersion: number;
   likelihood: number;

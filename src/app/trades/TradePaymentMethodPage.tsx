@@ -70,17 +70,30 @@ const SetupPaymentForm = ({ onSaved }: SetupPaymentFormProps) => {
         redirect: "if_required",
       });
 
-      if (result.error) {
-        toast({
-          title: "Payment method not saved",
-          description: result.error.message ?? "Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
+      let paymentMethodId = "";
 
-      const pm = result.setupIntent?.payment_method;
-      const paymentMethodId = typeof pm === "string" ? pm : (pm?.id ?? "");
+      if (result.error) {
+        // Handle "already succeeded" case - extract PM from error if available
+        if (
+          result.error.code === "setup_intent_unexpected_state" &&
+          result.error.setup_intent?.payment_method
+        ) {
+          const pm = result.error.setup_intent.payment_method;
+          paymentMethodId = typeof pm === "string" ? pm : (pm?.id ?? "");
+        }
+
+        if (!paymentMethodId) {
+          toast({
+            title: "Payment method not saved",
+            description: result.error.message ?? "Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        const pm = result.setupIntent?.payment_method;
+        paymentMethodId = typeof pm === "string" ? pm : (pm?.id ?? "");
+      }
 
       if (!paymentMethodId) {
         toast({
@@ -156,6 +169,9 @@ export const TradePaymentMethodPage = () => {
   const [loading, setLoading] = useState(true);
   const [clientSecret, setClientSecret] = useState<string>("");
 
+  // Use location.key to force fresh SetupIntent on each navigation to this page
+  const locationKey = location.key;
+
   useEffect(() => {
     // For sender flow (creating trade): require draft
     // For receiver flow (accepting trade): require returnTo
@@ -177,6 +193,8 @@ export const TradePaymentMethodPage = () => {
     let alive = true;
 
     const run = async () => {
+      // Clear any stale clientSecret before fetching new one
+      setClientSecret("");
       setLoading(true);
 
       try {
@@ -218,7 +236,7 @@ export const TradePaymentMethodPage = () => {
     return () => {
       alive = false;
     };
-  }, [draft, returnTo, navigate, toast, uid]);
+  }, [draft, returnTo, navigate, toast, uid, locationKey]);
 
   const elementsOptions = useMemo(() => {
     if (!clientSecret) return null;
@@ -259,7 +277,7 @@ export const TradePaymentMethodPage = () => {
               Loading payment form…
             </div>
           ) : elementsOptions ? (
-            <Elements stripe={stripePromise} options={elementsOptions}>
+            <Elements key={clientSecret} stripe={stripePromise} options={elementsOptions}>
               <SetupPaymentForm
                 onSaved={() => {
                   if (returnTo) {

@@ -76,7 +76,7 @@ async function authorizePayment(
   amountCents: number,
   paymentMethodId: string,
   tradeId: string,
-  role: "sender" | "receiver",
+  role: "sender" | "receiver"
 ): Promise<{
   paymentIntentId: string | null;
   status: PaymentStatus;
@@ -179,7 +179,7 @@ export const acceptTrade = onCall(
     if (trade.toUserId !== uid) {
       throw new HttpsError(
         "permission-denied",
-        "Only the trade recipient can accept.",
+        "Only the trade recipient can accept."
       );
     }
 
@@ -187,7 +187,7 @@ export const acceptTrade = onCall(
     if (trade.status !== "pending") {
       throw new HttpsError(
         "failed-precondition",
-        `Trade cannot be accepted (status: ${trade.status}).`,
+        `Trade cannot be accepted (status: ${trade.status}).`
       );
     }
 
@@ -202,7 +202,7 @@ export const acceptTrade = onCall(
     if (!billing?.defaultPaymentMethodId) {
       throw new HttpsError(
         "failed-precondition",
-        "Please add a payment method before accepting.",
+        "Please add a payment method before accepting."
       );
     }
 
@@ -211,7 +211,8 @@ export const acceptTrade = onCall(
     const receiverSneakerCount = trade.theirItems?.length || 0;
     const receiverCashDeposit = trade.askCash || 0;
 
-    const receiverServiceFeeCents = serviceFeeCentsForCount(receiverSneakerCount);
+    const receiverServiceFeeCents =
+      serviceFeeCentsForCount(receiverSneakerCount);
     const receiverCashDepositCents = Math.round(receiverCashDeposit * 100);
     const netCents = receiverCashDepositCents + receiverServiceFeeCents;
     const { grossCents, feeCents } = grossUpForStripe(netCents);
@@ -234,7 +235,7 @@ export const acceptTrade = onCall(
       success: true,
       receiverTotalCents: grossCents,
     };
-  },
+  }
 );
 
 /**
@@ -282,7 +283,7 @@ export const onTradeConfirmed = onDocumentUpdated(
       after.senderTotalCents,
       after.senderPaymentMethodId,
       tradeId,
-      "sender",
+      "sender"
     );
 
     const receiverResult = await authorizePayment(
@@ -291,7 +292,7 @@ export const onTradeConfirmed = onDocumentUpdated(
       after.receiverTotalCents,
       after.receiverPaymentMethodId,
       tradeId,
-      "receiver",
+      "receiver"
     );
 
     const bothSucceeded =
@@ -305,12 +306,12 @@ export const onTradeConfirmed = onDocumentUpdated(
 
         if (senderResult.paymentIntentId) {
           capturePromises.push(
-            stripe.paymentIntents.capture(senderResult.paymentIntentId),
+            stripe.paymentIntents.capture(senderResult.paymentIntentId)
           );
         }
         if (receiverResult.paymentIntentId) {
           capturePromises.push(
-            stripe.paymentIntents.capture(receiverResult.paymentIntentId),
+            stripe.paymentIntents.capture(receiverResult.paymentIntentId)
           );
         }
 
@@ -396,7 +397,7 @@ export const onTradeConfirmed = onDocumentUpdated(
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
-  },
+  }
 );
 
 /**
@@ -446,7 +447,7 @@ export const retryPayment = onCall(
     if (trade.status !== "failed") {
       throw new HttpsError(
         "failed-precondition",
-        "Can only retry failed trades.",
+        "Can only retry failed trades."
       );
     }
 
@@ -458,7 +459,7 @@ export const retryPayment = onCall(
     if (myPaymentStatus !== "failed") {
       throw new HttpsError(
         "failed-precondition",
-        "Your payment did not fail.",
+        "Your payment did not fail."
       );
     }
 
@@ -469,16 +470,13 @@ export const retryPayment = onCall(
     if (!billing?.defaultPaymentMethodId) {
       throw new HttpsError(
         "failed-precondition",
-        "Please add a payment method first.",
+        "Please add a payment method first."
       );
     }
 
     const secret = STRIPE_SECRET_KEY.value();
     if (!secret) {
-      throw new HttpsError(
-        "failed-precondition",
-        "Stripe is not configured.",
-      );
+      throw new HttpsError("failed-precondition", "Stripe is not configured.");
     }
 
     const stripe = new Stripe(secret);
@@ -494,7 +492,7 @@ export const retryPayment = onCall(
       amountCents,
       billing.defaultPaymentMethodId,
       tradeId,
-      role,
+      role
     );
 
     const prefix = isSender ? "sender" : "receiver";
@@ -580,5 +578,5 @@ export const retryPayment = onCall(
 
       return { success: false, error: result.error };
     }
-  },
+  }
 );

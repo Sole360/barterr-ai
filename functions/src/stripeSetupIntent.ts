@@ -56,7 +56,7 @@ export const createSetupIntent = onCall(
     if (!secret) {
       throw new HttpsError(
         "failed-precondition",
-        "Stripe is not configured (missing STRIPE_SECRET_KEY).",
+        "Stripe is not configured (missing STRIPE_SECRET_KEY)."
       );
     }
 
@@ -79,7 +79,7 @@ export const createSetupIntent = onCall(
           stripeCustomerId,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
-        { merge: true },
+        { merge: true }
       );
     }
 
@@ -123,7 +123,7 @@ export const createSetupIntent = onCall(
             defaultPaymentMethodExpYear: summary.expYear,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
-          { merge: true },
+          { merge: true }
         );
 
         return {
@@ -150,7 +150,7 @@ export const createSetupIntent = onCall(
     if (!setupIntent.client_secret) {
       throw new HttpsError(
         "internal",
-        "Stripe SetupIntent did not return a client secret.",
+        "Stripe SetupIntent did not return a client secret."
       );
     }
 
@@ -160,7 +160,7 @@ export const createSetupIntent = onCall(
       defaultPaymentMethodId: "",
       card: null,
     };
-  },
+  }
 );
 
 /**
@@ -192,7 +192,7 @@ export const setDefaultPaymentMethod = onCall(
     if (!paymentMethodId) {
       throw new HttpsError(
         "invalid-argument",
-        "Missing paymentMethodId parameter.",
+        "Missing paymentMethodId parameter."
       );
     }
 
@@ -200,7 +200,7 @@ export const setDefaultPaymentMethod = onCall(
     if (!secret) {
       throw new HttpsError(
         "failed-precondition",
-        "Stripe is not configured (missing STRIPE_SECRET_KEY).",
+        "Stripe is not configured (missing STRIPE_SECRET_KEY)."
       );
     }
 
@@ -223,7 +223,7 @@ export const setDefaultPaymentMethod = onCall(
           stripeCustomerId,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
-        { merge: true },
+        { merge: true }
       );
     }
 
@@ -238,7 +238,7 @@ export const setDefaultPaymentMethod = onCall(
     } else if (pm.customer !== stripeCustomerId) {
       throw new HttpsError(
         "failed-precondition",
-        "Payment method belongs to a different customer.",
+        "Payment method belongs to a different customer."
       );
     }
 
@@ -260,7 +260,7 @@ export const setDefaultPaymentMethod = onCall(
         defaultPaymentMethodExpYear: summary.expYear,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
-      { merge: true },
+      { merge: true }
     );
 
     return {
@@ -272,5 +272,5 @@ export const setDefaultPaymentMethod = onCall(
         expYear: summary.expYear,
       },
     };
-  },
+  }
 );
