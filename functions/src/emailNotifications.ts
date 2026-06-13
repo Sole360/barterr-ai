@@ -151,6 +151,7 @@ export const onNewTrade = onDocumentCreated(
     await sgMail.send({
       to: receiver.email,
       from: FROM,
+      subject: `${displayName(sender)} wants to trade with you`,
       templateId: TEMPLATES.NEW_TRADE,
       dynamicTemplateData: {
         receiverName: firstName(receiver),
@@ -209,6 +210,7 @@ export const onTradeStatusChange = onDocumentUpdated(
         sgMail.send({
           to: sender.email,
           from: FROM,
+          subject: "Your trade is confirmed",
           templateId: TEMPLATES.TRADE_CONFIRMED,
           dynamicTemplateData: {
             firstName: firstName(sender),
@@ -220,6 +222,7 @@ export const onTradeStatusChange = onDocumentUpdated(
         sgMail.send({
           to: receiver.email,
           from: FROM,
+          subject: "Your trade is confirmed",
           templateId: TEMPLATES.TRADE_CONFIRMED,
           dynamicTemplateData: {
             firstName: firstName(receiver),
@@ -236,6 +239,7 @@ export const onTradeStatusChange = onDocumentUpdated(
         sgMail.send({
           to: sender.email,
           from: FROM,
+          subject: "Trade update: offer declined",
           templateId: TEMPLATES.TRADE_DECLINED,
           dynamicTemplateData: {
             firstName: firstName(sender),
@@ -247,6 +251,7 @@ export const onTradeStatusChange = onDocumentUpdated(
         sgMail.send({
           to: receiver.email,
           from: FROM,
+          subject: "Trade update: offer declined",
           templateId: TEMPLATES.TRADE_DECLINED,
           dynamicTemplateData: {
             firstName: firstName(receiver),
@@ -296,6 +301,7 @@ export const sendWeeklyReminder = onSchedule(
         sgMail.send({
           to: user.email,
           from: FROM,
+          subject: "You have pending trades on Barterr",
           templateId: TEMPLATES.REMINDER,
           dynamicTemplateData: {
             firstName: firstName(user),
@@ -328,6 +334,7 @@ export const sendEmailMessage = onCall(
     return sgMail.send({
       to: email,
       from: FROM,
+      subject: `New message from ${senderName}`,
       templateId: TEMPLATES.DIRECT_MESSAGE,
       dynamicTemplateData: {
         recipientName,
@@ -370,6 +377,7 @@ export const onMatchPostCriteria = onDocumentUpdated(
             sgMail.send({
               to: wisher.email,
               from: FROM,
+              subject: `${after.title} just dropped in your size`,
               templateId: TEMPLATES.WISHLIST_MATCH,
               dynamicTemplateData: {
                 firstName: wisher.displayName,
@@ -391,6 +399,7 @@ export const onMatchPostCriteria = onDocumentUpdated(
             sgMail.send({
               to: owner.email,
               from: FROM,
+              subject: `Someone wants your ${after.title}`,
               templateId: TEMPLATES.LISTING_MATCH,
               dynamicTemplateData: {
                 firstName: owner.displayName,
@@ -433,6 +442,7 @@ export const onFakeShoes = onDocumentUpdated(
       to: user.email,
       bcc: "terrence@barterr.ai",
       from: FROM,
+      subject: "Important: Authentication issue with your trade",
       templateId: TEMPLATES.COUNTERFEIT,
       dynamicTemplateData: {
         firstName: user.name,
@@ -457,6 +467,7 @@ export const onShippingLabelCreated = onDocumentUpdated(
         sgMail.send({
           to: after.poster.email,
           from: FROM,
+          subject: "Your shipping label is ready",
           templateId: TEMPLATES.SHIPPING_LABEL,
           dynamicTemplateData: {
             firstName: after.poster.name,
@@ -476,6 +487,7 @@ export const onShippingLabelCreated = onDocumentUpdated(
         sgMail.send({
           to: after.sender.email,
           from: FROM,
+          subject: "Your shipping label is ready",
           templateId: TEMPLATES.SHIPPING_LABEL,
           dynamicTemplateData: {
             firstName: after.sender.name,
@@ -509,6 +521,7 @@ export const onSneakersReceived = onDocumentUpdated(
         sgMail.send({
           to: after.sender.email,
           from: FROM,
+          subject: "We've received your sneakers — authentication begins now",
           templateId: TEMPLATES.SNEAKERS_RECEIVED,
           dynamicTemplateData: {
             firstName: after.sender.name,
@@ -525,6 +538,7 @@ export const onSneakersReceived = onDocumentUpdated(
         sgMail.send({
           to: after.poster.email,
           from: FROM,
+          subject: "We've received your sneakers — authentication begins now",
           templateId: TEMPLATES.SNEAKERS_RECEIVED,
           dynamicTemplateData: {
             firstName: after.poster.name,
