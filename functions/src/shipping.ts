@@ -5,7 +5,7 @@ import admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import axios from "axios";
 
-const SHIPPO_API_KEY = defineSecret("SHIPPO_API_KEY_TEST");
+const SHIPPO_API_KEY = defineSecret("SHIPPO_API_KEY");
 
 // Admin UID (Barterr/Sole360 operator)
 const ADMIN_UID = "Vu6dB5O5zKYExw3kpVxbGy0OZ3B2";
@@ -67,7 +67,7 @@ function shippoApi(apiKey: string) {
  * Update the doc via Firebase console or the admin panel — no redeploy needed.
  */
 async function getBarterrAddress(
-  db: FirebaseFirestore.Firestore
+  db: FirebaseFirestore.Firestore,
 ): Promise<ShippoAddress> {
   const snap = await db.doc("config/shipping").get();
   if (snap.exists) {
@@ -94,20 +94,19 @@ async function getBarterrAddress(
  */
 async function purchaseBestRate(
   api: ReturnType<typeof shippoApi>,
-  rates: ShippoRate[]
+  rates: ShippoRate[],
 ): Promise<{ transaction: ShippoTransaction; rate: ShippoRate }> {
   const sorted = [...rates].sort(
-    (a, b) => parseFloat(a.amount) - parseFloat(b.amount)
+    (a, b) => parseFloat(a.amount) - parseFloat(b.amount),
   );
 
   const preferred =
     sorted.find(
-      (r) =>
-        r.provider === "USPS" &&
-        r.servicelevel.token === "usps_priority"
+      (r) => r.provider === "USPS" && r.servicelevel.token === "usps_priority",
     ) ?? sorted[0];
 
-  if (!preferred) throw new HttpsError("internal", "No shipping rates available");
+  if (!preferred)
+    throw new HttpsError("internal", "No shipping rates available");
 
   const response = await api.post<ShippoTransaction>("/transactions/", {
     rate: preferred.object_id,
@@ -159,7 +158,7 @@ export const createShippoLabel = onCall(
     if (trade.status !== "completed") {
       throw new HttpsError(
         "failed-precondition",
-        "Trade must be completed before getting a shipping label"
+        "Trade must be completed before getting a shipping label",
       );
     }
 
@@ -173,7 +172,7 @@ export const createShippoLabel = onCall(
     if (!addr?.street) {
       throw new HttpsError(
         "failed-precondition",
-        "No address on file. Please add your address in profile settings."
+        "No address on file. Please add your address in profile settings.",
       );
     }
 
@@ -194,7 +193,7 @@ export const createShippoLabel = onCall(
         address_to: barterrAddress,
         parcels: [SHOEBOX_PARCEL],
         async: false,
-      }
+      },
     );
 
     const rates: ShippoRate[] = response.data.rates
@@ -203,7 +202,7 @@ export const createShippoLabel = onCall(
       .slice(0, 6);
 
     return { rates, shipmentObjectId: response.data.object_id };
-  }
+  },
 );
 
 /**
@@ -224,7 +223,10 @@ export const createShippoTransaction = onCall(
     };
 
     if (!tradeId || !rateObjectId) {
-      throw new HttpsError("invalid-argument", "tradeId and rateObjectId required");
+      throw new HttpsError(
+        "invalid-argument",
+        "tradeId and rateObjectId required",
+      );
     }
 
     const db = admin.firestore();
@@ -264,7 +266,7 @@ export const createShippoTransaction = onCall(
     await db.doc(`orders/${tradeId}`).update({ [updateField]: trackingInfo });
 
     return trackingInfo;
-  }
+  },
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -322,13 +324,19 @@ export const onTradeCompleted = onDocumentUpdated(
       },
       users: [after.fromUserId, after.toUserId],
       tradeDeal: {
-        senderOffer: { sneakers: after.yourItems ?? [], cash: after.addCash ?? 0 },
-        posterOffer: { sneakers: after.theirItems ?? [], cash: after.askCash ?? 0 },
+        senderOffer: {
+          sneakers: after.yourItems ?? [],
+          cash: after.addCash ?? 0,
+        },
+        posterOffer: {
+          sneakers: after.theirItems ?? [],
+          cash: after.askCash ?? 0,
+        },
       },
       confirmedAt: FieldValue.serverTimestamp(),
       completed: false,
     });
-  }
+  },
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -343,8 +351,10 @@ export const onTradeCompleted = onDocumentUpdated(
 export const markSneakersReceived = onCall(
   { region: "us-central1" },
   async (req) => {
-    if (!req.auth?.uid) throw new HttpsError("unauthenticated", "Must be signed in");
-    if (req.auth.uid !== ADMIN_UID) throw new HttpsError("permission-denied", "Admin only");
+    if (!req.auth?.uid)
+      throw new HttpsError("unauthenticated", "Must be signed in");
+    if (req.auth.uid !== ADMIN_UID)
+      throw new HttpsError("permission-denied", "Admin only");
 
     const { tradeId, role } = req.data as {
       tradeId: string;
@@ -354,12 +364,15 @@ export const markSneakersReceived = onCall(
       throw new HttpsError("invalid-argument", "tradeId and role required");
     }
 
-    await admin.firestore().doc(`orders/${tradeId}`).update({
-      [`${role}.sneakerReceived`]: true,
-    });
+    await admin
+      .firestore()
+      .doc(`orders/${tradeId}`)
+      .update({
+        [`${role}.sneakerReceived`]: true,
+      });
 
     return { success: true };
-  }
+  },
 );
 
 /**
@@ -367,42 +380,44 @@ export const markSneakersReceived = onCall(
  * - passed=false → writes `fakes` field (fires onFakeShoes email)
  * - passed=true  → marks that side authenticated; if both pass → completed=true
  */
-export const markAuthResult = onCall(
-  { region: "us-central1" },
-  async (req) => {
-    if (!req.auth?.uid) throw new HttpsError("unauthenticated", "Must be signed in");
-    if (req.auth.uid !== ADMIN_UID) throw new HttpsError("permission-denied", "Admin only");
+export const markAuthResult = onCall({ region: "us-central1" }, async (req) => {
+  if (!req.auth?.uid)
+    throw new HttpsError("unauthenticated", "Must be signed in");
+  if (req.auth.uid !== ADMIN_UID)
+    throw new HttpsError("permission-denied", "Admin only");
 
-    const { tradeId, role, passed, reasons } = req.data as {
-      tradeId: string;
-      role: "sender" | "poster";
-      passed: boolean;
-      reasons?: string;
-    };
-    if (!tradeId || !role) {
-      throw new HttpsError("invalid-argument", "tradeId and role required");
-    }
+  const { tradeId, role, passed, reasons } = req.data as {
+    tradeId: string;
+    role: "sender" | "poster";
+    passed: boolean;
+    reasons?: string;
+  };
+  if (!tradeId || !role) {
+    throw new HttpsError("invalid-argument", "tradeId and role required");
+  }
 
-    const db = admin.firestore();
-    const orderRef = db.doc(`orders/${tradeId}`);
+  const db = admin.firestore();
+  const orderRef = db.doc(`orders/${tradeId}`);
 
-    if (!passed) {
-      const order = (await orderRef.get()).data()!;
-      const failedUserId = role === "sender" ? order.sender?.id : order.poster?.id;
-      await orderRef.update({ fakes: { userId: failedUserId, reasons: reasons || "" } });
-      return { success: true };
-    }
-
-    await orderRef.update({ [`${role}.authenticated`]: true });
-
+  if (!passed) {
     const order = (await orderRef.get()).data()!;
-    if (order.sender?.authenticated && order.poster?.authenticated) {
-      await orderRef.update({ completed: true });
-    }
-
+    const failedUserId =
+      role === "sender" ? order.sender?.id : order.poster?.id;
+    await orderRef.update({
+      fakes: { userId: failedUserId, reasons: reasons || "" },
+    });
     return { success: true };
   }
-);
+
+  await orderRef.update({ [`${role}.authenticated`]: true });
+
+  const order = (await orderRef.get()).data()!;
+  if (order.sender?.authenticated && order.poster?.authenticated) {
+    await orderRef.update({ completed: true });
+  }
+
+  return { success: true };
+});
 
 /**
  * Admin: generate an outbound Shippo label from Barterr's facility to a
@@ -419,15 +434,20 @@ export const markAuthResult = onCall(
 export const createOutboundLabel = onCall(
   { region: "us-central1", secrets: [SHIPPO_API_KEY] },
   async (req) => {
-    if (!req.auth?.uid) throw new HttpsError("unauthenticated", "Must be signed in");
-    if (req.auth.uid !== ADMIN_UID) throw new HttpsError("permission-denied", "Admin only");
+    if (!req.auth?.uid)
+      throw new HttpsError("unauthenticated", "Must be signed in");
+    if (req.auth.uid !== ADMIN_UID)
+      throw new HttpsError("permission-denied", "Admin only");
 
     const { tradeId, recipient } = req.data as {
       tradeId: string;
       recipient: "sender" | "poster";
     };
     if (!tradeId || !recipient) {
-      throw new HttpsError("invalid-argument", "tradeId and recipient required");
+      throw new HttpsError(
+        "invalid-argument",
+        "tradeId and recipient required",
+      );
     }
 
     const db = admin.firestore();
@@ -438,7 +458,7 @@ export const createOutboundLabel = onCall(
     if (!order.sender?.authenticated || !order.poster?.authenticated) {
       throw new HttpsError(
         "failed-precondition",
-        "Both sides must pass authentication before outbound labels can be generated"
+        "Both sides must pass authentication before outbound labels can be generated",
       );
     }
 
@@ -455,7 +475,7 @@ export const createOutboundLabel = onCall(
     if (!addr?.street) {
       throw new HttpsError(
         "failed-precondition",
-        `${recipient} has no address on file`
+        `${recipient} has no address on file`,
       );
     }
 
@@ -481,7 +501,7 @@ export const createOutboundLabel = onCall(
 
     const { transaction, rate } = await purchaseBestRate(
       api,
-      shipmentResponse.data.rates
+      shipmentResponse.data.rates,
     );
 
     const trackingInfo = {
@@ -495,5 +515,5 @@ export const createOutboundLabel = onCall(
     await db.doc(`orders/${tradeId}`).update({ [updateField]: trackingInfo });
 
     return trackingInfo;
-  }
+  },
 );
