@@ -5,7 +5,7 @@ import admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import axios from "axios";
 
-const SHIPPO_API_KEY = defineSecret("SHIPPO_API_KEY");
+const SHIPPO_API_KEY = defineSecret("SHIPPO_API_KEY_TEST");
 
 // Admin UID (Barterr/Sole360 operator)
 const ADMIN_UID = "Vu6dB5O5zKYExw3kpVxbGy0OZ3B2";
