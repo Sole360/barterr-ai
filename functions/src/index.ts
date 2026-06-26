@@ -13,7 +13,16 @@ import {
   onFakeShoes,
   onShippingLabelCreated,
   onSneakersReceived,
+  onOutboundLabelCreated,
 } from "./emailNotifications";
+import {
+  createShippoLabel,
+  createShippoTransaction,
+  onTradeCompleted,
+  markSneakersReceived,
+  markAuthResult,
+  createOutboundLabel,
+} from "./shipping";
 
 setGlobalOptions({ maxInstances: 10 });
 
@@ -41,4 +50,12 @@ export {
   onFakeShoes,
   onShippingLabelCreated,
   onSneakersReceived,
+  onOutboundLabelCreated,
+  // Shipping
+  createShippoLabel,
+  createShippoTransaction,
+  onTradeCompleted,
+  markSneakersReceived,
+  markAuthResult,
+  createOutboundLabel,
 };

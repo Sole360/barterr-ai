@@ -214,6 +214,8 @@ export interface UserReference {
   name: string;
   email: string;
   rating?: number;
+  sneakerReceived?: boolean;
+  authenticated?: boolean;
 }
 
 export interface Post {
@@ -242,18 +244,26 @@ export interface TrackingInfo {
 
 export interface Order {
   id: string;
-  completed?: boolean;
+  tradeId: string;
+  fromUserId: string;
+  toUserId: string;
+  completed: boolean;
   confirmedAt: Timestamp;
   poster: UserReference;
   sender: UserReference;
-  users?: string[];
+  users: string[];
   tradeDeal: {
     senderOffer: TradeOffer;
     posterOffer: TradeOffer;
   };
+  // Inbound: each party ships their sneakers TO Barterr
   trackingSender?: TrackingInfo;
   trackingPoster?: TrackingInfo;
-  trackingSole360?: TrackingInfo;
+  // Outbound: Barterr ships authenticated sneakers back TO each party
+  // senderOutbound = package heading to the sender's address (contains poster's shoes)
+  // posterOutbound = package heading to the poster's address (contains sender's shoes)
+  senderOutbound?: TrackingInfo;
+  posterOutbound?: TrackingInfo;
   fakes?: {
     userId: string;
     reasons: string;

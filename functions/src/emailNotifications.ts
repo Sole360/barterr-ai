@@ -24,6 +24,7 @@ const TEMPLATES = {
   COUNTERFEIT:       "d-9f5cc287b9c04c1d90ae5c2410087c02",
   SHIPPING_LABEL:    "d-3569137469c14e408306d6d3cfff6b35",
   SNEAKERS_RECEIVED: "d-3c23330086b24ca6822c5b2e350862a8",
+  OUTBOUND_LABEL:    "d-c735c35ebfb848d484db72a8716e9958",
 } as const;
 
 // ─────────────────────────────────────────────
@@ -102,6 +103,9 @@ interface OrderDoc {
   fakes?: { userId: string; reasons: string };
   trackingSender?: TrackingInfo;
   trackingPoster?: TrackingInfo;
+  // Outbound: Barterr → each party after authentication
+  senderOutbound?: TrackingInfo;
+  posterOutbound?: TrackingInfo;
 }
 
 // ─────────────────────────────────────────────
@@ -543,6 +547,59 @@ export const onSneakersReceived = onDocumentUpdated(
           dynamicTemplateData: {
             firstName: after.poster.name,
             otherName: after.sender?.name ?? "",
+            tradeId: after.id,
+            tradeUrl,
+          },
+        })
+      );
+    }
+
+    await Promise.all(sends);
+  }
+);
+
+// Fires when Barterr generates an outbound label (senderOutbound or posterOutbound set).
+export const onOutboundLabelCreated = onDocumentUpdated(
+  { document: "orders/{orderId}", secrets: [SENDGRID_API_KEY] },
+  async (event) => {
+    setup();
+    if (!event.data) return;
+    const before = event.data.before.data() as OrderDoc;
+    const after = event.data.after.data() as OrderDoc;
+    const sends: Promise<unknown>[] = [];
+    const tradeUrl = `${APP_URL}/trades/${after.id}`;
+
+    if (!before.senderOutbound && after.senderOutbound && after.sender?.email) {
+      sends.push(
+        sgMail.send({
+          to: after.sender.email,
+          from: FROM,
+          subject: "Your authenticated sneakers are on their way!",
+          templateId: TEMPLATES.OUTBOUND_LABEL,
+          dynamicTemplateData: {
+            firstName: after.sender.name,
+            otherName: after.poster?.name ?? "",
+            carrier: after.senderOutbound.carrier,
+            trackingNumber: after.senderOutbound.tracking,
+            tradeId: after.id,
+            tradeUrl,
+          },
+        })
+      );
+    }
+
+    if (!before.posterOutbound && after.posterOutbound && after.poster?.email) {
+      sends.push(
+        sgMail.send({
+          to: after.poster.email,
+          from: FROM,
+          subject: "Your authenticated sneakers are on their way!",
+          templateId: TEMPLATES.OUTBOUND_LABEL,
+          dynamicTemplateData: {
+            firstName: after.poster.name,
+            otherName: after.sender?.name ?? "",
+            carrier: after.posterOutbound.carrier,
+            trackingNumber: after.posterOutbound.tracking,
             tradeId: after.id,
             tradeUrl,
           },

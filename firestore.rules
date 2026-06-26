@@ -128,23 +128,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Orders collection
+    // Orders collection — all writes go through Cloud Functions (admin SDK bypasses rules).
+    // Direct client writes are intentionally blocked.
     match /orders/{orderId} {
-      // Only participants can read an order
+      // Only trade participants can read their order (uses the `users` array for O(1) lookup)
       allow read: if isAuthenticated() &&
-                  (resource.data.sender.id == request.auth.uid ||
-                   resource.data.poster.id == request.auth.uid);
+                  request.auth.uid in resource.data.users;
 
-      // Authenticated users can create orders
-      allow create: if isAuthenticated();
+      // No direct client writes allowed — Cloud Functions handle all mutations
+      allow create, update, delete: if false;
+    }
 
-      // Only participants can update an order
-      allow update: if isAuthenticated() &&
-                    (resource.data.sender.id == request.auth.uid ||
-                     resource.data.poster.id == request.auth.uid);
-
-      // Nobody can delete orders (for record keeping)
-      allow delete: if false;
+    // App configuration — readable by authenticated users, writable only via admin SDK
+    match /config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
     }
 
     // Image Jobs collection (for background image processing)

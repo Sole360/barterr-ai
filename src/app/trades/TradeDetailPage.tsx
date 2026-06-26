@@ -19,6 +19,7 @@ import type {
   TradeDocumentYourItem,
   TradeDocumentTheirItem,
 } from "@/types";
+import { ShippingSection } from "./ShippingSection";
 
 type BillingDoc = {
   defaultPaymentMethodId?: string;
@@ -376,10 +377,10 @@ export const TradeDetailPage = () => {
         {/* Status Banner */}
         {trade.status === "completed" && (
           <div className="mt-4 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-            <div className="font-semibold">Trade Complete!</div>
+            <div className="font-semibold">Payments captured — time to ship!</div>
             <div className="mt-1 text-xs">
-              Both parties have been charged. You'll receive shipping
-              instructions soon.
+              Both parties have been charged. Get your shipping label below and
+              send your sneakers to Barterr for authentication.
             </div>
           </div>
         )}
@@ -624,6 +625,11 @@ export const TradeDetailPage = () => {
                   : "The other user has accepted. Payment is being processed."}
               </div>
             </div>
+          )}
+
+          {/* Shipping — visible once payments are captured */}
+          {trade.status === "completed" && tradeId && (
+            <ShippingSection tradeId={tradeId} isSender={isSender} />
           )}
         </div>
       </div>
