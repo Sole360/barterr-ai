@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/contexts/auth.context";
-import { Bell, User, LogOut, Settings } from "lucide-react";
+import { Bell, User, LogOut, Settings, ArrowLeftRight } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +56,15 @@ export const Navbar = () => {
 
             {/* Right Side Icons */}
             <div className="flex items-center space-x-4">
+              {/* Trades */}
+              <button
+                onClick={() => navigate("/trades")}
+                className="relative p-2 hover:bg-gray-100 rounded-lg"
+                title="My Trades"
+              >
+                <ArrowLeftRight className="w-5 h-5 text-gray-600" />
+              </button>
+
               {/* Notifications */}
               <button className="relative p-2 hover:bg-gray-100 rounded-lg">
                 <Bell className="w-5 h-5 text-gray-600" />
@@ -97,6 +106,10 @@ export const Navbar = () => {
                   <DropdownMenuItem onClick={() => navigate("/profile")}>
                     <User className="w-4 h-4 mr-2" />
                     Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/trades")}>
+                    <ArrowLeftRight className="w-4 h-4 mr-2" />
+                    My Trades
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/account")}>
                     <Settings className="w-4 h-4 mr-2" />

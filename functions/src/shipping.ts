@@ -269,6 +269,91 @@ export const createShippoTransaction = onCall(
   },
 );
 
+/**
+ * One-shot: create a Shippo shipment, auto-select the best rate, purchase the
+ * label, and store tracking on the order — no rate picker needed in the UI.
+ */
+export const purchaseShippoLabel = onCall(
+  { region: "us-central1", secrets: [SHIPPO_API_KEY] },
+  async (req) => {
+    if (!req.auth?.uid) {
+      throw new HttpsError("unauthenticated", "Must be signed in");
+    }
+
+    const { tradeId } = req.data as { tradeId: string };
+    if (!tradeId) throw new HttpsError("invalid-argument", "tradeId required");
+
+    const db = admin.firestore();
+
+    const tradeSnap = await db.doc(`trades/${tradeId}`).get();
+    if (!tradeSnap.exists) throw new HttpsError("not-found", "Trade not found");
+    const trade = tradeSnap.data()!;
+
+    const isSender = req.auth.uid === trade.fromUserId;
+    const isPoster = req.auth.uid === trade.toUserId;
+    if (!isSender && !isPoster) {
+      throw new HttpsError("permission-denied", "Not your trade");
+    }
+
+    if (trade.status !== "completed") {
+      throw new HttpsError(
+        "failed-precondition",
+        "Trade must be completed before getting a shipping label",
+      );
+    }
+
+    const [userSnap, barterrAddress] = await Promise.all([
+      db.doc(`users/${req.auth.uid}`).get(),
+      getBarterrAddress(db),
+    ]);
+
+    const user = userSnap.data()!;
+    const addr = user.address;
+    if (!addr?.street) {
+      throw new HttpsError(
+        "failed-precondition",
+        "No address on file. Please add your address in profile settings.",
+      );
+    }
+
+    const api = shippoApi(SHIPPO_API_KEY.value());
+
+    const shipmentResponse = await api.post<{
+      object_id: string;
+      rates: ShippoRate[];
+    }>("/shipments/", {
+      address_from: {
+        name: user.displayName || `${user.firstName} ${user.lastName}`,
+        street1: addr.street,
+        street2: addr.street2 || "",
+        city: addr.city,
+        state: addr.state,
+        zip: addr.zip,
+        country: "US",
+      },
+      address_to: barterrAddress,
+      parcels: [SHOEBOX_PARCEL],
+      async: false,
+    });
+
+    const { transaction, rate } = await purchaseBestRate(
+      api,
+      shipmentResponse.data.rates,
+    );
+
+    const trackingInfo = {
+      carrier: rate.provider,
+      tracking: transaction.tracking_number,
+      label: transaction.label_url,
+    };
+
+    const updateField = isSender ? "trackingSender" : "trackingPoster";
+    await db.doc(`orders/${tradeId}`).update({ [updateField]: trackingInfo });
+
+    return trackingInfo;
+  },
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Firestore trigger: create order when trade payments are captured
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,20 +365,38 @@ export const createShippoTransaction = onCall(
 export const onTradeCompleted = onDocumentUpdated(
   { document: "trades/{tradeId}", region: "us-central1" },
   async (event) => {
-    if (!event.data) return;
+    if (!event.data) {
+      console.log("[onTradeCompleted] no event.data, skipping");
+      return;
+    }
     const before = event.data.before.data();
     const after = event.data.after.data();
     const tradeId = event.params.tradeId;
 
-    if (!before || !after) return;
-    if (before.status === "completed") return;
-    if (after.status !== "completed") return;
+    console.log(`[onTradeCompleted] tradeId=${tradeId} before.status=${before?.status} after.status=${after?.status}`);
+
+    if (!before || !after) {
+      console.log("[onTradeCompleted] missing before/after data, skipping");
+      return;
+    }
+    if (before.status === "completed") {
+      console.log("[onTradeCompleted] before.status already completed, skipping");
+      return;
+    }
+    if (after.status !== "completed") {
+      console.log(`[onTradeCompleted] after.status is '${after.status}', not completed, skipping`);
+      return;
+    }
 
     const db = admin.firestore();
 
     // Idempotency guard
     const existing = await db.doc(`orders/${tradeId}`).get();
-    if (existing.exists) return;
+    if (existing.exists) {
+      console.log(`[onTradeCompleted] orders/${tradeId} already exists, skipping`);
+      return;
+    }
+    console.log(`[onTradeCompleted] creating orders/${tradeId}`);
 
     const [senderSnap, posterSnap] = await Promise.all([
       db.doc(`users/${after.fromUserId}`).get(),
@@ -336,6 +439,7 @@ export const onTradeCompleted = onDocumentUpdated(
       confirmedAt: FieldValue.serverTimestamp(),
       completed: false,
     });
+    console.log(`[onTradeCompleted] orders/${tradeId} created successfully`);
   },
 );
 

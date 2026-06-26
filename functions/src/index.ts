@@ -18,6 +18,7 @@ import {
 import {
   createShippoLabel,
   createShippoTransaction,
+  purchaseShippoLabel,
   onTradeCompleted,
   markSneakersReceived,
   markAuthResult,
@@ -54,6 +55,7 @@ export {
   // Shipping
   createShippoLabel,
   createShippoTransaction,
+  purchaseShippoLabel,
   onTradeCompleted,
   markSneakersReceived,
   markAuthResult,

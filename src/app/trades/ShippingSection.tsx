@@ -4,19 +4,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 
 import { db } from "@/lib/firebase/config";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
 import type { Order, TrackingInfo } from "@/types";
-
-// ─── Shippo rate shape returned by createShippoLabel ──────────────────────────
-
-interface ShippoRate {
-  object_id: string;
-  amount: string;
-  currency: string;
-  provider: string;
-  servicelevel: { name: string; token: string };
-  estimated_days?: number;
-}
 
 // ─── Step indicator ────────────────────────────────────────────────────────────
 
@@ -115,19 +103,19 @@ function TrackingCard({
 
 // ─── Per-party shipping row ───────────────────────────────────────────────────
 
-type LabelStep = "idle" | "loading_rates" | "select_rate" | "purchasing";
-
 function PartyShipRow({
   label,
   isMe,
   tracking,
   received,
+  loading,
   onGetLabel,
 }: {
   label: string;
   isMe: boolean;
   tracking?: TrackingInfo;
   received?: boolean;
+  loading?: boolean;
   onGetLabel: () => void;
 }) {
   return (
@@ -149,78 +137,14 @@ function PartyShipRow({
         <button
           type="button"
           onClick={onGetLabel}
-          className="mt-1 text-sm font-semibold text-[#3366FF] hover:underline"
+          disabled={loading}
+          className="mt-1 text-sm font-semibold text-[#3366FF] hover:underline disabled:opacity-50"
         >
-          Get shipping label →
+          {loading ? "Getting label…" : "Get shipping label →"}
         </button>
       ) : (
         <div className="text-xs text-muted-foreground">Not yet shipped</div>
       )}
-    </div>
-  );
-}
-
-// ─── Rate selector ────────────────────────────────────────────────────────────
-
-function RateSelector({
-  rates,
-  selected,
-  onSelect,
-  onPurchase,
-  onCancel,
-  purchasing,
-}: {
-  rates: ShippoRate[];
-  selected: ShippoRate | null;
-  onSelect: (r: ShippoRate) => void;
-  onPurchase: () => void;
-  onCancel: () => void;
-  purchasing: boolean;
-}) {
-  return (
-    <div className="space-y-3 rounded-lg border border-[#3366FF]/30 bg-blue-50 p-4">
-      <div className="text-sm font-semibold">Choose a shipping option</div>
-      <div className="space-y-2">
-        {rates.map((r) => (
-          <button
-            key={r.object_id}
-            type="button"
-            onClick={() => onSelect(r)}
-            className={`w-full rounded-lg border p-3 text-left transition-colors ${
-              selected?.object_id === r.object_id
-                ? "border-[#3366FF] bg-white"
-                : "border-gray-200 bg-white hover:border-gray-300"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold">{r.provider}</div>
-                <div className="text-xs text-muted-foreground">
-                  {r.servicelevel.name}
-                  {r.estimated_days != null
-                    ? ` · ${r.estimated_days} day${r.estimated_days === 1 ? "" : "s"}`
-                    : ""}
-                </div>
-              </div>
-              <div className="text-sm font-bold">
-                ${parseFloat(r.amount).toFixed(2)}
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <Button
-          className="flex-1 bg-[#3366FF] hover:bg-[#3366FF]/90"
-          disabled={!selected || purchasing}
-          onClick={onPurchase}
-        >
-          {purchasing ? "Purchasing…" : "Purchase Label"}
-        </Button>
-        <Button variant="outline" onClick={onCancel} disabled={purchasing}>
-          Cancel
-        </Button>
-      </div>
     </div>
   );
 }
@@ -237,11 +161,7 @@ export function ShippingSection({ tradeId, isSender }: Props) {
   const { toast } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
   const [orderLoading, setOrderLoading] = useState(true);
-
-  // Label-flow state
-  const [labelStep, setLabelStep] = useState<LabelStep>("idle");
-  const [rates, setRates] = useState<ShippoRate[]>([]);
-  const [selectedRate, setSelectedRate] = useState<ShippoRate | null>(null);
+  const [labelStep, setLabelStep] = useState<"idle" | "loading" | "done">("idle");
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "orders", tradeId), (snap) => {
@@ -272,76 +192,34 @@ export function ShippingSection({ tradeId, isSender }: Props) {
 
   const authFailed =
     !!order?.fakes &&
-    order.fakes.userId ===
-      (isSender ? order?.sender.id : order?.poster.id);
-
-  // ── Overall stage for step indicator ────────────────────────────────────
+    order.fakes.userId === (isSender ? order?.sender.id : order?.poster.id);
 
   const bothShipped = !!myTracking && !!theirTracking;
   const bothReceived = !!myReceived && !!theirReceived;
   const bothAuthenticated = !!myAuthenticated && !!theirAuthenticated;
   const outboundReady = !!myOutbound;
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Handler ──────────────────────────────────────────────────────────────
 
-  const handleGetRates = async () => {
-    setLabelStep("loading_rates");
+  const handleGetLabel = async () => {
+    setLabelStep("loading");
     try {
       const fns = getFunctions(undefined, "us-central1");
-      const fn = httpsCallable<
-        { tradeId: string },
-        { rates: ShippoRate[]; shipmentObjectId: string }
-      >(fns, "createShippoLabel");
-
-      const result = await fn({ tradeId });
-      if (!result.data.rates.length) {
-        toast({
-          title: "No rates available",
-          description:
-            "No shipping rates found for your address. Please check your profile.",
-          variant: "destructive",
-        });
-        setLabelStep("idle");
-        return;
-      }
-      setRates(result.data.rates);
-      setSelectedRate(result.data.rates[0]);
-      setLabelStep("select_rate");
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to get shipping rates";
-      toast({ title: "Error", description: msg, variant: "destructive" });
-      setLabelStep("idle");
-    }
-  };
-
-  const handlePurchaseLabel = async () => {
-    if (!selectedRate) return;
-    setLabelStep("purchasing");
-    try {
-      const fns = getFunctions(undefined, "us-central1");
-      const fn = httpsCallable<
-        { tradeId: string; rateObjectId: string; carrier: string },
-        TrackingInfo
-      >(fns, "createShippoTransaction");
-
-      await fn({
-        tradeId,
-        rateObjectId: selectedRate.object_id,
-        carrier: selectedRate.provider,
-      });
-
+      const fn = httpsCallable<{ tradeId: string }, TrackingInfo>(
+        fns,
+        "purchaseShippoLabel",
+      );
+      await fn({ tradeId });
       toast({
         title: "Label purchased!",
         description: "Check your email for a copy of the label.",
       });
-      setLabelStep("idle");
-      setRates([]);
+      setLabelStep("done");
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Failed to purchase label";
       toast({ title: "Error", description: msg, variant: "destructive" });
-      setLabelStep("select_rate");
+      setLabelStep("idle");
     }
   };
 
@@ -395,7 +273,8 @@ export function ShippingSection({ tradeId, isSender }: Props) {
             isMe={true}
             tracking={myTracking}
             received={myReceived}
-            onGetLabel={handleGetRates}
+            loading={labelStep === "loading"}
+            onGetLabel={handleGetLabel}
           />
           <PartyShipRow
             label={`${otherName ?? "Other party"}'s shipment`}
@@ -405,29 +284,6 @@ export function ShippingSection({ tradeId, isSender }: Props) {
             onGetLabel={() => {}}
           />
         </div>
-
-        {/* Rate selector — shown inline when user clicks "Get shipping label" */}
-        {(labelStep === "select_rate" || labelStep === "purchasing") && (
-          <div className="mt-3">
-            <RateSelector
-              rates={rates}
-              selected={selectedRate}
-              onSelect={setSelectedRate}
-              onPurchase={handlePurchaseLabel}
-              onCancel={() => {
-                setLabelStep("idle");
-                setRates([]);
-              }}
-              purchasing={labelStep === "purchasing"}
-            />
-          </div>
-        )}
-
-        {labelStep === "loading_rates" && (
-          <div className="mt-3 text-sm text-muted-foreground">
-            Fetching rates…
-          </div>
-        )}
       </div>
 
       {/* ── Phase 2: Authentication ────────────────────────────────────────── */}
@@ -451,11 +307,7 @@ export function ShippingSection({ tradeId, isSender }: Props) {
           />
           <Step
             state={
-              theirAuthenticated
-                ? "done"
-                : bothReceived
-                  ? "active"
-                  : "upcoming"
+              theirAuthenticated ? "done" : bothReceived ? "active" : "upcoming"
             }
             label={`${otherName ?? "Other party"}'s sneakers${theirAuthenticated ? " — passed ✓" : ""}`}
             sublabel={
