@@ -189,6 +189,8 @@ export const createShippoLabel = onCall(
           state: addr.state,
           zip: addr.zip,
           country: "US",
+          email: req.auth.token.email || user.email || "",
+          phone: user.phone || "",
         },
         address_to: barterrAddress,
         parcels: [SHOEBOX_PARCEL],
@@ -318,6 +320,9 @@ export const purchaseShippoLabel = onCall(
 
     const api = shippoApi(SHIPPO_API_KEY.value());
 
+    const senderEmail = req.auth.token.email || user.email || "";
+    console.log(`[purchaseShippoLabel] uid=${req.auth.uid} tokenEmail="${req.auth.token.email}" userEmail="${user.email}" resolved="${senderEmail}" addr=${JSON.stringify(addr)}`);
+
     const shipmentResponse = await api.post<{
       object_id: string;
       rates: ShippoRate[];
@@ -330,6 +335,8 @@ export const purchaseShippoLabel = onCall(
         state: addr.state,
         zip: addr.zip,
         country: "US",
+        email: senderEmail,
+        phone: user.phone || "",
       },
       address_to: barterrAddress,
       parcels: [SHOEBOX_PARCEL],
