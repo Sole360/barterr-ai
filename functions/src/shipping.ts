@@ -162,9 +162,10 @@ export const createShippoLabel = onCall(
       );
     }
 
-    const [userSnap, barterrAddress] = await Promise.all([
+    const [userSnap, barterrAddress, authUser] = await Promise.all([
       db.doc(`users/${req.auth.uid}`).get(),
       getBarterrAddress(db),
+      admin.auth().getUser(req.auth.uid),
     ]);
 
     const user = userSnap.data()!;
@@ -189,7 +190,7 @@ export const createShippoLabel = onCall(
           state: addr.state,
           zip: addr.zip,
           country: "US",
-          email: addr.email || req.auth.token.email || user.email || "",
+          email: authUser.email,
           phone: user.phone || "",
         },
         address_to: barterrAddress,
