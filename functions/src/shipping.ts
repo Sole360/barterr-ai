@@ -189,7 +189,7 @@ export const createShippoLabel = onCall(
           state: addr.state,
           zip: addr.zip,
           country: "US",
-          email: req.auth.token.email || user.email || "",
+          email: addr.email || req.auth.token.email || user.email || "",
           phone: user.phone || "",
         },
         address_to: barterrAddress,
