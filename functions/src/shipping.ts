@@ -304,9 +304,10 @@ export const purchaseShippoLabel = onCall(
       );
     }
 
-    const [userSnap, barterrAddress] = await Promise.all([
+    const [userSnap, barterrAddress, authUser] = await Promise.all([
       db.doc(`users/${req.auth.uid}`).get(),
       getBarterrAddress(db),
+      admin.auth().getUser(req.auth.uid),
     ]);
 
     const user = userSnap.data()!;
@@ -320,11 +321,6 @@ export const purchaseShippoLabel = onCall(
 
     const api = shippoApi(SHIPPO_API_KEY.value());
 
-    const senderEmail = req.auth.token.email || user.email || "";
-    console.log(
-      `[purchaseShippoLabel] uid=${req.auth.uid} tokenEmail="${req.auth.token.email}" userEmail="${user.email}" resolved="${senderEmail}" addr=${JSON.stringify(addr)}`,
-    );
-
     const shipmentResponse = await api.post<{
       object_id: string;
       rates: ShippoRate[];
@@ -337,8 +333,8 @@ export const purchaseShippoLabel = onCall(
         state: addr.state,
         zip: addr.zip,
         country: "US",
-        email: addr.email || senderEmail,
-        phone: user.phone || "",
+        email: authUser.email ?? "",
+        phone: authUser.phoneNumber ?? user.phone ?? "",
       },
       address_to: barterrAddress,
       parcels: [SHOEBOX_PARCEL],
