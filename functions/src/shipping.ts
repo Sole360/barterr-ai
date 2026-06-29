@@ -428,14 +428,14 @@ export const onTradeCompleted = onDocumentUpdated(
       sender: {
         id: after.fromUserId,
         name: s.displayName || `${s.firstName} ${s.lastName}`,
-        email: s.email ?? "terrence@barterr.ai",
+        email: s.email,
         sneakerReceived: false,
         authenticated: false,
       },
       poster: {
         id: after.toUserId,
         name: p.displayName || `${p.firstName} ${p.lastName}`,
-        email: p.email ?? "terrence@barterr.ai",
+        email: p.email,
         sneakerReceived: false,
         authenticated: false,
       },
