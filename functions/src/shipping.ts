@@ -321,7 +321,9 @@ export const purchaseShippoLabel = onCall(
     const api = shippoApi(SHIPPO_API_KEY.value());
 
     const senderEmail = req.auth.token.email || user.email || "";
-    console.log(`[purchaseShippoLabel] uid=${req.auth.uid} tokenEmail="${req.auth.token.email}" userEmail="${user.email}" resolved="${senderEmail}" addr=${JSON.stringify(addr)}`);
+    console.log(
+      `[purchaseShippoLabel] uid=${req.auth.uid} tokenEmail="${req.auth.token.email}" userEmail="${user.email}" resolved="${senderEmail}" addr=${JSON.stringify(addr)}`,
+    );
 
     const shipmentResponse = await api.post<{
       object_id: string;
@@ -335,7 +337,7 @@ export const purchaseShippoLabel = onCall(
         state: addr.state,
         zip: addr.zip,
         country: "US",
-        email: senderEmail,
+        email: addr.email || senderEmail,
         phone: user.phone || "",
       },
       address_to: barterrAddress,
@@ -380,18 +382,24 @@ export const onTradeCompleted = onDocumentUpdated(
     const after = event.data.after.data();
     const tradeId = event.params.tradeId;
 
-    console.log(`[onTradeCompleted] tradeId=${tradeId} before.status=${before?.status} after.status=${after?.status}`);
+    console.log(
+      `[onTradeCompleted] tradeId=${tradeId} before.status=${before?.status} after.status=${after?.status}`,
+    );
 
     if (!before || !after) {
       console.log("[onTradeCompleted] missing before/after data, skipping");
       return;
     }
     if (before.status === "completed") {
-      console.log("[onTradeCompleted] before.status already completed, skipping");
+      console.log(
+        "[onTradeCompleted] before.status already completed, skipping",
+      );
       return;
     }
     if (after.status !== "completed") {
-      console.log(`[onTradeCompleted] after.status is '${after.status}', not completed, skipping`);
+      console.log(
+        `[onTradeCompleted] after.status is '${after.status}', not completed, skipping`,
+      );
       return;
     }
 
@@ -400,7 +408,9 @@ export const onTradeCompleted = onDocumentUpdated(
     // Idempotency guard
     const existing = await db.doc(`orders/${tradeId}`).get();
     if (existing.exists) {
-      console.log(`[onTradeCompleted] orders/${tradeId} already exists, skipping`);
+      console.log(
+        `[onTradeCompleted] orders/${tradeId} already exists, skipping`,
+      );
       return;
     }
     console.log(`[onTradeCompleted] creating orders/${tradeId}`);
