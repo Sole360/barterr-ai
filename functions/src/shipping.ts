@@ -305,10 +305,9 @@ export const purchaseShippoLabel = onCall(
       );
     }
 
-    const [userSnap, barterrAddress, authUser] = await Promise.all([
+    const [userSnap, barterrAddress] = await Promise.all([
       db.doc(`users/${req.auth.uid}`).get(),
       getBarterrAddress(db),
-      admin.auth().getUser(req.auth.uid),
     ]);
 
     const user = userSnap.data()!;
@@ -334,8 +333,8 @@ export const purchaseShippoLabel = onCall(
         state: addr.state,
         zip: addr.zip,
         country: "US",
-        email: authUser?.email || user?.email || "",
-        phone: authUser?.phoneNumber || user?.phone || "",
+        email: user.email || "",
+        phone: user.phone || "",
       },
       address_to: barterrAddress,
       parcels: [SHOEBOX_PARCEL],
