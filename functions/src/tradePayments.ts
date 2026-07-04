@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
+import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
 import { serviceFeeCentsForCount, grossUpForStripe } from "./utils/tradePricing";
@@ -265,7 +266,7 @@ export const onTradeConfirmed = onDocumentUpdated(
 
     const secret = STRIPE_SECRET_KEY.value();
     if (!secret) {
-      console.error("Stripe secret not configured");
+      logger.error("Stripe secret not configured");
       return;
     }
 
@@ -337,7 +338,7 @@ export const onTradeConfirmed = onDocumentUpdated(
           captureError instanceof Error
             ? captureError.message
             : "Capture failed";
-        console.error("Capture error:", message);
+        logger.error("Capture error:", message);
 
         // Cancel any authorized payments
         if (senderResult.paymentIntentId) {

@@ -1,4 +1,5 @@
 import { onDocumentDeleted } from "firebase-functions/v2/firestore";
+import { logger } from "firebase-functions/v2";
 import { getStorage } from "firebase-admin/storage";
 
 /**
@@ -23,7 +24,7 @@ export const deleteListingPhotos = onDocumentDeleted(
       | undefined;
 
     if (!photos) {
-      console.log("No photos to delete");
+      logger.info("No photos to delete");
       return null;
     }
 
@@ -31,7 +32,7 @@ export const deleteListingPhotos = onDocumentDeleted(
     const photoUrls = Object.values(photos).filter(Boolean);
 
     if (photoUrls.length === 0) {
-      console.log("No photo URLs found");
+      logger.info("No photo URLs found");
       return null;
     }
 
@@ -43,20 +44,20 @@ export const deleteListingPhotos = onDocumentDeleted(
         const url = new URL(photoUrl);
         const pathMatch = url.pathname.match(/\/o\/(.+)$/);
         if (!pathMatch) {
-          console.warn(`Could not extract path from URL: ${photoUrl}`);
+          logger.warn(`Could not extract path from URL: ${photoUrl}`);
           return;
         }
 
         const path = decodeURIComponent(pathMatch[1]);
         await bucket.file(path).delete();
-        console.log(`Deleted photo: ${path}`);
+        logger.info(`Deleted photo: ${path}`);
       } catch (error) {
-        console.error(`Error deleting photo from ${photoUrl}:`, error);
+        logger.error(`Error deleting photo from ${photoUrl}:`, error);
       }
     });
 
     await Promise.all(deletePromises);
-    console.log(
+    logger.info(
       `Cleaned up ${photoUrls.length} photos for listing ${event.params.listingId}`
     );
     return null;

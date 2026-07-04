@@ -2,6 +2,7 @@ import {
   onDocumentWritten,
   onDocumentDeleted,
 } from "firebase-functions/v2/firestore";
+import { logger } from "firebase-functions/v2";
 import { algoliasearch, type Algoliasearch } from "algoliasearch";
 
 const ALGOLIA_INDEX_NAME = "user_POSTS";
@@ -54,9 +55,9 @@ export const indexPost = onDocumentWritten(
     if (data.active === false) {
       try {
         await deletePostFromAlgolia(postId);
-        console.log(`Removed inactive post ${postId} from Algolia`);
+        logger.info(`Removed inactive post ${postId} from Algolia`);
       } catch (error) {
-        console.error(`Error removing inactive post ${postId}:`, error);
+        logger.error(`Error removing inactive post ${postId}:`, error);
       }
       return null;
     }
@@ -75,9 +76,9 @@ export const indexPost = onDocumentWritten(
 
     try {
       await savePostToAlgolia(algoliaObject);
-      console.log(`Indexed post ${postId}`);
+      logger.info(`Indexed post ${postId}`);
     } catch (error) {
-      console.error(`Error indexing post ${postId}:`, error);
+      logger.error(`Error indexing post ${postId}:`, error);
     }
 
     return null;
@@ -95,9 +96,9 @@ export const unindexPost = onDocumentDeleted(
 
     try {
       await deletePostFromAlgolia(postId);
-      console.log(`Removed post ${postId} from index`);
+      logger.info(`Removed post ${postId} from index`);
     } catch (error) {
-      console.error(`Error removing post ${postId} from index:`, error);
+      logger.error(`Error removing post ${postId} from index:`, error);
     }
 
     return null;

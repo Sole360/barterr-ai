@@ -1,4 +1,5 @@
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import axios from "axios";
 import sharp from "sharp";
@@ -28,14 +29,14 @@ export const processImageJobs = onDocumentCreated(
   async (event) => {
     const snap = event.data;
     if (!snap) {
-      console.log("No data associated with the event");
+      logger.info("No data associated with the event");
       return;
     }
 
     const job = snap.data() as ImageJob;
     const jobId = event.params.jobId;
 
-    console.log(`Processing image job ${jobId} for styleId: ${job.styleId}`);
+    logger.info(`Processing image job ${jobId} for styleId: ${job.styleId}`);
 
     try {
       // Update status to processing
@@ -51,7 +52,7 @@ export const processImageJobs = onDocumentCreated(
       let firebaseUrl: string;
 
       if (exists) {
-        console.log(`Image already exists for ${job.styleId}, reusing...`);
+        logger.info(`Image already exists for ${job.styleId}, reusing...`);
 
         // Get existing file metadata for download token
         const [metadata] = await file.getMetadata();
@@ -62,7 +63,7 @@ export const processImageJobs = onDocumentCreated(
           bucket.name
         }/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
       } else {
-        console.log(`Downloading image from ${job.source}: ${job.imageUrl}`);
+        logger.info(`Downloading image from ${job.source}: ${job.imageUrl}`);
 
         // Download image from StockX/GOAT
         const response = await axios.get(job.imageUrl, {
@@ -74,7 +75,7 @@ export const processImageJobs = onDocumentCreated(
           timeout: 30000,
         });
 
-        console.log(`Downloaded ${response.data.byteLength} bytes`);
+        logger.info(`Downloaded ${response.data.byteLength} bytes`);
 
         // Optimize image with sharp
         const optimizedImage = await sharp(response.data)
@@ -88,7 +89,7 @@ export const processImageJobs = onDocumentCreated(
           })
           .toBuffer();
 
-        console.log(`Optimized to ${optimizedImage.byteLength} bytes`);
+        logger.info(`Optimized to ${optimizedImage.byteLength} bytes`);
 
         // Generate download token for public access
         const downloadToken = randomUUID();
@@ -107,7 +108,7 @@ export const processImageJobs = onDocumentCreated(
           },
         });
 
-        console.log("Uploaded to Firebase Storage");
+        logger.info("Uploaded to Firebase Storage");
 
         // Build public URL with token
         firebaseUrl = `https://firebasestorage.googleapis.com/v0/b/${
@@ -115,7 +116,7 @@ export const processImageJobs = onDocumentCreated(
         }/o/${encodeURIComponent(
           storagePath
         )}?alt=media&token=${downloadToken}`;
-        console.log(`Public URL: ${firebaseUrl}`);
+        logger.info(`Public URL: ${firebaseUrl}`);
       }
 
       // Update Post with Firebase URL
@@ -124,7 +125,7 @@ export const processImageJobs = onDocumentCreated(
         updatedAt: admin.firestore.Timestamp.now(),
       });
 
-      console.log("Updated post with Firebase URL");
+      logger.info("Updated post with Firebase URL");
 
       // Mark job as complete
       await snap.ref.update({
@@ -132,9 +133,9 @@ export const processImageJobs = onDocumentCreated(
         firebaseUrl,
       });
 
-      console.log(`Job ${jobId} completed successfully`);
+      logger.info(`Job ${jobId} completed successfully`);
     } catch (error: any) {
-      console.error(`Error processing job ${jobId}:`, error);
+      logger.error(`Error processing job ${jobId}:`, error);
 
       // Mark job as failed
       await snap.ref.update({

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
 
 import { db } from "@/lib/firebase/config";
 import { useToast } from "@/hooks/use-toast";
+import { usePurchaseLabel } from "@/lib/query/hooks/useShipping";
 import type { Order, TrackingInfo } from "@/types";
 
 // ─── Step indicator ────────────────────────────────────────────────────────────
@@ -161,7 +161,7 @@ export function ShippingSection({ tradeId, isSender }: Props) {
   const { toast } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
   const [orderLoading, setOrderLoading] = useState(true);
-  const [labelStep, setLabelStep] = useState<"idle" | "loading" | "done">("idle");
+  const purchaseLabel = usePurchaseLabel(tradeId);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "orders", tradeId), (snap) => {
@@ -201,26 +201,19 @@ export function ShippingSection({ tradeId, isSender }: Props) {
 
   // ── Handler ──────────────────────────────────────────────────────────────
 
-  const handleGetLabel = async () => {
-    setLabelStep("loading");
-    try {
-      const fns = getFunctions(undefined, "us-central1");
-      const fn = httpsCallable<{ tradeId: string }, TrackingInfo>(
-        fns,
-        "purchaseShippoLabel",
-      );
-      await fn({ tradeId });
-      toast({
-        title: "Label purchased!",
-        description: "Check your email for a copy of the label.",
-      });
-      setLabelStep("done");
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to purchase label";
-      toast({ title: "Error", description: msg, variant: "destructive" });
-      setLabelStep("idle");
-    }
+  const handleGetLabel = () => {
+    purchaseLabel.mutate(undefined, {
+      onSuccess: () => {
+        toast({
+          title: "Label purchased!",
+          description: "Check your email for a copy of the label.",
+        });
+      },
+      onError: (err) => {
+        const msg = err instanceof Error ? err.message : "Failed to purchase label";
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      },
+    });
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -273,7 +266,7 @@ export function ShippingSection({ tradeId, isSender }: Props) {
             isMe={true}
             tracking={myTracking}
             received={myReceived}
-            loading={labelStep === "loading"}
+            loading={purchaseLabel.isPending}
             onGetLabel={handleGetLabel}
           />
           <PartyShipRow

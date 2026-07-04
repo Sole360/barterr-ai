@@ -109,28 +109,29 @@ async function purchaseBestRate(
   if (!preferred)
     throw new HttpsError("internal", "No shipping rates available");
 
-  logger.info("[purchaseBestRate] purchasing rate", {
-    rateId: preferred.object_id,
-    provider: preferred.provider,
-    servicelevel: preferred.servicelevel?.token,
-    amount: preferred.amount,
-  });
-
-  const response = await api.post<ShippoTransaction>("/transactions/", {
-    rate: preferred.object_id,
-    label_file_type: "PDF",
-    async: false,
-  });
+  let response: Awaited<ReturnType<typeof api.post<ShippoTransaction>>>;
+  try {
+    response = await api.post<ShippoTransaction>("/transactions/", {
+      rate: preferred.object_id,
+      label_file_type: "PDF",
+      async: false,
+    });
+  } catch (err: any) {
+    logger.error("[purchaseBestRate] Shippo transaction API error", {
+      rateId: preferred.object_id,
+      provider: preferred.provider,
+      shippoError: err.response?.data ?? err.message,
+    });
+    throw new HttpsError("internal", "Failed to purchase shipping label. Please try again.");
+  }
 
   const tx = response.data;
-  logger.info("[purchaseBestRate] transaction response", {
-    status: tx.status,
-    messages: tx.messages,
-  });
-
   if (tx.status !== "SUCCESS") {
-    const errText =
-      tx.messages?.map((m) => m.text).join(", ") || "Label purchase failed";
+    logger.error("[purchaseBestRate] transaction not successful", {
+      status: tx.status,
+      messages: tx.messages,
+    });
+    const errText = tx.messages?.map((m) => m.text).join(", ") || "Label purchase failed";
     throw new HttpsError("internal", errText);
   }
 
@@ -324,13 +325,6 @@ export const purchaseShippoLabel = onCall(
     ]);
 
     const user = userSnap.data()!;
-    logger.info("[purchaseShippoLabel] user", {
-      uid: req.auth.uid,
-      email: user.email,
-      mobile: user.mobile,
-      hasAddress: !!user.address,
-    });
-
     const addr = user.address;
     if (!addr?.street) {
       throw new HttpsError(
@@ -345,45 +339,56 @@ export const purchaseShippoLabel = onCall(
     // Passing inline addresses lets Shippo deduplicate against previously created
     // shipments that may have been created without email — using a fresh object_id
     // forces a new shipment and guarantees the email is present.
-    const addrFromResp = await api.post<{ object_id: string }>("/addresses/", {
-      name: user.displayName || `${user.firstName} ${user.lastName}`,
-      street1: addr.street,
-      street2: addr.street2 || "",
-      city: addr.city,
-      state: addr.state,
-      zip: addr.zip,
-      country: "US",
-      email: user.email,
-      phone: user.mobile || user.phone || "",
-    });
+    let addrFromId: string;
+    try {
+      const addrResp = await api.post<{ object_id: string }>("/addresses/", {
+        name: user.displayName || `${user.firstName} ${user.lastName}`,
+        street1: addr.street,
+        street2: addr.street2 || "",
+        city: addr.city,
+        state: addr.state,
+        zip: addr.zip,
+        country: "US",
+        email: user.email,
+        phone: user.mobile || user.phone || "",
+      });
+      addrFromId = addrResp.data.object_id;
+    } catch (err: any) {
+      logger.error("[purchaseShippoLabel] address creation failed", {
+        tradeId,
+        uid: req.auth.uid,
+        shippoError: err.response?.data ?? err.message,
+      });
+      throw new HttpsError("internal", "Failed to create shipping address. Please try again.");
+    }
 
-    logger.info("[purchaseShippoLabel] address created", {
-      addressId: addrFromResp.data.object_id,
-    });
+    let rates: ShippoRate[];
+    try {
+      const shipmentResp = await api.post<{
+        object_id: string;
+        rates: ShippoRate[];
+        status?: string;
+      }>("/shipments/", {
+        address_from: addrFromId,
+        address_to: barterrAddress,
+        parcels: [SHOEBOX_PARCEL],
+        async: false,
+      });
+      rates = shipmentResp.data.rates;
+      if (!rates?.length) {
+        logger.error("[purchaseShippoLabel] no rates returned", { tradeId });
+        throw new HttpsError("internal", "No shipping rates available for your address.");
+      }
+    } catch (err: any) {
+      if (err instanceof HttpsError) throw err;
+      logger.error("[purchaseShippoLabel] shipment creation failed", {
+        tradeId,
+        shippoError: err.response?.data ?? err.message,
+      });
+      throw new HttpsError("internal", "Failed to get shipping rates. Please try again.");
+    }
 
-    const shipmentResponse = await api.post<{
-      object_id: string;
-      rates: ShippoRate[];
-      status?: string;
-      messages?: { source: string; code: string; text: string }[];
-    }>("/shipments/", {
-      address_from: addrFromResp.data.object_id,
-      address_to: barterrAddress,
-      parcels: [SHOEBOX_PARCEL],
-      async: false,
-    });
-
-    logger.info("[purchaseShippoLabel] shipment created", {
-      shipmentId: shipmentResponse.data.object_id,
-      status: shipmentResponse.data.status,
-      rateCount: shipmentResponse.data.rates?.length,
-      messages: shipmentResponse.data.messages,
-    });
-
-    const { transaction, rate } = await purchaseBestRate(
-      api,
-      shipmentResponse.data.rates,
-    );
+    const { transaction, rate } = await purchaseBestRate(api, rates);
 
     const trackingInfo = {
       carrier: rate.provider,

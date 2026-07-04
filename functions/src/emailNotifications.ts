@@ -5,6 +5,7 @@ import {
   onDocumentUpdated,
 } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
+import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import sgMail from "@sendgrid/mail";
 
@@ -28,8 +29,7 @@ const TEMPLATES = {
 } as const;
 
 // ─────────────────────────────────────────────
-// Local types (kept inline to avoid cross-
-// package imports from the frontend src/)
+// Local types
 // ─────────────────────────────────────────────
 
 type TradeStatus =
@@ -103,7 +103,6 @@ interface OrderDoc {
   fakes?: { userId: string; reasons: string };
   trackingSender?: TrackingInfo;
   trackingPoster?: TrackingInfo;
-  // Outbound: Barterr → each party after authentication
   senderOutbound?: TrackingInfo;
   posterOutbound?: TrackingInfo;
 }
@@ -131,6 +130,20 @@ function displayName(user: UserProfile): string {
   return user.displayName ?? user.firstName ?? "your trade partner";
 }
 
+// Wraps sgMail.send for background triggers — catches and logs rather than
+// throwing, so a single email failure doesn't crash the function or trigger retries.
+async function sendSafe(
+  msg: Parameters<typeof sgMail.send>[0],
+  context: string,
+): Promise<void> {
+  try {
+    await sgMail.send(msg);
+  } catch (err: unknown) {
+    const to = typeof msg === "object" && !Array.isArray(msg) ? msg.to : undefined;
+    logger.error(`[${context}] SendGrid send failed`, { to, error: err });
+  }
+}
+
 // ─────────────────────────────────────────────
 // 1. New trade offer → receiver
 // ─────────────────────────────────────────────
@@ -152,7 +165,7 @@ export const onNewTrade = onDocumentCreated(
     const offer = trade.yourItems?.[0];
     const want = trade.theirItems?.[0];
 
-    await sgMail.send({
+    await sendSafe({
       to: receiver.email,
       from: FROM,
       subject: `${displayName(sender)} wants to trade with you`,
@@ -173,7 +186,7 @@ export const onNewTrade = onDocumentCreated(
         askCash: trade.askCash > 0 ? trade.askCash : null,
         tradeUrl: `${APP_URL}/trades/${tradeId}`,
       },
-    });
+    }, "onNewTrade");
 
     await admin
       .firestore()
@@ -211,7 +224,7 @@ export const onTradeStatusChange = onDocumentUpdated(
 
     if (after.status === "both_confirmed") {
       await Promise.all([
-        sgMail.send({
+        sendSafe({
           to: sender.email,
           from: FROM,
           subject: "Your trade is confirmed",
@@ -222,8 +235,8 @@ export const onTradeStatusChange = onDocumentUpdated(
             tradeId,
             tradeUrl,
           },
-        }),
-        sgMail.send({
+        }, "onTradeStatusChange"),
+        sendSafe({
           to: receiver.email,
           from: FROM,
           subject: "Your trade is confirmed",
@@ -234,13 +247,13 @@ export const onTradeStatusChange = onDocumentUpdated(
             tradeId,
             tradeUrl,
           },
-        }),
+        }, "onTradeStatusChange"),
       ]);
     }
 
     if (after.status === "declined") {
       await Promise.all([
-        sgMail.send({
+        sendSafe({
           to: sender.email,
           from: FROM,
           subject: "Trade update: offer declined",
@@ -251,8 +264,8 @@ export const onTradeStatusChange = onDocumentUpdated(
             tradeId,
             inboxUrl,
           },
-        }),
-        sgMail.send({
+        }, "onTradeStatusChange"),
+        sendSafe({
           to: receiver.email,
           from: FROM,
           subject: "Trade update: offer declined",
@@ -263,7 +276,7 @@ export const onTradeStatusChange = onDocumentUpdated(
             tradeId,
             inboxUrl,
           },
-        }),
+        }, "onTradeStatusChange"),
       ]);
     }
   }
@@ -271,9 +284,6 @@ export const onTradeStatusChange = onDocumentUpdated(
 
 // ─────────────────────────────────────────────
 // 3. Weekly reminder — Monday 10 AM ET
-//    Queries pending trades where receiver
-//    hasn't read yet, sends one email per user
-//    with their total pending count.
 // ─────────────────────────────────────────────
 
 export const sendWeeklyReminder = onSchedule(
@@ -297,12 +307,12 @@ export const sendWeeklyReminder = onSchedule(
       countByUser.set(t.toUserId, (countByUser.get(t.toUserId) ?? 0) + 1);
     });
 
-    const sends: Promise<unknown>[] = [];
+    const sends: Promise<void>[] = [];
     for (const [uid, count] of countByUser) {
       const user = await getUser(uid);
       if (!user?.email) continue;
       sends.push(
-        sgMail.send({
+        sendSafe({
           to: user.email,
           from: FROM,
           subject: "You have pending trades on Barterr",
@@ -313,7 +323,7 @@ export const sendWeeklyReminder = onSchedule(
             moreThanOne: count > 1,
             inboxUrl: `${APP_URL}/trades`,
           },
-        })
+        }, "sendWeeklyReminder")
       );
     }
 
@@ -335,25 +345,30 @@ export const sendEmailMessage = onCall(
     const { email, message, recipientName, senderName, tradeId } =
       req.data ?? {};
 
-    return sgMail.send({
-      to: email,
-      from: FROM,
-      subject: `New message from ${senderName}`,
-      templateId: TEMPLATES.DIRECT_MESSAGE,
-      dynamicTemplateData: {
-        recipientName,
-        senderName,
-        message,
-        tradeUrl: `${APP_URL}/trades/${tradeId}`,
-      },
-    });
+    try {
+      await sgMail.send({
+        to: email,
+        from: FROM,
+        subject: `New message from ${senderName}`,
+        templateId: TEMPLATES.DIRECT_MESSAGE,
+        dynamicTemplateData: {
+          recipientName,
+          senderName,
+          message,
+          tradeUrl: `${APP_URL}/trades/${tradeId}`,
+        },
+      });
+    } catch (err: unknown) {
+      logger.error("[sendEmailMessage] SendGrid send failed", { to: email, error: err });
+      throw new HttpsError("internal", "Failed to send message. Please try again.");
+    }
+
+    return { success: true };
   }
 );
 
 // ─────────────────────────────────────────────
 // 5. Post match
-//    New owner listed → notify matching wishers
-//    New wisher added → notify matching owners
 // ─────────────────────────────────────────────
 
 export const onMatchPostCriteria = onDocumentUpdated(
@@ -363,7 +378,7 @@ export const onMatchPostCriteria = onDocumentUpdated(
     if (!event.data) return;
     const before = event.data.before.data() as PostDoc;
     const after = event.data.after.data() as PostDoc;
-    const sends: Promise<unknown>[] = [];
+    const sends: Promise<void>[] = [];
 
     const sneakerBase = {
       sneakerName: after.title,
@@ -372,13 +387,12 @@ export const onMatchPostCriteria = onDocumentUpdated(
       postUrl: `${APP_URL}/?id=${after.postId}`,
     };
 
-    // New owner → notify matching wishers
     if ((after.owners?.length ?? 0) > (before.owners?.length ?? 0)) {
       const newOwner = after.owners!.at(-1)!;
       for (const wisher of after.wishers ?? []) {
         if (wisher.email && Math.abs(wisher.size - newOwner.size) <= 1) {
           sends.push(
-            sgMail.send({
+            sendSafe({
               to: wisher.email,
               from: FROM,
               subject: `${after.title} just dropped in your size`,
@@ -388,19 +402,18 @@ export const onMatchPostCriteria = onDocumentUpdated(
                 sneakerSize: newOwner.size,
                 ...sneakerBase,
               },
-            })
+            }, "onMatchPostCriteria")
           );
         }
       }
     }
 
-    // New wisher → notify matching owners
     if ((after.wishers?.length ?? 0) > (before.wishers?.length ?? 0)) {
       const newWisher = after.wishers!.at(-1)!;
       for (const owner of after.owners ?? []) {
         if (owner.email && Math.abs(owner.size - newWisher.size) <= 1) {
           sends.push(
-            sgMail.send({
+            sendSafe({
               to: owner.email,
               from: FROM,
               subject: `Someone wants your ${after.title}`,
@@ -410,7 +423,7 @@ export const onMatchPostCriteria = onDocumentUpdated(
                 sneakerSize: newWisher.size,
                 ...sneakerBase,
               },
-            })
+            }, "onMatchPostCriteria")
           );
         }
       }
@@ -422,11 +435,6 @@ export const onMatchPostCriteria = onDocumentUpdated(
 
 // ─────────────────────────────────────────────
 // 6–8. Order-based (shipping flow)
-// These trigger on the `orders` collection,
-// which is created when the Shippo shipping
-// flow is built. The OrderDoc type here mirrors
-// what that schema will need — sneakerReceived
-// lives directly on the sender/poster ref.
 // ─────────────────────────────────────────────
 
 export const onFakeShoes = onDocumentUpdated(
@@ -442,7 +450,7 @@ export const onFakeShoes = onDocumentUpdated(
     const user = isSender ? after.sender : after.poster;
     if (!user?.email) return;
 
-    await sgMail.send({
+    await sendSafe({
       to: user.email,
       bcc: "terrence@barterr.ai",
       from: FROM,
@@ -452,7 +460,7 @@ export const onFakeShoes = onDocumentUpdated(
         firstName: user.name,
         reasons: after.fakes.reasons,
       },
-    });
+    }, "onFakeShoes");
   }
 );
 
@@ -463,12 +471,12 @@ export const onShippingLabelCreated = onDocumentUpdated(
     if (!event.data) return;
     const before = event.data.before.data() as OrderDoc;
     const after = event.data.after.data() as OrderDoc;
-    const sends: Promise<unknown>[] = [];
+    const sends: Promise<void>[] = [];
     const tradeUrl = `${APP_URL}/trades/${after.id}`;
 
     if (!before.trackingPoster && after.trackingPoster && after.poster?.email) {
       sends.push(
-        sgMail.send({
+        sendSafe({
           to: after.poster.email,
           from: FROM,
           subject: "Your shipping label is ready",
@@ -482,13 +490,13 @@ export const onShippingLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        })
+        }, "onShippingLabelCreated")
       );
     }
 
     if (!before.trackingSender && after.trackingSender && after.sender?.email) {
       sends.push(
-        sgMail.send({
+        sendSafe({
           to: after.sender.email,
           from: FROM,
           subject: "Your shipping label is ready",
@@ -502,7 +510,7 @@ export const onShippingLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        })
+        }, "onShippingLabelCreated")
       );
     }
 
@@ -517,12 +525,12 @@ export const onSneakersReceived = onDocumentUpdated(
     if (!event.data) return;
     const before = event.data.before.data() as OrderDoc;
     const after = event.data.after.data() as OrderDoc;
-    const sends: Promise<unknown>[] = [];
+    const sends: Promise<void>[] = [];
     const tradeUrl = `${APP_URL}/trades/${after.id}`;
 
     if (after.sender?.sneakerReceived && !before.sender?.sneakerReceived && after.sender.email) {
       sends.push(
-        sgMail.send({
+        sendSafe({
           to: after.sender.email,
           from: FROM,
           subject: "We've received your sneakers — authentication begins now",
@@ -533,13 +541,13 @@ export const onSneakersReceived = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        })
+        }, "onSneakersReceived")
       );
     }
 
     if (after.poster?.sneakerReceived && !before.poster?.sneakerReceived && after.poster.email) {
       sends.push(
-        sgMail.send({
+        sendSafe({
           to: after.poster.email,
           from: FROM,
           subject: "We've received your sneakers — authentication begins now",
@@ -550,7 +558,7 @@ export const onSneakersReceived = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        })
+        }, "onSneakersReceived")
       );
     }
 
@@ -558,7 +566,6 @@ export const onSneakersReceived = onDocumentUpdated(
   }
 );
 
-// Fires when Barterr generates an outbound label (senderOutbound or posterOutbound set).
 export const onOutboundLabelCreated = onDocumentUpdated(
   { document: "orders/{orderId}", secrets: [SENDGRID_API_KEY] },
   async (event) => {
@@ -566,12 +573,12 @@ export const onOutboundLabelCreated = onDocumentUpdated(
     if (!event.data) return;
     const before = event.data.before.data() as OrderDoc;
     const after = event.data.after.data() as OrderDoc;
-    const sends: Promise<unknown>[] = [];
+    const sends: Promise<void>[] = [];
     const tradeUrl = `${APP_URL}/trades/${after.id}`;
 
     if (!before.senderOutbound && after.senderOutbound && after.sender?.email) {
       sends.push(
-        sgMail.send({
+        sendSafe({
           to: after.sender.email,
           from: FROM,
           subject: "Your authenticated sneakers are on their way!",
@@ -584,13 +591,13 @@ export const onOutboundLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        })
+        }, "onOutboundLabelCreated")
       );
     }
 
     if (!before.posterOutbound && after.posterOutbound && after.poster?.email) {
       sends.push(
-        sgMail.send({
+        sendSafe({
           to: after.poster.email,
           from: FROM,
           subject: "Your authenticated sneakers are on their way!",
@@ -603,7 +610,7 @@ export const onOutboundLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        })
+        }, "onOutboundLabelCreated")
       );
     }
 

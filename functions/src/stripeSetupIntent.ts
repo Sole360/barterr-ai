@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
+import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
 
@@ -71,21 +72,22 @@ export const createSetupIntent = onCall(
     // 1) Ensure Stripe customer exists
     let stripeCustomerId = billing.stripeCustomerId;
     if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({ metadata: { uid } });
-      stripeCustomerId = customer.id;
-
-      await billingRef.set(
-        {
-          stripeCustomerId,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+      try {
+        const customer = await stripe.customers.create({ metadata: { uid } });
+        stripeCustomerId = customer.id;
+        await billingRef.set(
+          { stripeCustomerId, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+      } catch (err: unknown) {
+        logger.error("[createSetupIntent] customer creation failed", { uid, error: err });
+        throw new HttpsError("internal", "Failed to set up billing. Please try again.");
+      }
     }
 
     // If not forcing new, check for existing payment method
     if (!forceNew) {
-      // 2) If we already have a default PM in Firestore, return it (+ summary if we have it)
+      // 2) Return existing PM from Firestore if available
       if (billing.defaultPaymentMethodId) {
         return {
           stripeCustomerId,
@@ -101,65 +103,56 @@ export const createSetupIntent = onCall(
         };
       }
 
-      // 3) Otherwise, try to discover an existing saved card in Stripe (so we don't create a new SetupIntent unnecessarily)
-      //    Stripe: list customer payment methods (type: card)
-      const pms = await stripe.paymentMethods.list({
-        customer: stripeCustomerId,
-        type: "card",
-        limit: 1,
-      });
-
-      const existing = pms.data[0] ?? null;
-
-      if (existing) {
-        const summary = toCardSummary(existing);
-
-        await billingRef.set(
-          {
+      // 3) Discover existing saved card in Stripe
+      try {
+        const pms = await stripe.paymentMethods.list({
+          customer: stripeCustomerId,
+          type: "card",
+          limit: 1,
+        });
+        const existing = pms.data[0] ?? null;
+        if (existing) {
+          const summary = toCardSummary(existing);
+          await billingRef.set(
+            {
+              defaultPaymentMethodId: summary.id,
+              defaultPaymentMethodBrand: summary.brand,
+              defaultPaymentMethodLast4: summary.last4,
+              defaultPaymentMethodExpMonth: summary.expMonth,
+              defaultPaymentMethodExpYear: summary.expYear,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+          return {
+            stripeCustomerId,
             defaultPaymentMethodId: summary.id,
-            defaultPaymentMethodBrand: summary.brand,
-            defaultPaymentMethodLast4: summary.last4,
-            defaultPaymentMethodExpMonth: summary.expMonth,
-            defaultPaymentMethodExpYear: summary.expYear,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          { merge: true }
-        );
-
-        return {
-          stripeCustomerId,
-          defaultPaymentMethodId: summary.id,
-          card: {
-            brand: summary.brand,
-            last4: summary.last4,
-            expMonth: summary.expMonth,
-            expYear: summary.expYear,
-          },
-        };
+            card: { brand: summary.brand, last4: summary.last4, expMonth: summary.expMonth, expYear: summary.expYear },
+          };
+        }
+      } catch (err: unknown) {
+        logger.error("[createSetupIntent] listing payment methods failed", { uid, error: err });
+        throw new HttpsError("internal", "Failed to retrieve payment methods. Please try again.");
       }
     }
 
-    // 4) Create a SetupIntent (single-use) for Payment Element
-    const setupIntent = await stripe.setupIntents.create({
-      customer: stripeCustomerId,
-      usage: "off_session",
-      payment_method_types: ["card"],
-      metadata: { uid },
-    });
-
-    if (!setupIntent.client_secret) {
-      throw new HttpsError(
-        "internal",
-        "Stripe SetupIntent did not return a client secret."
-      );
+    // 4) Create SetupIntent for Payment Element
+    try {
+      const setupIntent = await stripe.setupIntents.create({
+        customer: stripeCustomerId,
+        usage: "off_session",
+        payment_method_types: ["card"],
+        metadata: { uid },
+      });
+      if (!setupIntent.client_secret) {
+        throw new HttpsError("internal", "Stripe SetupIntent did not return a client secret.");
+      }
+      return { stripeCustomerId, clientSecret: setupIntent.client_secret, defaultPaymentMethodId: "", card: null };
+    } catch (err: unknown) {
+      if (err instanceof HttpsError) throw err;
+      logger.error("[createSetupIntent] SetupIntent creation failed", { uid, error: err });
+      throw new HttpsError("internal", "Failed to initialize payment setup. Please try again.");
     }
-
-    return {
-      stripeCustomerId,
-      clientSecret: setupIntent.client_secret,
-      defaultPaymentMethodId: "",
-      card: null,
-    };
   }
 );
 
@@ -215,42 +208,52 @@ export const setDefaultPaymentMethod = onCall(
     // 1) Ensure Stripe customer exists
     let stripeCustomerId = billing.stripeCustomerId;
     if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({ metadata: { uid } });
-      stripeCustomerId = customer.id;
-
-      await billingRef.set(
-        {
-          stripeCustomerId,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+      try {
+        const customer = await stripe.customers.create({ metadata: { uid } });
+        stripeCustomerId = customer.id;
+        await billingRef.set(
+          { stripeCustomerId, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+      } catch (err: unknown) {
+        logger.error("[setDefaultPaymentMethod] customer creation failed", { uid, error: err });
+        throw new HttpsError("internal", "Failed to set up billing. Please try again.");
+      }
     }
 
     // 2) Retrieve the payment method to get card details
-    const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
-
-    // 3) Attach payment method to customer if not already attached
-    if (!pm.customer) {
-      await stripe.paymentMethods.attach(paymentMethodId, {
-        customer: stripeCustomerId,
-      });
-    } else if (pm.customer !== stripeCustomerId) {
-      throw new HttpsError(
-        "failed-precondition",
-        "Payment method belongs to a different customer."
-      );
+    let pm: Stripe.PaymentMethod;
+    try {
+      pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+    } catch (err: unknown) {
+      logger.error("[setDefaultPaymentMethod] retrieve failed", { uid, paymentMethodId, error: err });
+      throw new HttpsError("internal", "Failed to retrieve payment method. Please try again.");
     }
 
-    // 4) Set as default payment method on the customer
-    await stripe.customers.update(stripeCustomerId, {
-      invoice_settings: { default_payment_method: paymentMethodId },
-    });
+    // 3) Attach payment method to customer if not already attached
+    try {
+      if (!pm.customer) {
+        await stripe.paymentMethods.attach(paymentMethodId, { customer: stripeCustomerId });
+      } else if (pm.customer !== stripeCustomerId) {
+        throw new HttpsError("failed-precondition", "Payment method belongs to a different customer.");
+      }
+    } catch (err: unknown) {
+      if (err instanceof HttpsError) throw err;
+      logger.error("[setDefaultPaymentMethod] attach failed", { uid, paymentMethodId, error: err });
+      throw new HttpsError("internal", "Failed to attach payment method. Please try again.");
+    }
 
-    // 5) Extract card summary
+    // 4) Set as default and update Firestore
+    try {
+      await stripe.customers.update(stripeCustomerId, {
+        invoice_settings: { default_payment_method: paymentMethodId },
+      });
+    } catch (err: unknown) {
+      logger.error("[setDefaultPaymentMethod] customer update failed", { uid, error: err });
+      throw new HttpsError("internal", "Failed to set default payment method. Please try again.");
+    }
+
     const summary = toCardSummary(pm);
-
-    // 6) Update Firestore billing doc
     await billingRef.set(
       {
         defaultPaymentMethodId: summary.id,
@@ -265,12 +268,7 @@ export const setDefaultPaymentMethod = onCall(
 
     return {
       defaultPaymentMethodId: summary.id,
-      card: {
-        brand: summary.brand,
-        last4: summary.last4,
-        expMonth: summary.expMonth,
-        expYear: summary.expYear,
-      },
+      card: { brand: summary.brand, last4: summary.last4, expMonth: summary.expMonth, expYear: summary.expYear },
     };
   }
 );
