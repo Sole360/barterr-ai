@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
+import { logger } from "firebase-functions/v2";
 import admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import axios from "axios";
@@ -311,7 +312,11 @@ export const purchaseShippoLabel = onCall(
     ]);
 
     const user = userSnap.data()!;
-    console.log("[purchaseShippoLabel] uid:", req.auth.uid, "userSnapExists:", userSnap.exists, "user:", JSON.stringify(user));
+    logger.info("[purchaseShippoLabel] debug", {
+      uid: req.auth.uid,
+      userSnapExists: userSnap.exists,
+      user,
+    });
 
     const addr = user.address;
     if (!addr?.street) {
