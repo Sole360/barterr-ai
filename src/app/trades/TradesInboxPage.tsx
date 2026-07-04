@@ -292,7 +292,6 @@ export const TradesInboxPage = () => {
   }, [currentUser?.uid]);
 
   const hasAny = sent.length + received.length > 0;
-  const uid = currentUser?.uid ?? "";
 
   const showDMComingSoon = () =>
     toast({ title: "Coming soon", description: "Direct messaging is on the way!" });
