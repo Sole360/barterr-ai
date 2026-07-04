@@ -311,18 +311,13 @@ export const purchaseShippoLabel = onCall(
     ]);
 
     const user = userSnap.data()!;
+    console.log("[purchaseShippoLabel] uid:", req.auth.uid, "userSnapExists:", userSnap.exists, "user:", JSON.stringify(user));
+
     const addr = user.address;
     if (!addr?.street) {
       throw new HttpsError(
         "failed-precondition",
         "No address on file. Please add your address in profile settings.",
-      );
-    }
-
-    if (!user.email) {
-      throw new HttpsError(
-        "failed-precondition",
-        `No email on uid=${req.auth.uid}. userKeys=${Object.keys(user).join(",")}`
       );
     }
 
