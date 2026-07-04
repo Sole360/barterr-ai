@@ -1,5 +1,4 @@
 import { Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { CollectionItem } from "@/types";
 
 type Props = {
@@ -8,87 +7,63 @@ type Props = {
   onSelectItem?: (item: CollectionItem) => void;
 };
 
-export const CollectionGrid = ({
-  items,
-  onAddToCollection,
-  onSelectItem,
-}: Props) => {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
-      <AddToCollectionTile onClick={onAddToCollection} />
-      {items.map((item) => (
-        <SneakerCard
-          key={item.id}
-          item={item}
-          onClick={() => onSelectItem?.(item)}
-        />
-      ))}
+export const CollectionGrid = ({ items, onAddToCollection, onSelectItem }: Props) => (
+  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <AddToCollectionTile onClick={onAddToCollection} />
+    {items.map((item) => (
+      <SneakerCard key={item.id} item={item} onClick={() => onSelectItem?.(item)} />
+    ))}
+  </div>
+);
+
+const AddToCollectionTile = ({ onClick }: { onClick?: () => void }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="relative rounded-2xl text-white min-h-[200px] flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#33FF99] to-[#3366FF] hover:opacity-90 transition-opacity shadow-[0_2px_16px_rgba(51,102,255,0.3)]"
+  >
+    <div className="h-11 w-11 rounded-full bg-white/20 flex items-center justify-center">
+      <Plus className="h-5 w-5 text-white" />
     </div>
-  );
-};
+    <div className="text-sm font-semibold">Add Sneaker</div>
+    <div className="text-xs opacity-80">to My Collection</div>
+  </button>
+);
 
-const AddToCollectionTile = ({ onClick }: { onClick?: () => void }) => {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "relative rounded-2xl p-4 text-white",
-        "min-h-[220px] flex flex-col items-center justify-center gap-2",
-        "bg-gradient-to-br from-barterr-green-1 to-barterr-blue-2",
-        "hover:opacity-95 transition"
+const SneakerCard = ({ item, onClick }: { item: CollectionItem; onClick?: () => void }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group text-left rounded-2xl bg-white dark:bg-card overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 transition-all duration-200"
+  >
+    <div className="relative aspect-square bg-gray-50 dark:bg-muted/60 overflow-hidden">
+      {item.imageUrl && (
+        <img
+          src={item.imageUrl}
+          alt={item.name}
+          className="absolute inset-0 w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300"
+          referrerPolicy="no-referrer"
+        />
       )}
-    >
-      <div className="h-12 w-12 rounded-full bg-white/20 grid place-items-center">
-        <Plus className="h-6 w-6 text-white" />
-      </div>
-      <div className="text-sm font-semibold">Add</div>
-      <div className="text-xs opacity-90">to My Collection</div>
-    </button>
-  );
-};
-
-const SneakerCard = ({
-  item,
-  onClick,
-}: {
-  item: CollectionItem;
-  onClick?: () => void;
-}) => {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-left rounded-2xl border bg-white overflow-hidden hover:shadow-sm transition"
-    >
-      <div className="relative aspect-[4/3] bg-white">
-        {item.imageUrl ? (
-          <img
-            src={item.imageUrl}
-            alt={item.name}
-            className="h-full w-full object-contain p-3"
-            referrerPolicy="no-referrer"
-          />
-        ) : null}
-
-        {item.status === "rejected" ? (
-          <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium border">
-            Rejected
-          </div>
-        ) : item.status === "pending" ? (
-          <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium border">
-            Pending Review
-          </div>
-        ) : null}
-      </div>
-
-      <div className="p-3">
-        <div className="text-sm font-semibold line-clamp-2">{item.name}</div>
-        <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{item.size}</span>
-          <span className="font-medium text-foreground">{item.value}</span>
+      {item.status === "pending" && (
+        <div className="absolute left-2 top-2 bg-white/90 dark:bg-card/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-semibold border border-border text-muted-foreground">
+          Pending Review
         </div>
+      )}
+      {item.status === "rejected" && (
+        <div className="absolute left-2 top-2 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400">
+          Rejected
+        </div>
+      )}
+    </div>
+    <div className="px-3.5 pt-3 pb-3.5">
+      <div className="text-sm font-semibold text-foreground line-clamp-2 leading-snug mb-1.5">
+        {item.name}
       </div>
-    </button>
-  );
-};
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{item.size}</span>
+        <span className="font-semibold text-foreground">{item.value}</span>
+      </div>
+    </div>
+  </button>
+);

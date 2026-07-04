@@ -1,21 +1,25 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { doc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { ProfileHeader } from "./ProfileHeader";
 import { ProfileTabs } from "./ProfileTabs";
 import { CollectionGrid } from "./CollectionGrid";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
+import { PageTransition } from "@/components/shared/PageTransition";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { useMyWishlist } from "@/lib/firebase/useMyWishlist";
 import { MyListingModal } from "@/components/dialogs/MyListingModal";
 import { EditProfileDialog } from "@/components/dialogs/EditProfileDialog";
 import { MyWishlistModal } from "@/components/dialogs/MyWishlistModal";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { db, storage } from "@/lib/firebase/config";
+import { useToast } from "@/hooks/use-toast";
 import type { ProfileTabKey } from "@/types";
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [tab, setTab] = useState<ProfileTabKey>("collection");
   const [addOpen, setAddOpen] = useState(false);
@@ -25,59 +29,48 @@ export const ProfilePage = () => {
   const [editListingId, setEditListingId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const { items: wishlistItems, loading: wishlistLoading } = useMyWishlist(
-    currentUser?.uid
-  );
+
+  const { items: wishlistItems, loading: wishlistLoading } = useMyWishlist(currentUser?.uid);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [wishlistPostId, setWishlistPostId] = useState<string | null>(null);
   const [wishlistSize, setWishlistSize] = useState<number>(0);
 
+  // Wishlist items grouped by post
   const wishlistedByPost = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        postId: string;
-        name: string;
-        brand?: string;
-        imageUrl?: string;
-        sizes: number[];
-      }
-    >();
-
+    const map = new Map<string, { postId: string; name: string; brand?: string; imageUrl?: string; sizes: number[] }>();
     for (const w of wishlistItems) {
       const existing = map.get(w.postId);
       if (!existing) {
-        map.set(w.postId, {
-          postId: w.postId,
-          name: w.name,
-          brand: w.brand,
-          imageUrl: w.imageUrl,
-          sizes: [w.size],
-        });
-      } else {
-        // dedupe sizes just in case
-        if (!existing.sizes.some((s) => Number(s) === Number(w.size))) {
-          existing.sizes.push(w.size);
-        }
+        map.set(w.postId, { postId: w.postId, name: w.name, brand: w.brand, imageUrl: w.imageUrl, sizes: [w.size] });
+      } else if (!existing.sizes.some((s) => Number(s) === Number(w.size))) {
+        existing.sizes.push(w.size);
       }
     }
-
-    // sort sizes + return array
-    return Array.from(map.values()).map((g) => ({
-      ...g,
-      sizes: g.sizes.map((s) => Number(s)).sort((a, b) => a - b),
-    }));
+    return Array.from(map.values()).map((g) => ({ ...g, sizes: g.sizes.map(Number).sort((a, b) => a - b) }));
   }, [wishlistItems]);
 
-  // const wishlistGridItems = wishlistItems.map((w) => ({
-  //   id: w.postId,
-  //   postId: w.postId,
-  //   name: w.name,
-  //   size: `US ${w.size}`,
-  //   value: "—",
-  //   imageUrl: w.imageUrl,
-  //   status: undefined,
-  // }));
+  // Auto-derive brand tags from wishlist
+  const autoBrandTags = useMemo(() => {
+    const brands = new Set<string>();
+    for (const g of wishlistedByPost) {
+      if (g.brand) brands.add(g.brand);
+    }
+    return Array.from(brands);
+  }, [wishlistedByPost]);
+
+  // Cover photo upload — happens directly without opening edit dialog
+  const handleCoverPhotoChange = async (file: File) => {
+    if (!currentUser?.uid) return;
+    try {
+      const coverRef = ref(storage, `users/${currentUser.uid}/cover`);
+      await uploadBytes(coverRef, file, { contentType: file.type });
+      const url = await getDownloadURL(coverRef);
+      await updateDoc(doc(db, "users", currentUser.uid), { coverPhoto: url });
+      toast({ title: "Cover photo updated" });
+    } catch {
+      toast({ title: "Error", description: "Failed to update cover photo", variant: "destructive" });
+    }
+  };
 
   const gridItems = items.map((item) => ({
     id: item.id,
@@ -89,186 +82,154 @@ export const ProfilePage = () => {
     status: item.status,
   }));
 
-  const displayName =
-    userProfile?.displayName ?? currentUser?.displayName ?? "Your Profile";
-
-  const location = userProfile?.location ?? "Location not set";
-
-  const bio = userProfile?.biography ?? "Add a bio so people know you.";
-
   const collectionCount = items.length;
-  const pendingCount = items.filter((i) => i.status === "pending").length;
-
   const wishlistCount = wishlistItems.length;
   const tradesCount = 0;
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto w-full max-w-2xl px-4 py-6 lg:max-w-4xl xl:max-w-5xl">
-        <Button
-          type="button"
-          variant="ghost"
-          className="-ml-2 mb-2 h-9 px-2"
-          onClick={() => navigate(-1)}
-          aria-label="Back to dashboard"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
+    <PageTransition>
+      <div className="min-h-screen bg-background">
+        {/* Header is full-bleed (no outer padding) */}
         <ProfileHeader
-          displayName={displayName}
-          location={location}
+          displayName={userProfile?.displayName ?? currentUser?.displayName ?? "Your Profile"}
+          location={userProfile?.location}
           rating={5}
-          bio={bio}
+          bio={userProfile?.biography}
           avatarUrl={userProfile?.photoURL ?? ""}
+          coverPhoto={userProfile?.coverPhoto}
+          styleTags={userProfile?.styleTags}
+          autoBrandTags={autoBrandTags}
+          onNavigateBack={() => navigate(-1)}
           onSettingsClick={() => setEditProfileOpen(true)}
-          stats={{
-            collectionCount,
-            wishlistCount,
-            tradesCount,
-            pendingCount,
-          }}
+          onCoverPhotoChange={handleCoverPhotoChange}
+          stats={{ collectionCount, wishlistCount, tradesCount }}
         />
 
-        <div className="mt-5">
+        {/* Content */}
+        <div className="max-w-4xl mx-auto px-4 pb-10">
           <ProfileTabs value={tab} onValueChange={setTab} />
+
+          <div className="mt-5">
+            {tab === "collection" ? (
+              loading ? (
+                <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                  Loading your collection…
+                </div>
+              ) : (
+                <CollectionGrid
+                  items={gridItems}
+                  onAddToCollection={() => setAddOpen(true)}
+                  onSelectItem={(gridItem) => {
+                    setEditListingId(gridItem.id);
+                    setEditOpen(true);
+                  }}
+                />
+              )
+            ) : tab === "wishlist" ? (
+              wishlistLoading ? (
+                <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                  Loading your wishlist…
+                </div>
+              ) : wishlistedByPost.length === 0 ? (
+                <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                  Your wishlist is empty.
+                </div>
+              ) : (
+                <WishlistGrid
+                  groups={wishlistedByPost}
+                  onSelectSize={(postId, size) => {
+                    setWishlistPostId(postId);
+                    setWishlistSize(size);
+                    setWishlistOpen(true);
+                  }}
+                />
+              )
+            ) : tab === "fashion" ? (
+              <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                Fashion Photos — coming soon
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                Recent Trades — coming soon
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="mt-5">
-          {tab === "collection" ? (
-            loading ? (
-              <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-                Loading your collection…
-              </div>
-            ) : (
-              <CollectionGrid
-                items={gridItems}
-                onAddToCollection={() => setAddOpen(true)}
-                onSelectItem={(gridItem) => {
-                  setEditListingId(gridItem.id);
-                  setEditOpen(true);
-                }}
-              />
-            )
-          ) : tab === "wishlist" ? (
-            wishlistLoading ? (
-              <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-                Loading your wishlist…
-              </div>
-            ) : wishlistedByPost.length === 0 ? (
-              <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-                Your wishlist is empty.
-              </div>
-            ) : (
-              <WishlistGrid
-                groups={wishlistedByPost}
-                onSelectSize={(postId, size) => {
-                  setWishlistPostId(postId);
-                  setWishlistSize(size);
-                  setWishlistOpen(true);
-                }}
-              />
-            )
-          ) : tab === "fashion" ? (
-            <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-              Fashion Photos (placeholder)
-            </div>
-          ) : (
-            <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-              Recent Trades (placeholder)
-            </div>
-          )}
-        </div>
+        <AddSneakerDialog open={addOpen} onClose={() => setAddOpen(false)} />
+
+        <EditProfileDialog
+          open={editProfileOpen}
+          onClose={() => setEditProfileOpen(false)}
+        />
+
+        {editListingId && (
+          <MyListingModal
+            open={editOpen}
+            listingId={editListingId}
+            onClose={() => { setEditOpen(false); setEditListingId(null); }}
+          />
+        )}
+
+        {wishlistPostId && (
+          <MyWishlistModal
+            open={wishlistOpen}
+            postId={wishlistPostId}
+            size={wishlistSize}
+            onClose={() => { setWishlistOpen(false); setWishlistPostId(null); setWishlistSize(0); }}
+          />
+        )}
       </div>
-
-      <AddSneakerDialog open={addOpen} onClose={() => setAddOpen(false)} />
-
-      <EditProfileDialog
-        open={editProfileOpen}
-        onClose={() => setEditProfileOpen(false)}
-      />
-
-      {editListingId && (
-        <MyListingModal
-          open={editOpen}
-          listingId={editListingId}
-          onClose={() => {
-            setEditOpen(false);
-            setEditListingId(null);
-          }}
-        />
-      )}
-      {wishlistPostId && (
-        <MyWishlistModal
-          open={wishlistOpen}
-          postId={wishlistPostId}
-          size={wishlistSize}
-          onClose={() => {
-            setWishlistOpen(false);
-            setWishlistPostId(null);
-            setWishlistSize(0);
-          }}
-        />
-      )}
-    </div>
+    </PageTransition>
   );
 };
+
+// ─── Wishlist grid ────────────────────────────────────────────────────────────
 
 const WishlistGrid = ({
   groups,
   onSelectSize,
 }: {
-  groups: {
-    postId: string;
-    name: string;
-    brand?: string;
-    imageUrl?: string;
-    sizes: number[];
-  }[];
+  groups: { postId: string; name: string; brand?: string; imageUrl?: string; sizes: number[] }[];
   onSelectSize: (postId: string, size: number) => void;
-}) => {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
-      {groups.map((g) => (
-        <div
-          key={g.postId}
-          className="text-left rounded-2xl border bg-white overflow-hidden hover:shadow-sm transition"
-        >
-          <div className="relative aspect-[4/3] bg-white">
-            {g.imageUrl ? (
-              <img
-                src={g.imageUrl}
-                alt={g.name}
-                className="h-full w-full object-contain p-3"
-                referrerPolicy="no-referrer"
-              />
-            ) : null}
-          </div>
-
-          <div className="p-3">
-            {g.brand ? (
-              <div className="text-[11px] font-medium text-[#3366FF]">
-                {g.brand}
-              </div>
-            ) : null}
-
-            <div className="text-sm font-semibold line-clamp-2">{g.name}</div>
-
-            <div className="mt-2 flex flex-wrap gap-2">
-              {g.sizes.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => onSelectSize(g.postId, size)}
-                  className="rounded-full border px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-[#3366FF] hover:text-[#3366FF] transition"
-                >
-                  US {size}
-                </button>
-              ))}
+}) => (
+  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    {groups.map((g) => (
+      <div
+        key={g.postId}
+        className="rounded-2xl bg-white dark:bg-card overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.07)]"
+      >
+        <div className="relative aspect-square bg-gray-50 dark:bg-muted/60">
+          {g.imageUrl && (
+            <img
+              src={g.imageUrl}
+              alt={g.name}
+              className="absolute inset-0 w-full h-full object-contain p-4"
+              referrerPolicy="no-referrer"
+            />
+          )}
+        </div>
+        <div className="p-3.5">
+          {g.brand && (
+            <div className="text-[11px] font-bold text-[#3366FF] uppercase tracking-widest mb-1">
+              {g.brand}
             </div>
+          )}
+          <div className="text-sm font-semibold text-foreground line-clamp-2 mb-2.5">{g.name}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {g.sizes.map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => onSelectSize(g.postId, size)}
+                className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:border-[#3366FF] hover:text-[#3366FF] transition-colors"
+              >
+                US {size}
+              </button>
+            ))}
           </div>
         </div>
-      ))}
-    </div>
-  );
-};
+      </div>
+    ))}
+  </div>
+);

@@ -20,6 +20,8 @@ export interface User {
   wishlistCount?: number;
   address?: Address;
   onboardingFinished: boolean;
+  coverPhoto?: string;
+  styleTags?: string[];
 }
 
 export interface Address {
