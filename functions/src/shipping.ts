@@ -109,6 +109,13 @@ async function purchaseBestRate(
   if (!preferred)
     throw new HttpsError("internal", "No shipping rates available");
 
+  logger.info("[purchaseBestRate] purchasing rate", {
+    rateId: preferred.object_id,
+    provider: preferred.provider,
+    servicelevel: preferred.servicelevel?.token,
+    amount: preferred.amount,
+  });
+
   const response = await api.post<ShippoTransaction>("/transactions/", {
     rate: preferred.object_id,
     label_file_type: "PDF",
@@ -116,6 +123,11 @@ async function purchaseBestRate(
   });
 
   const tx = response.data;
+  logger.info("[purchaseBestRate] transaction response", {
+    status: tx.status,
+    messages: tx.messages,
+  });
+
   if (tx.status !== "SUCCESS") {
     const errText =
       tx.messages?.map((m) => m.text).join(", ") || "Label purchase failed";
@@ -312,10 +324,11 @@ export const purchaseShippoLabel = onCall(
     ]);
 
     const user = userSnap.data()!;
-    logger.info("[purchaseShippoLabel] debug", {
+    logger.info("[purchaseShippoLabel] user", {
       uid: req.auth.uid,
-      userSnapExists: userSnap.exists,
-      user,
+      email: user.email,
+      mobile: user.mobile,
+      hasAddress: !!user.address,
     });
 
     const addr = user.address;
@@ -328,24 +341,43 @@ export const purchaseShippoLabel = onCall(
 
     const api = shippoApi(SHIPPO_API_KEY.value());
 
+    // Create an explicit Shippo address object so Shippo stores the email.
+    // Passing inline addresses lets Shippo deduplicate against previously created
+    // shipments that may have been created without email — using a fresh object_id
+    // forces a new shipment and guarantees the email is present.
+    const addrFromResp = await api.post<{ object_id: string }>("/addresses/", {
+      name: user.displayName || `${user.firstName} ${user.lastName}`,
+      street1: addr.street,
+      street2: addr.street2 || "",
+      city: addr.city,
+      state: addr.state,
+      zip: addr.zip,
+      country: "US",
+      email: user.email,
+      phone: user.mobile || user.phone || "",
+    });
+
+    logger.info("[purchaseShippoLabel] address created", {
+      addressId: addrFromResp.data.object_id,
+    });
+
     const shipmentResponse = await api.post<{
       object_id: string;
       rates: ShippoRate[];
+      status?: string;
+      messages?: { source: string; code: string; text: string }[];
     }>("/shipments/", {
-      address_from: {
-        name: user.displayName || `${user.firstName} ${user.lastName}`,
-        street1: addr.street,
-        street2: addr.street2 || "",
-        city: addr.city,
-        state: addr.state,
-        zip: addr.zip,
-        country: "US",
-        email: user.email,
-        phone: user.phone || "",
-      },
+      address_from: addrFromResp.data.object_id,
       address_to: barterrAddress,
       parcels: [SHOEBOX_PARCEL],
       async: false,
+    });
+
+    logger.info("[purchaseShippoLabel] shipment created", {
+      shipmentId: shipmentResponse.data.object_id,
+      status: shipmentResponse.data.status,
+      rateCount: shipmentResponse.data.rates?.length,
+      messages: shipmentResponse.data.messages,
     });
 
     const { transaction, rate } = await purchaseBestRate(
