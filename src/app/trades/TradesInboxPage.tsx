@@ -1,60 +1,267 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   collection,
+  doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
   where,
 } from "firebase/firestore";
+import { ArrowLeftRight, Mail } from "lucide-react";
 
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
-
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-
+import { useToast } from "@/hooks/use-toast";
+import { Navbar } from "@/components/shared/Navbar";
+import { PageTransition } from "@/components/shared/PageTransition";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { TradeDocument } from "@/types";
+
+type UserSnap = { displayName: string; photoURL?: string };
+
+// ─── TradeRow ─────────────────────────────────────────────────────────────────
+
+type TradeRowProps = {
+  t: TradeDocument & { id: string };
+  mode: "sent" | "received";
+  userProfiles: Record<string, UserSnap>;
+  onNavigateToTrade: (id: string) => void;
+  onNavigateToProfile: (userId: string) => void;
+  onOpenDM: () => void;
+};
+
+function TradeRow({
+  t,
+  mode,
+  userProfiles,
+  onNavigateToTrade,
+  onNavigateToProfile,
+  onOpenDM,
+}: TradeRowProps) {
+  const otherId = mode === "sent" ? t.toUserId : t.fromUserId;
+  const otherUser = userProfiles[otherId ?? ""];
+  const otherName = otherUser?.displayName ?? "Trade Partner";
+  const otherPhoto = otherUser?.photoURL;
+
+  const yourImages = (t.yourItems ?? []).map((i) => i.imageUrl).filter((u): u is string => !!u);
+  const theirImages = (t.theirItems ?? []).map((i) => i.imageUrl).filter((u): u is string => !!u);
+  const hasImages = yourImages.length > 0 || theirImages.length > 0;
+
+  const statusBadge = (() => {
+    if (t.status === "declined")
+      return { text: "Declined", cls: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" };
+    if (t.status === "completed")
+      return { text: "Completed", cls: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" };
+    if (t.status === "failed")
+      return { text: "Failed", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" };
+    if (t.status === "processing" || t.status === "both_confirmed")
+      return { text: "Confirmed", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" };
+    if (mode === "received" && !t.receiverConfirmed)
+      return { text: "Action needed", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400" };
+    return { text: t.receiverConfirmed ? "Accepted" : "Pending", cls: "bg-muted text-muted-foreground" };
+  })();
+
+  const yourCount = t.yourItems?.length ?? 0;
+  const theirCount = t.theirItems?.length ?? 0;
+  const cashParts = [
+    t.addCash ? `+$${t.addCash}` : "",
+    t.askCash ? `+$${t.askCash}` : "",
+  ].filter(Boolean).join(" / ");
+
+  const MAX_SHOWN = 3;
+
+  const initials = otherName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("");
+
+  return (
+    <div className="rounded-2xl bg-card border border-border shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.11)] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
+      <div
+        role="button"
+        tabIndex={0}
+        className="w-full text-left p-4 cursor-pointer"
+        onClick={() => onNavigateToTrade(t.id)}
+        onKeyDown={(e) => e.key === "Enter" && onNavigateToTrade(t.id)}
+      >
+        {/* Header row: avatar · name · status · mail */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (otherId) onNavigateToProfile(otherId);
+            }}
+            className="shrink-0"
+          >
+            <Avatar className="h-11 w-11 ring-2 ring-border">
+              <AvatarImage src={otherPhoto} alt={otherName} className="object-cover" />
+              <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-[#33FF99]/60 to-[#3366FF]/60 text-foreground">
+                {initials || "?"}
+              </AvatarFallback>
+            </Avatar>
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (otherId) onNavigateToProfile(otherId);
+                }}
+                className="text-sm font-semibold text-foreground hover:text-[#3366FF] transition-colors"
+              >
+                {otherName}
+              </button>
+              <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadge.cls}`}>
+                {statusBadge.text}
+              </span>
+            </div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {yourCount + theirCount} sneaker{yourCount + theirCount !== 1 ? "s" : ""}
+              {cashParts ? ` · ${cashParts}` : ""}
+            </div>
+          </div>
+
+          {/* Mail — DM placeholder */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDM();
+            }}
+            className="shrink-0 p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground"
+            title="Message"
+          >
+            <Mail className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Sneaker images — split by side with trade icon between */}
+        {hasImages && (
+          <div className="mt-3 flex items-center gap-2">
+            {/* Your side (right-aligned so both sides meet at the icon) */}
+            <div className="flex flex-1 justify-end gap-1.5">
+              {yourImages.slice(0, MAX_SHOWN).map((url, idx) => (
+                <div
+                  key={idx}
+                  className="shrink-0 h-14 w-14 rounded-xl bg-gray-50 dark:bg-muted/60 overflow-hidden border border-border"
+                >
+                  <img src={url} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
+                </div>
+              ))}
+              {yourImages.length > MAX_SHOWN && (
+                <div className="shrink-0 h-14 w-14 rounded-xl bg-muted border border-border flex items-center justify-center text-[10px] font-semibold text-muted-foreground">
+                  +{yourImages.length - MAX_SHOWN}
+                </div>
+              )}
+              {yourImages.length === 0 && (
+                <div className="h-14 w-14 rounded-xl border border-dashed border-border flex items-center justify-center text-[10px] text-muted-foreground">
+                  —
+                </div>
+              )}
+            </div>
+
+            {/* Trade icon */}
+            <div className="shrink-0 h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+              <ArrowLeftRight className="w-3 h-3 text-muted-foreground" />
+            </div>
+
+            {/* Their side (left-aligned) */}
+            <div className="flex flex-1 gap-1.5">
+              {theirImages.slice(0, MAX_SHOWN).map((url, idx) => (
+                <div
+                  key={idx}
+                  className="shrink-0 h-14 w-14 rounded-xl bg-gray-50 dark:bg-muted/60 overflow-hidden border border-border"
+                >
+                  <img src={url} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
+                </div>
+              ))}
+              {theirImages.length > MAX_SHOWN && (
+                <div className="shrink-0 h-14 w-14 rounded-xl bg-muted border border-border flex items-center justify-center text-[10px] font-semibold text-muted-foreground">
+                  +{theirImages.length - MAX_SHOWN}
+                </div>
+              )}
+              {theirImages.length === 0 && (
+                <div className="h-14 w-14 rounded-xl border border-dashed border-border flex items-center justify-center text-[10px] text-muted-foreground">
+                  —
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export const TradesInboxPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { toast } = useToast();
 
   const [sent, setSent] = useState<(TradeDocument & { id: string })[]>([]);
-  const [received, setReceived] = useState<(TradeDocument & { id: string })[]>(
-    []
-  );
+  const [received, setReceived] = useState<(TradeDocument & { id: string })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userProfiles, setUserProfiles] = useState<Record<string, UserSnap>>({});
+
+  const fetchProfiles = async (
+    trades: (TradeDocument & { id: string })[],
+    uid: string
+  ) => {
+    const ids = new Set<string>();
+    for (const t of trades) {
+      const otherId = t.fromUserId === uid ? t.toUserId : t.fromUserId;
+      if (otherId) ids.add(otherId);
+    }
+    if (ids.size === 0) return;
+
+    const snaps = await Promise.all([...ids].map((id) => getDoc(doc(db, "users", id))));
+    const map: Record<string, UserSnap> = {};
+    for (const snap of snaps) {
+      if (snap.exists()) {
+        const d = snap.data();
+        map[snap.id] = { displayName: d.displayName ?? "User", photoURL: d.photoURL };
+      }
+    }
+    setUserProfiles((prev) => ({ ...prev, ...map }));
+  };
 
   useEffect(() => {
     if (!currentUser?.uid) return;
-
+    const uid = currentUser.uid;
     setLoading(true);
 
     const tradesRef = collection(db, "trades");
+    // Closures track latest state from both listeners so fetchProfiles always gets the full picture
+    let latestSent: (TradeDocument & { id: string })[] = [];
+    let latestReceived: (TradeDocument & { id: string })[] = [];
 
     const qSent = query(
       tradesRef,
-      where("fromUserId", "==", currentUser.uid),
+      where("fromUserId", "==", uid),
       orderBy("createdAt", "desc")
     );
-
     const qReceived = query(
       tradesRef,
-      where("toUserId", "==", currentUser.uid),
+      where("toUserId", "==", uid),
       orderBy("createdAt", "desc")
     );
 
     const unsubSent = onSnapshot(
       qSent,
       (snap) => {
-        const rows = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as TradeDocument),
-        }));
-        setSent(rows);
+        latestSent = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TradeDocument) }));
+        setSent(latestSent);
         setLoading(false);
+        fetchProfiles([...latestSent, ...latestReceived], uid);
       },
       (err) => {
         console.error("Trades sent snapshot error:", err);
@@ -66,12 +273,10 @@ export const TradesInboxPage = () => {
     const unsubReceived = onSnapshot(
       qReceived,
       (snap) => {
-        const rows = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as TradeDocument),
-        }));
-        setReceived(rows);
+        latestReceived = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TradeDocument) }));
+        setReceived(latestReceived);
         setLoading(false);
+        fetchProfiles([...latestSent, ...latestReceived], uid);
       },
       (err) => {
         console.error("Trades received snapshot error:", err);
@@ -86,139 +291,74 @@ export const TradesInboxPage = () => {
     };
   }, [currentUser?.uid]);
 
-  const hasAny = useMemo(
-    () => (sent?.length ?? 0) + (received?.length ?? 0) > 0,
-    [sent, received]
-  );
+  const hasAny = sent.length + received.length > 0;
+  const uid = currentUser?.uid ?? "";
 
-  const TradeRow = ({
-    t,
-    mode,
-  }: {
-    t: TradeDocument & { id: string };
-    mode: "sent" | "received";
-  }) => {
-    // For display, we show sneaker counts and cash from the trade
-    const yourSneaks = t.yourItems?.length ?? 0;
-    const theirSneaks = t.theirItems?.length ?? 0;
-    const yourCash = t.addCash ?? 0;
-    const theirCash = t.askCash ?? 0;
-
-    // Derive status text from the new status field
-    const status = useMemo(() => {
-      if (t.status === "declined") return "Declined";
-      if (t.status === "completed") return "Completed";
-      if (t.status === "failed") return "Payment Failed";
-      if (t.status === "processing") return "Processing";
-      if (t.status === "both_confirmed") return "Confirmed";
-
-      // Pending state
-      if (mode === "sent") {
-        return t.receiverConfirmed ? "Accepted" : "Pending";
-      } else {
-        return t.receiverConfirmed ? "You accepted" : "Action needed";
-      }
-    }, [t.status, t.receiverConfirmed, mode]);
-
-    // Status badge colors
-    const statusColor = useMemo(() => {
-      switch (t.status) {
-        case "completed":
-          return "border-green-200 bg-green-50 text-green-700";
-        case "failed":
-          return "border-red-200 bg-red-50 text-red-700";
-        case "declined":
-          return "border-gray-200 bg-gray-50 text-gray-500";
-        case "processing":
-        case "both_confirmed":
-          return "border-blue-200 bg-blue-50 text-blue-700";
-        default:
-          return t.receiverConfirmed
-            ? "border-green-200 bg-green-50 text-green-700"
-            : mode === "received"
-              ? "border-orange-200 bg-orange-50 text-orange-700"
-              : "";
-      }
-    }, [t.status, t.receiverConfirmed, mode]);
-
-    return (
-      <button
-        type="button"
-        className="w-full text-left"
-        onClick={() => navigate(`/trades/${t.id}`)}
-      >
-        <Card className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold">
-                Trade #{t.id.slice(-6)}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {mode === "sent" ? "You offer" : "They offer"}: {yourSneaks}{" "}
-                sneaker{yourSneaks === 1 ? "" : "s"}
-                {yourCash ? ` + $${yourCash}` : ""}
-                {" • "}
-                {mode === "sent" ? "For" : "You give"}: {theirSneaks} sneaker
-                {theirSneaks === 1 ? "" : "s"}
-                {theirCash ? ` + $${theirCash}` : ""}
-              </div>
-            </div>
-
-            <div
-              className={`shrink-0 rounded-full border px-2 py-1 text-xs ${statusColor}`}
-            >
-              {status}
-            </div>
-          </div>
-        </Card>
-      </button>
-    );
-  };
+  const showDMComingSoon = () =>
+    toast({ title: "Coming soon", description: "Direct messaging is on the way!" });
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto w-full max-w-2xl px-4 py-6 lg:max-w-4xl xl:max-w-5xl">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Trades</h1>
-          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-            Back
-          </Button>
-        </div>
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <PageTransition>
+        <main className="pt-20 pb-10 px-4 mx-auto max-w-2xl lg:max-w-3xl">
+          <h1 className="text-2xl font-bold text-foreground mb-6">Trades</h1>
 
-        <div className="mt-4 space-y-6">
-          {loading && !hasAny ? (
+          {loading && !hasAny && (
             <div className="text-sm text-muted-foreground">Loading trades…</div>
-          ) : null}
+          )}
 
-          {!loading && !hasAny ? (
-            <div className="text-sm text-muted-foreground">No trades yet.</div>
-          ) : null}
-
-          {received?.length ? (
-            <div className="space-y-3">
-              <div className="text-sm font-semibold">Received</div>
-              <div className="space-y-2">
-                {received.map((t) => (
-                  <TradeRow key={t.id} t={t} mode="received" />
-                ))}
-              </div>
+          {!loading && !hasAny && (
+            <div className="rounded-2xl border border-border bg-card p-10 text-center">
+              <div className="text-sm text-muted-foreground">No trades yet.</div>
             </div>
-          ) : null}
+          )}
 
-          {received?.length && sent?.length ? <Separator /> : null}
+          <div className="space-y-8">
+            {received.length > 0 && (
+              <section className="space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  Received
+                </div>
+                <div className="space-y-3">
+                  {received.map((t) => (
+                    <TradeRow
+                      key={t.id}
+                      t={t}
+                      mode="received"
+                      userProfiles={userProfiles}
+                      onNavigateToTrade={(id) => navigate(`/trades/${id}`)}
+                      onNavigateToProfile={(userId) => navigate(`/profile/${userId}`)}
+                      onOpenDM={showDMComingSoon}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
-          {sent?.length ? (
-            <div className="space-y-3">
-              <div className="text-sm font-semibold">Sent</div>
-              <div className="space-y-2">
-                {sent.map((t) => (
-                  <TradeRow key={t.id} t={t} mode="sent" />
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
+            {sent.length > 0 && (
+              <section className="space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  Sent
+                </div>
+                <div className="space-y-3">
+                  {sent.map((t) => (
+                    <TradeRow
+                      key={t.id}
+                      t={t}
+                      mode="sent"
+                      userProfiles={userProfiles}
+                      onNavigateToTrade={(id) => navigate(`/trades/${id}`)}
+                      onNavigateToProfile={(userId) => navigate(`/profile/${userId}`)}
+                      onOpenDM={showDMComingSoon}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        </main>
+      </PageTransition>
     </div>
   );
 };

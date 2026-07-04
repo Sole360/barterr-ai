@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ForgotPasswordPage } from "@/app/auth/ForgotPasswordPage";
 import { VerifyEmailPage } from "@/app/auth/VerifyEmailPage";
 import { ProfilePage } from "@/app/profile/ProfilePage";
+import { PublicProfilePage } from "@/app/profile/PublicProfilePage";
 import { TradesInboxPage } from "@/app/trades/TradesInboxPage";
 import { TradeDetailPage } from "@/app/trades/TradeDetailPage";
 import { TradeComposePage } from "@/app/trades/TradeComposePage";
@@ -27,6 +28,7 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/:userId" element={<PublicProfilePage />} />
         <Route
           path="/trades"
           element={
