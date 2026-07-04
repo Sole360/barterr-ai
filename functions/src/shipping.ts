@@ -319,6 +319,13 @@ export const purchaseShippoLabel = onCall(
       );
     }
 
+    if (!user.email) {
+      throw new HttpsError(
+        "failed-precondition",
+        `No email on uid=${req.auth.uid}. userKeys=${Object.keys(user).join(",")}`
+      );
+    }
+
     const api = shippoApi(SHIPPO_API_KEY.value());
 
     const shipmentResponse = await api.post<{
@@ -333,7 +340,7 @@ export const purchaseShippoLabel = onCall(
         state: addr.state,
         zip: addr.zip,
         country: "US",
-        email: user.email || "",
+        email: user.email,
         phone: user.phone || "",
       },
       address_to: barterrAddress,
