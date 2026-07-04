@@ -1,5 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
+import { ThemeProvider } from "@/lib/contexts/theme.context";
 import { ProtectedRoute } from "@/lib/components/ProtectedRoute";
 import { LoginPage } from "@/app/auth/LoginPage";
 import { SignupPage } from "@/app/auth/SignupPage";
@@ -15,76 +17,83 @@ import { TradeComposePage } from "@/app/trades/TradeComposePage";
 import { TradeReviewPage } from "@/app/trades/TradeReviewPage";
 import { TradePaymentMethodPage } from "./app/trades/TradePaymentMethodPage";
 
+function AppRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route
+          path="/trades"
+          element={
+            <ProtectedRoute>
+              <TradesInboxPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trades/new"
+          element={
+            <ProtectedRoute>
+              <TradeComposePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trades/new/review"
+          element={
+            <ProtectedRoute>
+              <TradeReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trades/new/review/payment-method"
+          element={<TradePaymentMethodPage />}
+        />
+        <Route
+          path="/trades/:tradeId"
+          element={
+            <ProtectedRoute>
+              <TradeDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </AnimatePresence>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route
-            path="/trades"
-            element={
-              <ProtectedRoute>
-                <TradesInboxPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/trades/new"
-            element={
-              <ProtectedRoute>
-                <TradeComposePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/trades/new/review"
-            element={
-              <ProtectedRoute>
-                <TradeReviewPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/trades/new/review/payment-method"
-            element={<TradePaymentMethodPage />}
-          />
-
-          <Route
-            path="/trades/:tradeId"
-            element={
-              <ProtectedRoute>
-                <TradeDetailPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/onboarding"
-            element={
-              <ProtectedRoute>
-                <OnboardingPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-        <Toaster />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+          <Toaster />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

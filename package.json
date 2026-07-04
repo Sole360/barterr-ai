@@ -36,6 +36,7 @@
     "embla-carousel": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^12.5.0",
+    "framer-motion": "^12.42.2",
     "lucide-react": "^0.553.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
@@ -43,6 +44,7 @@
     "react-instantsearch": "^7.19.0",
     "react-router-dom": "^7.9.5",
     "tailwind-merge": "^3.3.1",
+    "vaul": "^1.1.2",
     "zod": "^4.1.12",
     "zustand": "^5.0.8"
   },

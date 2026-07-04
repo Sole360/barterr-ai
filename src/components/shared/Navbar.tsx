@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/contexts/auth.context";
-import { Bell, User, LogOut, Settings, ArrowLeftRight } from "lucide-react";
+import { Bell, User, LogOut, Settings, ArrowLeftRight, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/lib/contexts/theme.context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +17,7 @@ import { Post } from "@/types";
 
 export const Navbar = () => {
   const { currentUser, userProfile, logout } = useAuth();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
@@ -37,7 +39,7 @@ export const Navbar = () => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50">
+      <nav className="fixed top-0 left-0 right-0 bg-background border-b border-border z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -56,18 +58,31 @@ export const Navbar = () => {
 
             {/* Right Side Icons */}
             <div className="flex items-center space-x-4">
+              {/* Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                className="relative p-2 hover:bg-accent rounded-lg transition-colors"
+                title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {resolvedTheme === "dark" ? (
+                  <Sun className="w-5 h-5 text-foreground" />
+                ) : (
+                  <Moon className="w-5 h-5 text-foreground" />
+                )}
+              </button>
+
               {/* Trades */}
               <button
                 onClick={() => navigate("/trades")}
-                className="relative p-2 hover:bg-gray-100 rounded-lg"
+                className="relative p-2 hover:bg-accent rounded-lg transition-colors"
                 title="My Trades"
               >
-                <ArrowLeftRight className="w-5 h-5 text-gray-600" />
+                <ArrowLeftRight className="w-5 h-5 text-foreground" />
               </button>
 
               {/* Notifications */}
-              <button className="relative p-2 hover:bg-gray-100 rounded-lg">
-                <Bell className="w-5 h-5 text-gray-600" />
+              <button className="relative p-2 hover:bg-accent rounded-lg transition-colors">
+                <Bell className="w-5 h-5 text-foreground" />
                 {userProfile && userProfile.numNotification > 0 && (
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 )}
@@ -76,29 +91,29 @@ export const Navbar = () => {
               {/* Profile Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
+                  <button className="flex items-center space-x-2 p-2 hover:bg-accent rounded-lg transition-colors">
                     {userProfile?.photoURL ? (
                       <img
                         src={userProfile.photoURL}
                         alt="Profile"
-                        className="w-8 h-8 rounded-full"
+                        className="w-8 h-8 rounded-full object-cover"
                       />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center">
                         <User className="w-5 h-5 text-white" />
                       </div>
                     )}
-                    <span className="hidden sm:block text-sm font-medium text-gray-700">
+                    <span className="hidden sm:block text-sm font-medium text-foreground">
                       {userProfile?.firstName ?? "User"}
                     </span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-foreground">
                       {userProfile?.displayName}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {currentUser?.email}
                     </p>
                   </div>

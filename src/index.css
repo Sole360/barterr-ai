@@ -22,7 +22,7 @@
     --gray-lightest: #efeff4;
     --white: #ffffff;
 
-    --background: 0 0% 100%;
+    --background: 220 16% 95%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
@@ -44,7 +44,46 @@
     --radius: 0.5rem;
   }
 
+  .dark {
+    --background: 222 25% 8%;
+    --foreground: 210 40% 96%;
+    --card: 222 22% 11%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 22% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 210 40% 96%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 222 20% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 222 20% 16%;
+    --muted-foreground: 215 20% 52%;
+    --accent: 222 20% 18%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 210 40% 96%;
+    --border: 222 18% 20%;
+    --input: 222 18% 20%;
+    --ring: 222 84% 60%;
+  }
+
   body {
     font-family: "Karla", system-ui, -apple-system, sans-serif;
+  }
+
+  /* Smooth theme transition */
+  *, *::before, *::after {
+    transition-property: background-color, border-color, color;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
