@@ -209,10 +209,6 @@ export function ShippingSection({ tradeId, isSender }: Props) {
           description: "Check your email for a copy of the label.",
         });
       },
-      onError: (err) => {
-        const msg = err instanceof Error ? err.message : "Failed to purchase label";
-        toast({ title: "Error", description: msg, variant: "destructive" });
-      },
     });
   };
 
