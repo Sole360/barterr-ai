@@ -16,9 +16,33 @@ type OtherUser = { displayName: string; photoURL?: string };
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({ text, isMine }: { text: string; isMine: boolean }) {
+function formatMessageTime(ts: { toDate: () => Date } | null): string {
+  if (!ts) return "";
+  const date = ts.toDate();
+  const now = new Date();
+  const isToday =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  if (isToday) return time;
+
+  const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return `${dateStr}, ${time}`;
+}
+
+function MessageBubble({
+  text,
+  isMine,
+  createdAt,
+}: {
+  text: string;
+  isMine: boolean;
+  createdAt: { toDate: () => Date } | null;
+}) {
   return (
-    <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+    <div className={`flex flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}>
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isMine
@@ -28,6 +52,11 @@ function MessageBubble({ text, isMine }: { text: string; isMine: boolean }) {
       >
         {text}
       </div>
+      {createdAt && (
+        <span className="text-[10px] text-muted-foreground px-1">
+          {formatMessageTime(createdAt)}
+        </span>
+      )}
     </div>
   );
 }
@@ -201,6 +230,7 @@ export const MessageThreadPage = () => {
               key={msg.id}
               text={msg.text}
               isMine={msg.senderId === uid}
+              createdAt={msg.createdAt}
             />
           ))}
 
