@@ -1,5 +1,6 @@
 import { processImageJobs } from "./processImageJobs";
 import { indexPost, unindexPost, indexUser, unindexUser } from "./algoliaIndex";
+import { onNewTradeNotification, onTradeStatusNotification } from "./notificationTriggers";
 import { setGlobalOptions } from "firebase-functions";
 import { deleteListingPhotos } from "./cleanupPhotoStorage";
 import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
@@ -35,6 +36,9 @@ export {
   unindexPost,
   indexUser,
   unindexUser,
+  // Notifications
+  onNewTradeNotification,
+  onTradeStatusNotification,
   // Storage
   deleteListingPhotos,
   // Stripe

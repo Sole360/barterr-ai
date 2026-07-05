@@ -39,6 +39,15 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create, update, delete: if isOwner(userId);
       }
+
+      // Notifications subcollection — written by Cloud Functions, read/mark-read by owner
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        // Only allow updating the `read` field
+        allow update: if isOwner(userId) &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow create, delete: if false;
+      }
     }
 
     // Posts collection (sneaker posts)

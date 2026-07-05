@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { Bell, User, LogOut, Settings, ArrowLeftRight, MessageSquare, Sun, Moon } from "lucide-react";
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SearchBar } from "./SearchBar";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
+import { NotificationPanel } from "./NotificationPanel";
+import { useNotifications } from "@/lib/firebase/useNotifications";
 import { getPostById } from "@/lib/firebase/posts.service";
 import { Post } from "@/types";
 
@@ -20,6 +22,23 @@ export const Navbar = () => {
   const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const { notifications, loading: notifLoading, unreadCount, markRead, markAllRead } =
+    useNotifications(currentUser?.uid);
+
+  // Close panel on outside click
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [notifOpen]);
 
   const handleLogout = async () => {
     await logout();
@@ -90,12 +109,30 @@ export const Navbar = () => {
               </button>
 
               {/* Notifications */}
-              <button className="relative p-2 hover:bg-accent rounded-lg transition-colors">
-                <Bell className="w-5 h-5 text-foreground" />
-                {userProfile && userProfile.numNotification > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              <div ref={notifRef} className="relative">
+                <button
+                  onClick={() => setNotifOpen((v) => !v)}
+                  className="relative p-2 hover:bg-accent rounded-lg transition-colors"
+                  title="Notifications"
+                >
+                  <Bell className="w-5 h-5 text-foreground" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-[#3366FF] rounded-full" />
+                  )}
+                </button>
+
+                {notifOpen && (
+                  <div className="absolute right-0 top-full mt-2 z-50">
+                    <NotificationPanel
+                      notifications={notifications}
+                      loading={notifLoading}
+                      unreadCount={unreadCount}
+                      onMarkAllRead={markAllRead}
+                      onMarkRead={markRead}
+                    />
+                  </div>
                 )}
-              </button>
+              </div>
 
               {/* Profile Dropdown */}
               <DropdownMenu>
