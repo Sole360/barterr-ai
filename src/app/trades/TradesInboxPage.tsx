@@ -13,10 +13,10 @@ import { ArrowLeftRight, Mail } from "lucide-react";
 
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
-import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/shared/Navbar";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getConversationId } from "@/lib/messages/getConversationId";
 import type { TradeDocument } from "@/types";
 
 type UserSnap = { displayName: string; photoURL?: string };
@@ -29,7 +29,7 @@ type TradeRowProps = {
   userProfiles: Record<string, UserSnap>;
   onNavigateToTrade: (id: string) => void;
   onNavigateToProfile: (userId: string) => void;
-  onOpenDM: () => void;
+  onOpenConversation: (otherId: string, otherUser: UserSnap) => void;
 };
 
 function TradeRow({
@@ -38,7 +38,7 @@ function TradeRow({
   userProfiles,
   onNavigateToTrade,
   onNavigateToProfile,
-  onOpenDM,
+  onOpenConversation,
 }: TradeRowProps) {
   const otherId = mode === "sent" ? t.toUserId : t.fromUserId;
   const otherUser = userProfiles[otherId ?? ""];
@@ -128,12 +128,12 @@ function TradeRow({
             </div>
           </div>
 
-          {/* Mail — DM placeholder */}
+          {/* Mail — open conversation */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onOpenDM();
+              if (otherId && otherUser) onOpenConversation(otherId, otherUser);
             }}
             className="shrink-0 p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground"
             title="Message"
@@ -205,7 +205,6 @@ function TradeRow({
 export const TradesInboxPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { toast } = useToast();
 
   const [sent, setSent] = useState<(TradeDocument & { id: string })[]>([]);
   const [received, setReceived] = useState<(TradeDocument & { id: string })[]>([]);
@@ -293,8 +292,12 @@ export const TradesInboxPage = () => {
 
   const hasAny = sent.length + received.length > 0;
 
-  const showDMComingSoon = () =>
-    toast({ title: "Coming soon", description: "Direct messaging is on the way!" });
+  const handleOpenConversation = (otherId: string, otherUser: UserSnap) => {
+    const convId = getConversationId(currentUser!.uid, otherId);
+    navigate(`/messages/${convId}`, {
+      state: { otherUserId: otherId, otherUser },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -328,7 +331,7 @@ export const TradesInboxPage = () => {
                       userProfiles={userProfiles}
                       onNavigateToTrade={(id) => navigate(`/trades/${id}`)}
                       onNavigateToProfile={(userId) => navigate(`/profile/${userId}`)}
-                      onOpenDM={showDMComingSoon}
+                      onOpenConversation={handleOpenConversation}
                     />
                   ))}
                 </div>
@@ -349,7 +352,7 @@ export const TradesInboxPage = () => {
                       userProfiles={userProfiles}
                       onNavigateToTrade={(id) => navigate(`/trades/${id}`)}
                       onNavigateToProfile={(userId) => navigate(`/profile/${userId}`)}
-                      onOpenDM={showDMComingSoon}
+                      onOpenConversation={handleOpenConversation}
                     />
                   ))}
                 </div>

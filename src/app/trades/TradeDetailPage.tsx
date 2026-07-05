@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Navbar } from "@/components/shared/Navbar";
 import { PageTransition } from "@/components/shared/PageTransition";
+import { getConversationId } from "@/lib/messages/getConversationId";
 import {
   serviceFeeCentsForCount,
   grossUpForStripe,
@@ -247,8 +248,13 @@ export const TradeDetailPage = () => {
     }
   };
 
-  const showDMComingSoon = () =>
-    toast({ title: "Coming soon", description: "Direct messaging is on the way!" });
+  const openConversation = () => {
+    if (!currentUser?.uid || !otherId) return;
+    const convId = getConversationId(currentUser.uid, otherId);
+    navigate(`/messages/${convId}`, {
+      state: { otherUserId: otherId, otherUser },
+    });
+  };
 
   const otherId = trade
     ? trade.fromUserId === currentUser?.uid
@@ -349,7 +355,7 @@ export const TradeDetailPage = () => {
 
             <button
               type="button"
-              onClick={showDMComingSoon}
+              onClick={openConversation}
               className="shrink-0 p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground"
               title="Message"
             >

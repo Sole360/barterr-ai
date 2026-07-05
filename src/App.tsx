@@ -17,6 +17,8 @@ import { TradeDetailPage } from "@/app/trades/TradeDetailPage";
 import { TradeComposePage } from "@/app/trades/TradeComposePage";
 import { TradeReviewPage } from "@/app/trades/TradeReviewPage";
 import { TradePaymentMethodPage } from "./app/trades/TradePaymentMethodPage";
+import { MessagesInboxPage } from "@/app/messages/MessagesInboxPage";
+import { MessageThreadPage } from "@/app/messages/MessageThreadPage";
 
 function AppRoutes() {
   const location = useLocation();
@@ -29,6 +31,22 @@ function AppRoutes() {
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:userId" element={<PublicProfilePage />} />
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <MessagesInboxPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages/:conversationId"
+          element={
+            <ProtectedRoute>
+              <MessageThreadPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/trades"
           element={

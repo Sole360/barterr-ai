@@ -161,6 +161,47 @@ service cloud.firestore {
     }
 
 
+    // Conversations (DM threads)
+    match /conversations/{conversationId} {
+      // Only participants can read their conversations (supports array-contains queries)
+      allow read: if isAuthenticated() &&
+                  request.auth.uid in resource.data.participants;
+
+      // Either participant can create (sendMessage creates the doc on first message)
+      allow create: if isAuthenticated() &&
+                    request.auth.uid in request.resource.data.participants &&
+                    request.resource.data.participants.size() == 2;
+
+      // Participants can update lastMessage, unreadCount, participantInfo — but not swap participants
+      allow update: if isAuthenticated() &&
+                    request.auth.uid in resource.data.participants &&
+                    request.resource.data.participants == resource.data.participants;
+
+      allow delete: if false;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Only participants can read messages
+        allow read: if isAuthenticated() &&
+                    request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+
+        // Participants can create messages; senderId must match the writer
+        allow create: if isAuthenticated() &&
+                      request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
+                      request.resource.data.senderId == request.auth.uid;
+
+        // Messages are immutable
+        allow update, delete: if false;
+      }
+    }
+
+    // Flagged attempt log — authenticated users can write their own attempts; no client reads
+    match /flaggedAttempts/{attemptId} {
+      allow create: if isAuthenticated() &&
+                    request.resource.data.senderId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
     // Deny all other collections by default
     match /{document=**} {
       allow read, write: if false;

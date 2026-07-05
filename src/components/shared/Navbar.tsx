@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/contexts/auth.context";
-import { Bell, User, LogOut, Settings, ArrowLeftRight, Sun, Moon } from "lucide-react";
+import { Bell, User, LogOut, Settings, ArrowLeftRight, MessageSquare, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/contexts/theme.context";
 import {
   DropdownMenu,
@@ -69,6 +69,15 @@ export const Navbar = () => {
                 ) : (
                   <Moon className="w-5 h-5 text-foreground" />
                 )}
+              </button>
+
+              {/* Messages */}
+              <button
+                onClick={() => navigate("/messages")}
+                className="relative p-2 hover:bg-accent rounded-lg transition-colors"
+                title="Messages"
+              >
+                <MessageSquare className="w-5 h-5 text-foreground" />
               </button>
 
               {/* Trades */}
