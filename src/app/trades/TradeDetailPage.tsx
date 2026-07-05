@@ -44,7 +44,7 @@ function SneakerThumb({
   const name = "name" in item ? item.name : item.title;
   return (
     <div className="shrink-0 w-28 rounded-2xl bg-background border border-border overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-      <div className="relative aspect-square bg-gray-50 dark:bg-muted/60">
+      <div className="relative aspect-square bg-white">
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
@@ -425,20 +425,33 @@ export const TradeDetailPage = () => {
           <div className="space-y-6">
             {/* Side-by-side trade panel */}
             <div className="rounded-2xl bg-card border border-border p-4 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-              <div className="flex items-start gap-2">
-                {/* Your side */}
+              {/* Labels row — mirrors the flex structure of the images row */}
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex-1 flex items-center justify-end gap-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {isSender ? "You" : "Them"}
+                  </span>
+                  {trade.addCash > 0 && (
+                    <span className="text-[11px] font-semibold text-green-600">+${trade.addCash}</span>
+                  )}
+                </div>
+                <div className="shrink-0 w-8" />
+                <div className="flex-1 flex items-center gap-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {isReceiver ? "You" : "Them"}
+                  </span>
+                  {trade.askCash > 0 && (
+                    <span className="text-[11px] font-semibold text-green-600">+${trade.askCash}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Left column — scrolls right-to-left, newest item nearest icon */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 mb-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {isSender ? "You" : "Them"}
-                    </span>
-                    {trade.addCash > 0 && (
-                      <span className="text-[11px] font-semibold text-green-600">+${trade.addCash}</span>
-                    )}
-                  </div>
                   {yourItems.length > 0 ? (
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                      {yourItems.map((item, idx) => (
+                    <div className="flex flex-row-reverse gap-2 overflow-x-auto scrollbar-hide pb-1">
+                      {[...yourItems].reverse().map((item, idx) => (
                         <SneakerThumb key={item.listingId || idx} item={item} />
                       ))}
                     </div>
@@ -449,23 +462,13 @@ export const TradeDetailPage = () => {
                   )}
                 </div>
 
-                {/* Trade icon */}
-                <div className="shrink-0 flex flex-col items-center pt-5">
-                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                    <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
-                  </div>
+                {/* Center icon */}
+                <div className="shrink-0 h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
 
-                {/* Their side */}
+                {/* Right column — scrolls left-to-right, first item nearest icon */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 mb-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {isReceiver ? "You" : "Them"}
-                    </span>
-                    {trade.askCash > 0 && (
-                      <span className="text-[11px] font-semibold text-green-600">+${trade.askCash}</span>
-                    )}
-                  </div>
                   {theirItems.length > 0 ? (
                     <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                       {theirItems.map((item, idx) => (
