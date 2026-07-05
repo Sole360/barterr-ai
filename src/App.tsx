@@ -28,13 +28,10 @@ import { UserManagementPage } from "@/app/admin/UserManagementPage";
 import { AdminTradesPage } from "@/app/admin/AdminTradesPage";
 import { AnnouncementsPage } from "@/app/admin/AnnouncementsPage";
 import { ContentFilterPage } from "@/app/admin/ContentFilterPage";
-import { AnnouncementRibbon } from "@/components/shared/AnnouncementRibbon";
-
 function AppRoutes() {
   const location = useLocation();
   return (
     <>
-      <AnnouncementRibbon />
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/login" element={<LoginPage />} />

@@ -142,14 +142,19 @@ export const reviewListing = onCall(async (req) => {
     feedback?: string;
   };
 
+  if ((action === "reject" || action === "request_changes") && !feedback?.trim()) {
+    throw new HttpsError("invalid-argument", "A reason is required when rejecting or requesting changes.");
+  }
+
   const db = getFirestore();
+  const base = { reviewedBy: req.auth.uid, reviewedAt: FieldValue.serverTimestamp() };
 
   if (action === "approve") {
-    await db.collection("posts").doc(postId).update({ status: "approved", active: true, reviewedBy: req.auth.uid, reviewedAt: FieldValue.serverTimestamp() });
+    await db.collection("posts").doc(postId).update({ ...base, status: "approved", active: true });
   } else if (action === "reject") {
-    await db.collection("posts").doc(postId).update({ status: "rejected", active: false, reviewedBy: req.auth.uid, reviewedAt: FieldValue.serverTimestamp(), reviewFeedback: feedback ?? "" });
+    await db.collection("posts").doc(postId).update({ ...base, status: "rejected", active: false, reviewFeedback: feedback });
   } else if (action === "request_changes") {
-    await db.collection("posts").doc(postId).update({ status: "changes_requested", active: false, reviewedBy: req.auth.uid, reviewedAt: FieldValue.serverTimestamp(), reviewFeedback: feedback ?? "" });
+    await db.collection("posts").doc(postId).update({ ...base, status: "changes_requested", active: false, reviewFeedback: feedback });
   }
 
   return { success: true };

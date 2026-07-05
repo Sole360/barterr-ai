@@ -25,7 +25,7 @@ export const AnnouncementRibbon = () => {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-between px-4 py-2.5 text-sm font-medium"
+      className="flex items-center justify-between px-4 py-2.5 text-sm font-medium"
       style={{ backgroundColor: announcement.color, color: "#fff" }}
     >
       <span className="flex-1 text-center text-[13px] leading-snug pr-6">

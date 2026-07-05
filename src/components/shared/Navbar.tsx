@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { Bell, User, LogOut, Settings, ArrowLeftRight, MessageSquare, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/contexts/theme.context";
+import { AnnouncementRibbon } from "./AnnouncementRibbon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,7 +59,9 @@ export const Navbar = () => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 bg-background border-b border-border z-50">
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <AnnouncementRibbon />
+      <nav className="bg-background border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -192,6 +195,7 @@ export const Navbar = () => {
           </div>
         </div>
       </nav>
+      </div>
 
       {/* Post Detail Modal */}
       {selectedPost && (

@@ -26,6 +26,18 @@ function relativeTime(ts: { toDate: () => Date } | null): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function Thumb({ url, name }: { url?: string; name?: string }) {
+  return (
+    <div className="w-12 h-12 shrink-0 rounded-lg bg-white border border-border/50 overflow-hidden shadow-sm">
+      {url ? (
+        <img src={url} alt={name ?? ""} className="w-full h-full object-contain p-0.5" />
+      ) : (
+        <div className="w-full h-full bg-muted" />
+      )}
+    </div>
+  );
+}
+
 export const AdminTradesPage = () => {
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +58,7 @@ export const AdminTradesPage = () => {
       {loading ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-20 rounded-2xl bg-muted animate-pulse" />
+            <div key={i} className="h-28 rounded-2xl bg-muted animate-pulse" />
           ))}
         </div>
       ) : trades.length === 0 ? (
@@ -55,31 +67,63 @@ export const AdminTradesPage = () => {
           <div className="text-sm text-muted-foreground">No trades yet</div>
         </div>
       ) : (
-        <div className="space-y-2">
-          {trades.map((t) => (
-            <div
-              key={t.id}
-              className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono truncate">
-                    <span className="truncate">{t.fromUserId.slice(0, 8)}…</span>
-                    <ArrowLeftRight className="w-3 h-3 shrink-0" />
-                    <span className="truncate">{t.toUserId.slice(0, 8)}…</span>
+        <div className="space-y-3">
+          {trades.map((t) => {
+            const fromItems = (t.yourItems ?? []).slice(0, 3);
+            const toItems = (t.theirItems ?? []).slice(0, 3);
+            const totalItems = (t.yourItems?.length ?? 0) + (t.theirItems?.length ?? 0);
+
+            return (
+              <div
+                key={t.id}
+                className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              >
+                {/* Trade participants row */}
+                <div className="flex items-center gap-3 mb-3">
+                  {/* From-user thumbnails (radiate right toward icon) */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-row-reverse gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+                      {[...fromItems].reverse().map((item, i) => (
+                        <Thumb key={i} url={item.imageUrl} name={item.name} />
+                      ))}
+                      {fromItems.length === 0 && <Thumb />}
+                    </div>
                   </div>
-                  <div className="mt-1 text-[10px] text-muted-foreground">
-                    {relativeTime(t.createdAt as any)}
-                    {" · "}
-                    {(t.yourItems?.length ?? 0) + (t.theirItems?.length ?? 0)} sneakers
+
+                  {/* Trade icon */}
+                  <div className="shrink-0 h-9 w-9 rounded-full bg-muted border border-border flex items-center justify-center shadow-sm">
+                    <ArrowLeftRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+
+                  {/* To-user thumbnails (radiate left toward icon) */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+                      {toItems.map((item, i) => (
+                        <Thumb key={i} url={item.imageUrl} name={item.title} />
+                      ))}
+                      {toItems.length === 0 && <Thumb />}
+                    </div>
                   </div>
                 </div>
-                <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${STATUS_COLOR[t.status]}`}>
-                  {t.status.replace("_", " ")}
-                </span>
+
+                {/* Meta row */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 truncate">
+                    <span className="truncate">{t.fromUserId.slice(0, 8)}…</span>
+                    <span className="text-border">→</span>
+                    <span className="truncate">{t.toUserId.slice(0, 8)}…</span>
+                    <span className="text-border">·</span>
+                    <span>{totalItems} sneaker{totalItems !== 1 ? "s" : ""}</span>
+                    <span className="text-border">·</span>
+                    <span>{relativeTime(t.createdAt as any)}</span>
+                  </div>
+                  <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${STATUS_COLOR[t.status]}`}>
+                    {t.status.replace("_", " ")}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
