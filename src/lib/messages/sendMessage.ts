@@ -6,6 +6,7 @@ import {
   increment,
   serverTimestamp,
   setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 
@@ -29,9 +30,12 @@ export async function sendMessage({
   text,
 }: SendMessageParams): Promise<void> {
   const convRef = doc(db, "conversations", conversationId);
+
+  // getDoc succeeds even on non-existent docs once the read rule allows null resource
   const snap = await getDoc(convRef);
 
   if (!snap.exists()) {
+    // First message — create the conversation document
     await setDoc(convRef, {
       participants: [senderId, receiverId],
       participantInfo: {
@@ -45,20 +49,15 @@ export async function sendMessage({
       createdAt: serverTimestamp(),
     });
   } else {
-    await setDoc(
-      convRef,
-      {
-        lastMessage: text,
-        lastMessageAt: serverTimestamp(),
-        lastMessageBy: senderId,
-        [`unreadCount.${receiverId}`]: increment(1),
-        participantInfo: {
-          [senderId]: senderInfo,
-          [receiverId]: receiverInfo,
-        },
-      },
-      { merge: true }
-    );
+    // Subsequent messages — use updateDoc so dot-notation increments only the receiver's counter
+    await updateDoc(convRef, {
+      lastMessage: text,
+      lastMessageAt: serverTimestamp(),
+      lastMessageBy: senderId,
+      [`unreadCount.${receiverId}`]: increment(1),
+      [`participantInfo.${senderId}`]: senderInfo,
+      [`participantInfo.${receiverId}`]: receiverInfo,
+    });
   }
 
   await addDoc(collection(db, "conversations", conversationId, "messages"), {
