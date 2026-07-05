@@ -7,6 +7,7 @@ import { ProfileTabs } from "./ProfileTabs";
 import { CollectionGrid } from "./CollectionGrid";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
 import { PageTransition } from "@/components/shared/PageTransition";
+import { Navbar } from "@/components/shared/Navbar";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { useMyWishlist } from "@/lib/firebase/useMyWishlist";
@@ -89,7 +90,8 @@ export const ProfilePage = () => {
   return (
     <PageTransition>
       <div className="min-h-screen bg-background">
-        {/* Header is full-bleed (no outer padding) */}
+        <Navbar />
+        <div className="pt-32 md:pt-16">
         <ProfileHeader
           displayName={userProfile?.displayName ?? currentUser?.displayName ?? "Your Profile"}
           location={userProfile?.location}
@@ -156,6 +158,8 @@ export const ProfilePage = () => {
           </div>
         </div>
 
+        </div>{/* end pt-32 wrapper */}
+
         <AddSneakerDialog open={addOpen} onClose={() => setAddOpen(false)} />
 
         <EditProfileDialog
@@ -199,7 +203,7 @@ const WishlistGrid = ({
         key={g.postId}
         className="rounded-2xl bg-white dark:bg-card overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.07)]"
       >
-        <div className="relative aspect-square bg-gray-50 dark:bg-muted/60">
+        <div className="relative aspect-square bg-white">
           {g.imageUrl && (
             <img
               src={g.imageUrl}

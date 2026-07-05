@@ -41,7 +41,7 @@ export const PublicProfilePage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="pt-20 px-4 text-sm text-muted-foreground">Loading…</div>
+        <div className="pt-32 md:pt-20 px-4 text-sm text-muted-foreground">Loading…</div>
       </div>
     );
   }
@@ -50,7 +50,7 @@ export const PublicProfilePage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="pt-20 px-4 text-sm text-muted-foreground">User not found.</div>
+        <div className="pt-32 md:pt-20 px-4 text-sm text-muted-foreground">User not found.</div>
       </div>
     );
   }
@@ -69,7 +69,7 @@ export const PublicProfilePage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <PageTransition>
-        <div className="pt-16">
+        <div className="pt-32 md:pt-16">
           <ProfileHeader
             displayName={profile.displayName || `${profile.firstName} ${profile.lastName}`.trim()}
             location={profile.location}

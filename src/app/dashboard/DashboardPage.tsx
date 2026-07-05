@@ -56,7 +56,7 @@ export const DashboardPage = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        <main className="pt-20 pb-10 px-4 sm:px-6 lg:px-8">
+        <main className="pt-32 md:pt-20 pb-10 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
 
             {/* Header */}
