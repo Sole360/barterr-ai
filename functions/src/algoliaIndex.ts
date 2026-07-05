@@ -85,6 +85,59 @@ export const indexPost = onDocumentWritten(
   }
 );
 
+// ─── User index ───────────────────────────────────────────────────────────────
+
+export const indexUser = onDocumentWritten(
+  {
+    document: "users/{userId}",
+    secrets: ["ALGOLIA_APP_ID", "ALGOLIA_ADMIN_API_KEY"],
+  },
+  async (event) => {
+    const userId = event.params.userId;
+    const data = event.data?.after?.data();
+
+    if (!data) return null;
+
+    const client = getAlgoliaClient();
+    try {
+      await client.saveObjects({
+        indexName: "barterr_users",
+        objects: [
+          {
+            objectID: userId,
+            displayName: data.displayName ?? "",
+            photoURL: data.photoURL ?? "",
+            location: data.location ?? "",
+          },
+        ],
+      });
+      logger.info(`Indexed user ${userId}`);
+    } catch (error) {
+      logger.error(`Error indexing user ${userId}:`, error);
+    }
+
+    return null;
+  }
+);
+
+export const unindexUser = onDocumentDeleted(
+  {
+    document: "users/{userId}",
+    secrets: ["ALGOLIA_APP_ID", "ALGOLIA_ADMIN_API_KEY"],
+  },
+  async (event) => {
+    const userId = event.params.userId;
+    const client = getAlgoliaClient();
+    try {
+      await client.deleteObjects({ indexName: "barterr_users", objectIDs: [userId] });
+      logger.info(`Removed user ${userId} from index`);
+    } catch (error) {
+      logger.error(`Error removing user ${userId} from index:`, error);
+    }
+    return null;
+  }
+);
+
 // Remove from index when deleted
 export const unindexPost = onDocumentDeleted(
   {

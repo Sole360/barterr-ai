@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   collection,
@@ -15,6 +15,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useConversations } from "@/lib/firebase/useConversations";
 import { getConversationId } from "@/lib/messages/getConversationId";
+import { searchClient, ALGOLIA_USERS_INDEX } from "@/lib/algolia/config";
 import { Navbar } from "@/components/shared/Navbar";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -60,10 +61,13 @@ function NewConversationDialog({
   onSelectUser: (contact: ContactSnap) => void;
 }) {
   const [search, setSearch] = useState("");
-  const [contacts, setContacts] = useState<ContactSnap[]>([]);
+  const [tradePartners, setTradePartners] = useState<ContactSnap[]>([]);
+  const [algoliaResults, setAlgoliaResults] = useState<ContactSnap[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(true);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load trade partners as suggested contacts
+  // Load trade partners once on open
   useEffect(() => {
     if (!open || !currentUid) return;
     setLoadingContacts(true);
@@ -90,18 +94,84 @@ function NewConversationDialog({
           result.push({ uid: snap.id, displayName: d.displayName ?? "User", photoURL: d.photoURL });
         }
       }
-      setContacts(result);
+      setTradePartners(result);
       setLoadingContacts(false);
     };
 
     load();
   }, [open, currentUid]);
 
-  const filtered = search.trim()
-    ? contacts.filter((c) =>
-        c.displayName.toLowerCase().includes(search.toLowerCase())
-      )
-    : contacts;
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setSearch("");
+      setAlgoliaResults([]);
+    }
+  }, [open]);
+
+  // Debounced Algolia search
+  useEffect(() => {
+    const trimmed = search.trim();
+
+    if (trimmed.length < 2) {
+      setAlgoliaResults([]);
+      setLoadingSearch(false);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      return;
+    }
+
+    setLoadingSearch(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const response = await searchClient.search({
+          requests: [{ indexName: ALGOLIA_USERS_INDEX, query: trimmed, hitsPerPage: 10 }],
+        });
+        const hits = (response.results[0] as { hits: Array<{ objectID: string; displayName?: string; photoURL?: string }> }).hits;
+        const results: ContactSnap[] = hits
+          .filter((h) => h.objectID !== currentUid)
+          .map((h) => ({
+            uid: h.objectID,
+            displayName: h.displayName ?? "User",
+            photoURL: h.photoURL,
+          }));
+        setAlgoliaResults(results);
+      } catch {
+        setAlgoliaResults([]);
+      } finally {
+        setLoadingSearch(false);
+      }
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search, currentUid]);
+
+  const isSearching = search.trim().length >= 2;
+  const displayList = isSearching ? algoliaResults : tradePartners;
+  const isLoading = loadingContacts || (isSearching && loadingSearch);
+
+  const renderRow = (c: ContactSnap) => (
+    <button
+      key={c.uid}
+      type="button"
+      onClick={() => {
+        onSelectUser(c);
+        onClose();
+      }}
+      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-accent transition-colors text-left"
+    >
+      <Avatar className="h-9 w-9 shrink-0">
+        <AvatarImage src={c.photoURL} alt={c.displayName} className="object-cover" />
+        <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-[#33FF99]/60 to-[#3366FF]/60">
+          {c.displayName.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("")}
+        </AvatarFallback>
+      </Avatar>
+      <span className="text-sm font-semibold text-foreground">{c.displayName}</span>
+    </button>
+  );
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -115,41 +185,30 @@ function NewConversationDialog({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search contacts…"
+            placeholder="Search users…"
             className="pl-9"
             autoFocus
           />
         </div>
 
         <div className="mt-2 space-y-1 max-h-72 overflow-y-auto">
-          {loadingContacts ? (
+          {isLoading ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
-              Loading contacts…
+              {isSearching ? "Searching…" : "Loading contacts…"}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : displayList.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
-              {search ? "No matching contacts." : "No trade partners yet."}
+              {isSearching ? "No users found." : "No trade partners yet."}
             </div>
           ) : (
-            filtered.map((c) => (
-              <button
-                key={c.uid}
-                type="button"
-                onClick={() => {
-                  onSelectUser(c);
-                  onClose();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-accent transition-colors text-left"
-              >
-                <Avatar className="h-9 w-9 shrink-0">
-                  <AvatarImage src={c.photoURL} alt={c.displayName} className="object-cover" />
-                  <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-[#33FF99]/60 to-[#3366FF]/60">
-                    {c.displayName.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-semibold text-foreground">{c.displayName}</span>
-              </button>
-            ))
+            <>
+              {!isSearching && (
+                <p className="px-3 pb-1 text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
+                  Trade partners
+                </p>
+              )}
+              {displayList.map(renderRow)}
+            </>
           )}
         </div>
 

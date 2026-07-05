@@ -1,5 +1,5 @@
 import { processImageJobs } from "./processImageJobs";
-import { indexPost, unindexPost } from "./algoliaIndex";
+import { indexPost, unindexPost, indexUser, unindexUser } from "./algoliaIndex";
 import { setGlobalOptions } from "firebase-functions";
 import { deleteListingPhotos } from "./cleanupPhotoStorage";
 import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
@@ -33,6 +33,8 @@ export {
   // Search
   indexPost,
   unindexPost,
+  indexUser,
+  unindexUser,
   // Storage
   deleteListingPhotos,
   // Stripe
