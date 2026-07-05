@@ -19,6 +19,7 @@ type AuthProviderProps = { children: ReactNode };
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [adminRole, setAdminRole] = useState<"super_admin" | "admin" | null>(null);
   const [loading, setLoading] = useState(true);
 
   const signIn: AuthContextType["signIn"] = async (email, password) => {
@@ -93,9 +94,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     let unsubscribeUserDoc: (() => void) | null = null;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setUserProfile(null);
+      setAdminRole(null);
 
       unsubscribeUserDoc?.();
       unsubscribeUserDoc = null;
@@ -103,6 +105,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (!user?.uid) {
         setLoading(false);
         return;
+      }
+
+      // Read custom claims for admin role
+      try {
+        const tokenResult = await user.getIdTokenResult();
+        const role = tokenResult.claims.role as "super_admin" | "admin" | undefined;
+        setAdminRole(role ?? null);
+      } catch {
+        setAdminRole(null);
       }
 
       unsubscribeUserDoc = onSnapshot(doc(db, "users", user.uid), (snap) => {
@@ -120,6 +131,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const value: AuthContextType = {
     currentUser,
     userProfile,
+    adminRole,
     loading,
     signIn,
     signUp,

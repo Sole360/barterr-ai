@@ -7,7 +7,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMessages } from "@/lib/firebase/useMessages";
 import { sendMessage } from "@/lib/messages/sendMessage";
-import { isOffPlatform } from "@/lib/messages/contentFilter";
+import { isOffPlatformAsync } from "@/lib/messages/contentFilter";
 import { logFlaggedAttempt } from "@/lib/messages/logFlaggedAttempt";
 import { Navbar } from "@/components/shared/Navbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -115,8 +115,8 @@ export const MessageThreadPage = () => {
     const trimmed = text.trim();
     if (!trimmed || !conversationId || !uid || !otherUserId) return;
 
-    // Hard block — log attempt and refuse to send
-    if (isOffPlatform(trimmed)) {
+    // Hard block — check structural + custom Firestore terms
+    if (await isOffPlatformAsync(trimmed)) {
       setBlocked(true);
       logFlaggedAttempt({
         senderId: uid,

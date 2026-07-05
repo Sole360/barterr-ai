@@ -40,3 +40,7 @@ npm-debug.log*
 
 # Zips
 *.zip
+
+# Firebase service account keys — NEVER commit these
+scripts/serviceAccountKey.json
+serviceAccountKey.json

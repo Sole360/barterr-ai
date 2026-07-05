@@ -563,6 +563,7 @@ export type ProfileTabKey = "collection" | "wishlist" | "fashion" | "trades";
 export interface AuthContextType {
   currentUser: any; // Firebase User
   userProfile: User | null;
+  adminRole: "super_admin" | "admin" | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (

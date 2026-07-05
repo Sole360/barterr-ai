@@ -3,6 +3,7 @@ import { AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { ThemeProvider } from "@/lib/contexts/theme.context";
 import { ProtectedRoute } from "@/lib/components/ProtectedRoute";
+import { AdminGuard } from "@/lib/components/AdminGuard";
 import { LoginPage } from "@/app/auth/LoginPage";
 import { SignupPage } from "@/app/auth/SignupPage";
 import { OnboardingPage } from "@/app/auth/OnboardingPage";
@@ -19,89 +20,84 @@ import { TradeReviewPage } from "@/app/trades/TradeReviewPage";
 import { TradePaymentMethodPage } from "./app/trades/TradePaymentMethodPage";
 import { MessagesInboxPage } from "@/app/messages/MessagesInboxPage";
 import { MessageThreadPage } from "@/app/messages/MessageThreadPage";
+import { AdminShell } from "@/app/admin/AdminShell";
+import { AdminDashboard } from "@/app/admin/AdminDashboard";
+import { FlaggedMessagesPage } from "@/app/admin/FlaggedMessagesPage";
+import { ListingApprovalPage } from "@/app/admin/ListingApprovalPage";
+import { UserManagementPage } from "@/app/admin/UserManagementPage";
+import { AdminTradesPage } from "@/app/admin/AdminTradesPage";
+import { AnnouncementsPage } from "@/app/admin/AnnouncementsPage";
+import { ContentFilterPage } from "@/app/admin/ContentFilterPage";
+import { AnnouncementRibbon } from "@/components/shared/AnnouncementRibbon";
 
 function AppRoutes() {
   const location = useLocation();
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/profile/:userId" element={<PublicProfilePage />} />
-        <Route
-          path="/messages"
-          element={
-            <ProtectedRoute>
-              <MessagesInboxPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/messages/:conversationId"
-          element={
-            <ProtectedRoute>
-              <MessageThreadPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trades"
-          element={
-            <ProtectedRoute>
-              <TradesInboxPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trades/new"
-          element={
-            <ProtectedRoute>
-              <TradeComposePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trades/new/review"
-          element={
-            <ProtectedRoute>
-              <TradeReviewPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trades/new/review/payment-method"
-          element={<TradePaymentMethodPage />}
-        />
-        <Route
-          path="/trades/:tradeId"
-          element={
-            <ProtectedRoute>
-              <TradeDetailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/onboarding"
-          element={
-            <ProtectedRoute>
-              <OnboardingPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </AnimatePresence>
+    <>
+      <AnnouncementRibbon />
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/:userId" element={<PublicProfilePage />} />
+          <Route
+            path="/messages"
+            element={<ProtectedRoute><MessagesInboxPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/messages/:conversationId"
+            element={<ProtectedRoute><MessageThreadPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/trades"
+            element={<ProtectedRoute><TradesInboxPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/trades/new"
+            element={<ProtectedRoute><TradeComposePage /></ProtectedRoute>}
+          />
+          <Route
+            path="/trades/new/review"
+            element={<ProtectedRoute><TradeReviewPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/trades/new/review/payment-method"
+            element={<TradePaymentMethodPage />}
+          />
+          <Route
+            path="/trades/:tradeId"
+            element={<ProtectedRoute><TradeDetailPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/onboarding"
+            element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/dashboard"
+            element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}
+          />
+
+          {/* Admin — nested under AdminShell, all guarded by AdminGuard */}
+          <Route
+            path="/admin"
+            element={<AdminGuard><AdminShell /></AdminGuard>}
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="flagged" element={<FlaggedMessagesPage />} />
+            <Route path="listings" element={<ListingApprovalPage />} />
+            <Route path="users" element={<UserManagementPage />} />
+            <Route path="trades" element={<AdminTradesPage />} />
+            <Route path="announcements" element={<AnnouncementsPage />} />
+            <Route path="content-filter" element={<ContentFilterPage />} />
+          </Route>
+
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </AnimatePresence>
+    </>
   );
 }
 
