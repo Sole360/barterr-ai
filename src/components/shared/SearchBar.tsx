@@ -99,18 +99,18 @@ export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
   return (
     <div ref={searchRef} className="relative w-full">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search sneakers..."
-          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3366FF] focus:border-transparent"
+          className="w-full pl-10 pr-10 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3366FF] focus:border-transparent placeholder:text-muted-foreground"
         />
         {query && (
           <button
             onClick={handleClear}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -118,24 +118,24 @@ export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
       </div>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-50">
+        <div className="absolute top-full mt-2 w-full bg-background rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.14)] border border-border max-h-96 overflow-y-auto z-50">
           {isSearching ? (
-            <div className="p-4 text-center text-gray-500">
+            <div className="p-4 text-center text-muted-foreground">
               <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#3366FF]"></div>
             </div>
           ) : results.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
+            <div className="p-4 text-center text-muted-foreground text-sm">
               No results found for "{query}"
             </div>
           ) : (
-            <div className="py-2">
+            <div className="py-1">
               {results.map((hit) => (
                 <button
                   key={hit.objectID}
                   onClick={() => handleSelectResult(hit.objectID)}
-                  className="w-full px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-left transition-colors"
+                  className="w-full px-4 py-3 hover:bg-accent flex items-center gap-3 text-left transition-colors"
                 >
-                  <div className="w-12 h-12 flex-shrink-0 bg-white rounded overflow-hidden border border-gray-200">
+                  <div className="w-12 h-12 flex-shrink-0 bg-white rounded-lg overflow-hidden border border-border/50">
                     <img
                       src={hit.productImageUrl}
                       alt={hit.title}
@@ -147,11 +147,11 @@ export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
                     <p className="text-xs font-medium text-[#3366FF] mb-0.5">
                       {hit.brand}
                     </p>
-                    <p className="font-medium text-gray-900 text-sm truncate">
+                    <p className="font-medium text-foreground text-sm truncate">
                       {hit.title}
                     </p>
                     {hit.styleId && (
-                      <p className="text-xs text-gray-500">{hit.styleId}</p>
+                      <p className="text-xs text-muted-foreground">{hit.styleId}</p>
                     )}
                   </div>
                 </button>

@@ -182,7 +182,7 @@ function SneakerCard({ post, onClick }: { post: Post; onClick: () => void }) {
         hover:-translate-y-1
         transition-all duration-200"
     >
-      <div className="relative aspect-square bg-gray-50 dark:bg-muted/60 overflow-hidden">
+      <div className="relative aspect-square bg-white overflow-hidden">
         <img
           src={post.productImageUrl}
           alt={post.title}
