@@ -136,8 +136,8 @@ export const reviewListing = onCall(async (req) => {
   const claims = (await getAuth().getUser(req.auth.uid)).customClaims ?? {};
   if (!claims.role) throw new HttpsError("permission-denied", "Admins only.");
 
-  const { postId, action, feedback } = req.data as {
-    postId: string;
+  const { listingId, action, feedback } = req.data as {
+    listingId: string;
     action: "approve" | "reject" | "request_changes";
     feedback?: string;
   };
@@ -149,13 +149,16 @@ export const reviewListing = onCall(async (req) => {
   const db = getFirestore();
   const base = { reviewedBy: req.auth.uid, reviewedAt: FieldValue.serverTimestamp() };
 
-  if (action === "approve") {
-    await db.collection("posts").doc(postId).update({ ...base, status: "approved", active: true });
-  } else if (action === "reject") {
-    await db.collection("posts").doc(postId).update({ ...base, status: "rejected", active: false, reviewFeedback: feedback });
-  } else if (action === "request_changes") {
-    await db.collection("posts").doc(postId).update({ ...base, status: "changes_requested", active: false, reviewFeedback: feedback });
-  }
+  const approvalStatus =
+    action === "approve" ? "approved" :
+    action === "reject" ? "rejected" :
+    "changes_requested";
+
+  await db.collection("listings").doc(listingId).update({
+    ...base,
+    approvalStatus,
+    ...(feedback ? { reviewFeedback: feedback } : {}),
+  });
 
   return { success: true };
 });

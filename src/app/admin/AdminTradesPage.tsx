@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, doc, getDoc, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { ArrowLeftRight } from "lucide-react";
 import { db } from "@/lib/firebase/config";
 import type { TradeDocument, TradeStatus } from "@/types";
@@ -26,6 +26,11 @@ function relativeTime(ts: { toDate: () => Date } | null): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function formatCents(cents: number): string {
+  if (!cents || cents <= 0) return "";
+  return `$${(cents / 100).toFixed(0)}`;
+}
+
 function Thumb({ url, name }: { url?: string; name?: string }) {
   return (
     <div className="w-12 h-12 shrink-0 rounded-lg bg-white border border-border/50 overflow-hidden shadow-sm">
@@ -41,12 +46,40 @@ function Thumb({ url, name }: { url?: string; name?: string }) {
 export const AdminTradesPage = () => {
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const q = query(collection(db, "trades"), orderBy("createdAt", "desc"), limit(100));
-    const unsub = onSnapshot(q, (snap) => {
-      setTrades(snap.docs.map((d) => ({ id: d.id, ...d.data() } as TradeRow)));
+    const unsub = onSnapshot(q, async (snap) => {
+      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() } as TradeRow));
+      setTrades(rows);
       setLoading(false);
+
+      // Fetch display names for any UIDs we don't have yet
+      const uids = new Set<string>();
+      rows.forEach((t) => { uids.add(t.fromUserId); uids.add(t.toUserId); });
+
+      setUserNames((prev) => {
+        const missing = [...uids].filter((uid) => !prev[uid]);
+        if (missing.length === 0) return prev;
+
+        Promise.all(
+          missing.map((uid) =>
+            getDoc(doc(db, "users", uid)).then((s) => ({
+              uid,
+              name: s.data()?.displayName ?? uid.slice(0, 8) + "…",
+            }))
+          )
+        ).then((results) => {
+          setUserNames((p) => {
+            const next = { ...p };
+            results.forEach(({ uid, name }) => { next[uid] = name; });
+            return next;
+          });
+        });
+
+        return prev;
+      });
     });
     return unsub;
   }, []);
@@ -72,15 +105,26 @@ export const AdminTradesPage = () => {
             const fromItems = (t.yourItems ?? []).slice(0, 3);
             const toItems = (t.theirItems ?? []).slice(0, 3);
             const totalItems = (t.yourItems?.length ?? 0) + (t.theirItems?.length ?? 0);
+            const fromName = userNames[t.fromUserId] ?? t.fromUserId.slice(0, 8) + "…";
+            const toName = userNames[t.toUserId] ?? t.toUserId.slice(0, 8) + "…";
+            const revenueCents = (t.senderServiceFeeCents ?? 0) + (t.receiverServiceFeeCents ?? 0);
+            const revenue = formatCents(revenueCents);
+            const likelihood = t.likelihood != null ? Math.round(t.likelihood * 100) : null;
 
             return (
               <div
                 key={t.id}
                 className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
               >
-                {/* Trade participants row */}
+                {/* User name labels */}
+                <div className="flex items-center gap-3 mb-1.5">
+                  <div className="flex-1 text-right text-[11px] font-semibold text-foreground truncate">{fromName}</div>
+                  <div className="shrink-0 w-9" />
+                  <div className="flex-1 text-left text-[11px] font-semibold text-foreground truncate">{toName}</div>
+                </div>
+
+                {/* Thumbnails row */}
                 <div className="flex items-center gap-3 mb-3">
-                  {/* From-user thumbnails (radiate right toward icon) */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-row-reverse gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
                       {[...fromItems].reverse().map((item, i) => (
@@ -89,13 +133,9 @@ export const AdminTradesPage = () => {
                       {fromItems.length === 0 && <Thumb />}
                     </div>
                   </div>
-
-                  {/* Trade icon */}
                   <div className="shrink-0 h-9 w-9 rounded-full bg-muted border border-border flex items-center justify-center shadow-sm">
                     <ArrowLeftRight className="w-4 h-4 text-muted-foreground" />
                   </div>
-
-                  {/* To-user thumbnails (radiate left toward icon) */}
                   <div className="flex-1 min-w-0">
                     <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
                       {toItems.map((item, i) => (
@@ -107,15 +147,25 @@ export const AdminTradesPage = () => {
                 </div>
 
                 {/* Meta row */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 truncate">
-                    <span className="truncate">{t.fromUserId.slice(0, 8)}…</span>
-                    <span className="text-border">→</span>
-                    <span className="truncate">{t.toUserId.slice(0, 8)}…</span>
-                    <span className="text-border">·</span>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
                     <span>{totalItems} sneaker{totalItems !== 1 ? "s" : ""}</span>
                     <span className="text-border">·</span>
                     <span>{relativeTime(t.createdAt as any)}</span>
+                    {likelihood !== null && (
+                      <>
+                        <span className="text-border">·</span>
+                        <span className={likelihood >= 70 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>
+                          {likelihood}% likelihood
+                        </span>
+                      </>
+                    )}
+                    {revenue && (
+                      <>
+                        <span className="text-border">·</span>
+                        <span className="text-[#3366FF] font-semibold">{revenue} revenue</span>
+                      </>
+                    )}
                   </div>
                   <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${STATUS_COLOR[t.status]}`}>
                     {t.status.replace("_", " ")}

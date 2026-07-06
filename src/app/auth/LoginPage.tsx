@@ -44,7 +44,11 @@ export const LoginPage = () => {
       await signIn(values.email, values.password);
       navigate("/dashboard");
     } catch (err: any) {
-      setError(err.message ?? "Failed to sign in");
+      if (err.code === "auth/user-disabled") {
+        setError("This account has been suspended. Please contact support if you believe this is a mistake.");
+      } else {
+        setError(err.message ?? "Failed to sign in");
+      }
     } finally {
       setLoading(false);
     }

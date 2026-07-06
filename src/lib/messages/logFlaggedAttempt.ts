@@ -21,6 +21,7 @@ export async function logFlaggedAttempt({
       participants,
       attemptedText,
       detectedAt: serverTimestamp(),
+      resolved: false,
     });
   } catch {
     // Silently fail — don't surface logging errors to the user

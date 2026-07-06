@@ -32,7 +32,13 @@ type ListingDoc = {
   flaws?: string;
 };
 
-const STATUS_FILTERS = ["pending_review", "approved", "changes_requested", "rejected"] as const;
+// Display label → approvalStatus value stored in Firestore
+const STATUS_FILTERS: { label: string; value: string }[] = [
+  { label: "Pending Review", value: "pending" },
+  { label: "Approved", value: "approved" },
+  { label: "Changes Requested", value: "changes_requested" },
+  { label: "Rejected", value: "rejected" },
+];
 
 const PHOTO_LABELS: { key: keyof ListingPhotos; label: string }[] = [
   { key: "appearance", label: "Appearance" },
@@ -100,7 +106,7 @@ function PhotoGallery({ productImageUrl, photos }: { productImageUrl?: string; p
 
 export const ListingApprovalPage = () => {
   const { toast } = useToast();
-  const [filter, setFilter] = useState<string>("pending_review");
+  const [filter, setFilter] = useState<string>("pending");
   const [items, setItems] = useState<ListingDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
@@ -112,8 +118,8 @@ export const ListingApprovalPage = () => {
   useEffect(() => {
     setLoading(true);
     const q = query(
-      collection(db, "posts"),
-      where("status", "==", filter),
+      collection(db, "listings"),
+      where("approvalStatus", "==", filter),
       orderBy("createdAt", "desc")
     );
     const unsub = onSnapshot(q, (snap) => {
@@ -127,7 +133,7 @@ export const ListingApprovalPage = () => {
     setActing(postId);
     try {
       const fns = getFunctions(undefined, "us-central1");
-      await httpsCallable(fns, "reviewListing")({ postId, action, feedback });
+      await httpsCallable(fns, "reviewListing")({ listingId: postId, action, feedback });
       toast({
         title:
           action === "approve"
@@ -157,18 +163,18 @@ export const ListingApprovalPage = () => {
 
       {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-5">
-        {STATUS_FILTERS.map((s) => (
+        {STATUS_FILTERS.map(({ label, value }) => (
           <button
-            key={s}
+            key={value}
             type="button"
-            onClick={() => setFilter(s)}
+            onClick={() => setFilter(value)}
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-              filter === s
+              filter === value
                 ? "bg-[#3366FF] text-white"
                 : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
           >
-            {s.replace(/_/g, " ")}
+            {label}
           </button>
         ))}
       </div>
