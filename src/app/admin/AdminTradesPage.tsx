@@ -109,9 +109,17 @@ export const AdminTradesPage = () => {
             const toName = userNames[t.toUserId] ?? t.toUserId.slice(0, 8) + "…";
             const senderFee = t.senderServiceFeeCents ?? 0;
             const receiverFee = t.receiverServiceFeeCents ?? 0;
-            // If receiver hasn't confirmed yet their fee is 0 — project by mirroring sender's fee
-            const revenueCents = receiverFee > 0 ? senderFee + receiverFee : senderFee * 2;
-            const revenue = formatCents(revenueCents);
+
+            let projectedRevenueCents = senderFee + receiverFee;
+            if (receiverFee === 0 && senderFee > 0) {
+              // Receiver hasn't confirmed yet — project their fee using the same rate
+              const senderItemsValueDollars = (t.yourItems ?? []).reduce((s, i) => s + i.value, 0);
+              const feeRate = senderItemsValueDollars > 0 ? senderFee / (senderItemsValueDollars * 100) : 0;
+              const receiverItemsValueDollars = (t.theirItems ?? []).reduce((s, i) => s + i.tradeValue, 0);
+              projectedRevenueCents = senderFee + Math.round(receiverItemsValueDollars * 100 * feeRate);
+            }
+
+            const revenue = formatCents(projectedRevenueCents);
             const likelihood = t.likelihood != null ? Math.round(t.likelihood) : null;
 
             return (

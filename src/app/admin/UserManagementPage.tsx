@@ -61,8 +61,10 @@ export const UserManagementPage = () => {
       toast({ title: label });
       // Refresh the list
       await loadUsers(true);
-    } catch {
-      toast({ title: "Error", description: "Action failed", variant: "destructive" });
+    } catch (err: any) {
+      const msg = err?.message ?? err?.details ?? "Action failed";
+      console.error(`[${fn}]`, err);
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setActing(null);
     }

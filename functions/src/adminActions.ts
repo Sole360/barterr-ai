@@ -69,12 +69,12 @@ export const disableUser = onCall(async (req) => {
   });
 
   // Mark on user doc so it's queryable
-  await getFirestore().collection("users").doc(uid).update({
+  await getFirestore().collection("users").doc(uid).set({
     accountStatus: "disabled",
     disabledAt: FieldValue.serverTimestamp(),
     disabledBy: req.auth.uid,
     disabledReason: reason ?? "",
-  });
+  }, { merge: true });
 
   logger.info(`User ${uid} disabled by ${req.auth.uid}`);
   return { success: true };
@@ -98,10 +98,10 @@ export const enableUser = onCall(async (req) => {
     at: FieldValue.serverTimestamp(),
   });
 
-  await getFirestore().collection("users").doc(uid).update({
+  await getFirestore().collection("users").doc(uid).set({
     accountStatus: "active",
-    disabledAt: FieldValue.serverTimestamp(),
-  });
+    reenabledAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
 
   logger.info(`User ${uid} enabled by ${req.auth.uid}`);
   return { success: true };
