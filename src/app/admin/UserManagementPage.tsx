@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, limit, orderBy, query, startAfter, where, type QueryDocumentSnapshot } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query, startAfter, type QueryDocumentSnapshot } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { Search, UserX, UserCheck, ShieldCheck, Users } from "lucide-react";
+import { Search, UserX, UserCheck, Users } from "lucide-react";
 import { db } from "@/lib/firebase/config";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
