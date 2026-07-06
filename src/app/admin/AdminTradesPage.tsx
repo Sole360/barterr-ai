@@ -107,9 +107,12 @@ export const AdminTradesPage = () => {
             const totalItems = (t.yourItems?.length ?? 0) + (t.theirItems?.length ?? 0);
             const fromName = userNames[t.fromUserId] ?? t.fromUserId.slice(0, 8) + "…";
             const toName = userNames[t.toUserId] ?? t.toUserId.slice(0, 8) + "…";
-            const revenueCents = (t.senderServiceFeeCents ?? 0) + (t.receiverServiceFeeCents ?? 0);
+            const senderFee = t.senderServiceFeeCents ?? 0;
+            const receiverFee = t.receiverServiceFeeCents ?? 0;
+            // If receiver hasn't confirmed yet their fee is 0 — project by mirroring sender's fee
+            const revenueCents = receiverFee > 0 ? senderFee + receiverFee : senderFee * 2;
             const revenue = formatCents(revenueCents);
-            const likelihood = t.likelihood != null ? Math.round(t.likelihood * 100) : null;
+            const likelihood = t.likelihood != null ? Math.round(t.likelihood) : null;
 
             return (
               <div

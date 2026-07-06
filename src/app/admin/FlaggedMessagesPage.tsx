@@ -43,7 +43,7 @@ export const FlaggedMessagesPage = () => {
   useEffect(() => {
     const q = showResolved
       ? query(collection(db, "flaggedAttempts"), orderBy("detectedAt", "desc"))
-      : query(collection(db, "flaggedAttempts"), where("resolved", "!=", true), orderBy("detectedAt", "desc"));
+      : query(collection(db, "flaggedAttempts"), where("resolved", "==", false), orderBy("detectedAt", "desc"));
 
     const unsub = onSnapshot(q, (snap) => {
       setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() } as FlaggedAttempt)));

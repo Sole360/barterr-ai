@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "flaggedAttempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "resolved", "order": "ASCENDING" },
+        { "fieldPath": "detectedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
