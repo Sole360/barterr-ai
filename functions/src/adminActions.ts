@@ -3,6 +3,13 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 
+const CORS_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://barterr.ai",
+  "https://dev.barterr.ai",
+];
+
 type AdminRole = "super_admin" | "admin";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -16,7 +23,7 @@ async function assertSuperAdmin(uid: string) {
 
 // ─── Set admin role ───────────────────────────────────────────────────────────
 
-export const setAdminRole = onCall(async (req) => {
+export const setAdminRole = onCall({ cors: CORS_ORIGINS }, async (req) => {
   if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
   await assertSuperAdmin(req.auth.uid);
 
@@ -50,7 +57,7 @@ export const setAdminRole = onCall(async (req) => {
 
 // ─── Disable user ─────────────────────────────────────────────────────────────
 
-export const disableUser = onCall(async (req) => {
+export const disableUser = onCall({ cors: CORS_ORIGINS }, async (req) => {
   if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
   await assertSuperAdmin(req.auth.uid);
 
@@ -82,7 +89,7 @@ export const disableUser = onCall(async (req) => {
 
 // ─── Enable user ──────────────────────────────────────────────────────────────
 
-export const enableUser = onCall(async (req) => {
+export const enableUser = onCall({ cors: CORS_ORIGINS }, async (req) => {
   if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
   await assertSuperAdmin(req.auth.uid);
 
@@ -109,7 +116,7 @@ export const enableUser = onCall(async (req) => {
 
 // ─── Resolve flagged attempt ───────────────────────────────────────────────────
 
-export const resolveFlaggedAttempt = onCall(async (req) => {
+export const resolveFlaggedAttempt = onCall({ cors: CORS_ORIGINS }, async (req) => {
   if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
   const claims = (await getAuth().getUser(req.auth.uid)).customClaims ?? {};
   if (!claims.role) throw new HttpsError("permission-denied", "Admins only.");
@@ -131,7 +138,7 @@ export const resolveFlaggedAttempt = onCall(async (req) => {
 
 // ─── Approve / reject listing ─────────────────────────────────────────────────
 
-export const reviewListing = onCall(async (req) => {
+export const reviewListing = onCall({ cors: CORS_ORIGINS }, async (req) => {
   if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
   const claims = (await getAuth().getUser(req.auth.uid)).customClaims ?? {};
   if (!claims.role) throw new HttpsError("permission-denied", "Admins only.");

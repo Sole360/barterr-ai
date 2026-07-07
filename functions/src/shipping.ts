@@ -8,6 +8,13 @@ import axios from "axios";
 
 const SHIPPO_API_KEY = defineSecret("SHIPPO_API_KEY");
 
+const CORS_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://barterr.ai",
+  "https://dev.barterr.ai",
+];
+
 // Admin UID (Barterr/Sole360 operator)
 const ADMIN_UID = "Vu6dB5O5zKYExw3kpVxbGy0OZ3B2";
 
@@ -148,7 +155,7 @@ async function purchaseBestRate(
  * config/shipping so it can be updated from the admin panel without redeploying.
  */
 export const createShippoLabel = onCall(
-  { region: "us-central1", secrets: [SHIPPO_API_KEY] },
+  { region: "us-central1", secrets: [SHIPPO_API_KEY], cors: CORS_ORIGINS },
   async (req) => {
     if (!req.auth?.uid) {
       throw new HttpsError("unauthenticated", "Must be signed in");
@@ -227,7 +234,7 @@ export const createShippoLabel = onCall(
  * tracking info on the order document.
  */
 export const createShippoTransaction = onCall(
-  { region: "us-central1", secrets: [SHIPPO_API_KEY] },
+  { region: "us-central1", secrets: [SHIPPO_API_KEY], cors: CORS_ORIGINS },
   async (req) => {
     if (!req.auth?.uid) {
       throw new HttpsError("unauthenticated", "Must be signed in");
@@ -291,7 +298,7 @@ export const createShippoTransaction = onCall(
  * label, and store tracking on the order — no rate picker needed in the UI.
  */
 export const purchaseShippoLabel = onCall(
-  { region: "us-central1", secrets: [SHIPPO_API_KEY] },
+  { region: "us-central1", secrets: [SHIPPO_API_KEY], cors: CORS_ORIGINS },
   async (req) => {
     if (!req.auth?.uid) {
       throw new HttpsError("unauthenticated", "Must be signed in");
@@ -510,7 +517,7 @@ export const onTradeCompleted = onDocumentUpdated(
  * Fires the onSneakersReceived email trigger.
  */
 export const markSneakersReceived = onCall(
-  { region: "us-central1" },
+  { region: "us-central1", cors: CORS_ORIGINS },
   async (req) => {
     if (!req.auth?.uid)
       throw new HttpsError("unauthenticated", "Must be signed in");
@@ -541,7 +548,7 @@ export const markSneakersReceived = onCall(
  * - passed=false → writes `fakes` field (fires onFakeShoes email)
  * - passed=true  → marks that side authenticated; if both pass → completed=true
  */
-export const markAuthResult = onCall({ region: "us-central1" }, async (req) => {
+export const markAuthResult = onCall({ region: "us-central1", cors: CORS_ORIGINS }, async (req) => {
   if (!req.auth?.uid)
     throw new HttpsError("unauthenticated", "Must be signed in");
   if (req.auth.uid !== ADMIN_UID)
@@ -593,7 +600,7 @@ export const markAuthResult = onCall({ region: "us-central1" }, async (req) => {
  * Fires the onOutboundLabelCreated email trigger.
  */
 export const createOutboundLabel = onCall(
-  { region: "us-central1", secrets: [SHIPPO_API_KEY] },
+  { region: "us-central1", secrets: [SHIPPO_API_KEY], cors: CORS_ORIGINS },
   async (req) => {
     if (!req.auth?.uid)
       throw new HttpsError("unauthenticated", "Must be signed in");

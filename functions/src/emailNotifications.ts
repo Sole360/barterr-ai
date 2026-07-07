@@ -11,6 +11,13 @@ import sgMail from "@sendgrid/mail";
 
 const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
 
+const CORS_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://barterr.ai",
+  "https://dev.barterr.ai",
+];
+
 const FROM = "trading@barterr.ai";
 const APP_URL = "https://barterr.ai";
 
@@ -336,7 +343,7 @@ export const sendWeeklyReminder = onSchedule(
 // ─────────────────────────────────────────────
 
 export const sendEmailMessage = onCall(
-  { secrets: [SENDGRID_API_KEY] },
+  { secrets: [SENDGRID_API_KEY], cors: CORS_ORIGINS },
   async (req) => {
     if (!req.auth?.uid) {
       throw new HttpsError("unauthenticated", "You must be signed in.");
