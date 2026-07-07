@@ -343,7 +343,7 @@ export const sendWeeklyReminder = onSchedule(
 // ─────────────────────────────────────────────
 
 export const sendEmailMessage = onCall(
-  { secrets: [SENDGRID_API_KEY], cors: CORS_ORIGINS },
+  { secrets: [SENDGRID_API_KEY], cors: CORS_ORIGINS, invoker: "public" },
   async (req) => {
     if (!req.auth?.uid) {
       throw new HttpsError("unauthenticated", "You must be signed in.");
