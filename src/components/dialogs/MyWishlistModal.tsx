@@ -91,7 +91,7 @@ export const MyWishlistModal = ({ open, postId, size, onClose }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-xl bg-white [&>button]:hidden">
+      <DialogContent className="max-w-xl bg-card [&>button]:hidden">
         <DialogHeader>
           <DialogTitle>Wishlist Item</DialogTitle>
         </DialogHeader>
@@ -103,7 +103,7 @@ export const MyWishlistModal = ({ open, postId, size, onClose }: Props) => {
         ) : (
           <div className="space-y-5">
             <div className="flex items-center gap-3 rounded-lg border p-3">
-              <div className="h-16 w-16 rounded-md bg-white overflow-hidden border flex-shrink-0">
+              <div className="h-16 w-16 rounded-md bg-white dark:bg-white/10 overflow-hidden border flex-shrink-0">
                 <img
                   src={post.productImageUrl}
                   alt={post.title}
@@ -115,7 +115,7 @@ export const MyWishlistModal = ({ open, postId, size, onClose }: Props) => {
                 <div className="text-xs font-medium text-[#3366FF]">
                   {post.brand}
                 </div>
-                <div className="text-sm font-semibold text-gray-900 truncate">
+                <div className="text-sm font-semibold text-foreground truncate">
                   {post.title}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -141,7 +141,7 @@ export const MyWishlistModal = ({ open, postId, size, onClose }: Props) => {
         )}
 
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <AlertDialogContent className="bg-white">
+          <AlertDialogContent className="bg-card">
             <AlertDialogHeader>
               <AlertDialogTitle>Remove from wishlist?</AlertDialogTitle>
               <AlertDialogDescription>

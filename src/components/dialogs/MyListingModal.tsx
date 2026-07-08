@@ -213,7 +213,7 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-xl bg-white [&>button]:hidden">
+      <DialogContent className="max-w-xl bg-card [&>button]:hidden">
         <DialogHeader>
           <DialogTitle>Edit Listing</DialogTitle>
         </DialogHeader>
@@ -224,7 +224,7 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
           <div className="space-y-5">
             {post && (
               <div className="flex items-center gap-3 rounded-lg border p-3">
-                <div className="h-16 w-16 rounded-md bg-white overflow-hidden border">
+                <div className="h-16 w-16 rounded-md bg-white dark:bg-white/10 overflow-hidden border">
                   <img
                     src={post.productImageUrl}
                     alt={post.title}
@@ -243,11 +243,11 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
             )}
 
             {listing.approvalStatus === "changes_requested" && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <div className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">
+              <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 p-3">
+                <div className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1">
                   Changes Requested
                 </div>
-                <p className="text-sm text-amber-800 leading-relaxed">
+                <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
                   {listing.reviewFeedback ?? "Please update your listing and resubmit for review."}
                 </p>
                 <Button
@@ -317,7 +317,7 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
           open={removeConfirmOpen}
           onOpenChange={setRemoveConfirmOpen}
         >
-          <AlertDialogContent className="bg-white">
+          <AlertDialogContent className="bg-card">
             <AlertDialogHeader>
               <AlertDialogTitle>Remove from collection?</AlertDialogTitle>
               <AlertDialogDescription>

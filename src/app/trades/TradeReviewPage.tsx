@@ -399,7 +399,7 @@ export const TradeReviewPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 md:pb-24">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -419,7 +419,7 @@ export const TradeReviewPage = () => {
         </div>
 
         {/* MOBILE meta */}
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-gray-200 bg-white p-3 md:hidden">
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-border bg-card p-3 md:hidden">
           <div className="text-sm font-semibold">Trade</div>
 
           <div className="flex items-center gap-4">
@@ -440,7 +440,7 @@ export const TradeReviewPage = () => {
 
         {/* MOBILE compact panels */}
         <div className="mt-3 grid grid-cols-2 gap-3 md:hidden">
-          <div className="rounded-2xl border border-gray-200 bg-white p-3">
+          <div className="rounded-2xl border border-border bg-card p-3">
             <div className="flex items-center justify-between">
               <div className="text-xs font-semibold text-[#3366FF]">
                 You’re offering
@@ -456,7 +456,7 @@ export const TradeReviewPage = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-3">
+          <div className="rounded-2xl border border-border bg-card p-3">
             <div className="flex items-center justify-between">
               <div className="text-xs font-semibold text-[#3366FF]">
                 You’re requesting
@@ -564,11 +564,11 @@ export const TradeReviewPage = () => {
         </div>
 
         {/* Checkout */}
-        <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="text-sm font-semibold">Checkout</div>
 
           {/* Payment Method row */}
-          <div className="mt-3 flex items-center justify-between border-b border-gray-100 pb-3">
+          <div className="mt-3 flex items-center justify-between border-b border-border pb-3">
             <div className="text-sm text-muted-foreground">Payment Method</div>
 
             {billingLoading ? (
@@ -657,7 +657,7 @@ export const TradeReviewPage = () => {
 
         {/* Sticky action */}
         <div className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="border-t border-gray-200 bg-white/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
+          <div className="border-t border-border bg-background/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
             <div className="mx-auto w-full max-w-7xl">
               <Button
                 className="w-full bg-[#3366FF]"

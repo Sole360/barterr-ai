@@ -387,19 +387,19 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
         void handleClose();
       }}
     >
-      <DialogContent className="w-full max-w-2xl h-[90vh] p-0 bg-white overflow-hidden flex flex-col [&>button]:hidden">
+      <DialogContent className="w-full max-w-2xl h-[90vh] p-0 bg-card overflow-hidden flex flex-col [&>button]:hidden">
         <DialogTitle className="sr-only">
           {step === "search" ? "Add Sneakers" : "Sneaker Details"}
         </DialogTitle>
         {/* Sticky Header */}
-        <div className="bg-white border-b px-4 sm:px-6 py-4 flex-shrink-0">
+        <div className="bg-card border-b px-4 sm:px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground">
                 {step === "search" ? "Add Sneakers" : "Sneaker Details"}
               </h2>
               {selectedSneakers.length > 0 && (
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {selectedSneakers.length} sneaker
                   {selectedSneakers.length > 1 ? "s" : ""} ready to save
                 </p>
@@ -409,7 +409,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
               onClick={() => {
                 void handleClose();
               }}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
@@ -746,7 +746,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
           )}
         </div>
         {/* Fixed Bottom Actions */}
-        <div className="sticky bottom-0 bg-white border-t p-4 sm:px-6">
+        <div className="sticky bottom-0 bg-card border-t p-4 sm:px-6">
           {step === "search" ? (
             <Button
               onClick={handleSaveAll}

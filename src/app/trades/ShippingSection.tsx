@@ -71,7 +71,7 @@ function TrackingCard({
   const trackLink = trackUrl(tracking.carrier, tracking.tracking);
 
   return (
-    <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3">
+    <div className="mt-2 rounded-lg border border-border bg-card p-3">
       <div className="text-xs text-muted-foreground">
         {tracking.carrier} · {tracking.tracking}
       </div>
@@ -81,7 +81,7 @@ function TrackingCard({
             href={tracking.label}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+            className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent"
           >
             Print Label
           </a>

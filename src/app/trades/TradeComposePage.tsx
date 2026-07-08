@@ -449,7 +449,7 @@ export const TradeComposePage = () => {
   // -----------------------------
   if (!postId || !listingId) {
     return (
-      <div className="min-h-[100dvh] bg-white">
+      <div className="min-h-[100dvh] bg-background">
         <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-6">
           <Button
             variant="ghost"
@@ -657,7 +657,7 @@ export const TradeComposePage = () => {
 
           {/* CENTER: Likelihood Meter */}
           <section className="flex min-h-0 flex-col items-center justify-start">
-            <div className="w-full rounded-2xl border border-[#3366FF]/20 bg-white p-5 text-center shadow-sm">
+            <div className="w-full rounded-2xl border border-[#3366FF]/20 bg-card p-5 text-center shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-wide text-[#3366FF]">
                 Trade Likelihood
               </div>
@@ -796,7 +796,7 @@ export const TradeComposePage = () => {
 
         {/* Mobile sticky action bar */}
         <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-          <div className="border-t border-gray-200 bg-white/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
+          <div className="border-t border-border bg-background/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
             <div className="mx-auto w-full max-w-7xl">
               <Button
                 className="w-full bg-[#3366FF]"

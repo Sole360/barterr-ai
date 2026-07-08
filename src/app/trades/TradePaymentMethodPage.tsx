@@ -138,7 +138,7 @@ const SetupPaymentForm = ({ onSaved }: SetupPaymentFormProps) => {
   };
 
   return (
-    <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
       <PaymentElement />
       <div className="mt-4">
         <Button
@@ -246,7 +246,7 @@ export const TradePaymentMethodPage = () => {
   if (!draft && !returnTo) return null;
 
   return (
-    <div className="min-h-[100dvh] bg-white">
+    <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto w-full max-w-xl px-4 pb-10 pt-4">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -273,7 +273,7 @@ export const TradePaymentMethodPage = () => {
           </div>
 
           {loading ? (
-            <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-muted-foreground">
+            <div className="mt-4 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
               Loading payment form…
             </div>
           ) : elementsOptions ? (
@@ -294,7 +294,7 @@ export const TradePaymentMethodPage = () => {
               />
             </Elements>
           ) : (
-            <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-muted-foreground">
+            <div className="mt-4 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
               Unable to load payment form.
             </div>
           )}
