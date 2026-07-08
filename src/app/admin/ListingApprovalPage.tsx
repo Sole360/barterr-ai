@@ -289,7 +289,7 @@ export const ListingApprovalPage = () => {
                     )}
 
                     {/* Action buttons */}
-                    {filter === "pending_review" && !isFeedbackOpen && (
+                    {filter === "pending" && !isFeedbackOpen && (
                       <div className="flex gap-2">
                         <button
                           type="button"
