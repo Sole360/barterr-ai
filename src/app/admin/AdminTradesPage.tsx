@@ -13,6 +13,7 @@ const STATUS_COLOR: Record<TradeStatus, string> = {
   completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   declined: "bg-muted text-muted-foreground",
+  countered: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
 };
 
 function relativeTime(ts: { toDate: () => Date } | null): string {

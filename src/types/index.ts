@@ -338,7 +338,7 @@ export interface TradeReviewYourItem {
   value: string;
   imageUrl?: string;
   brand?: string;
-  status?: "approved" | "pending" | "rejected";
+  status?: "approved" | "pending" | "rejected" | "changes_requested";
 }
 
 export interface TradeReviewTheirItem {
@@ -509,7 +509,7 @@ export interface TheirListingRow {
   condition: "new" | "used";
   conditionGrade: number;
   tradeValue: number;
-  approvalStatus?: "approved" | "pending" | "rejected";
+  approvalStatus?: "approved" | "pending" | "rejected" | "changes_requested";
   title: string;
   brand: string;
   imageUrl: string;
