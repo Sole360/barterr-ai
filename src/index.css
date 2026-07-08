@@ -68,6 +68,12 @@
 
   body {
     font-family: "Karla", system-ui, -apple-system, sans-serif;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+  }
+
+  input, textarea, select {
+    color: inherit;
   }
 
   /* Smooth theme transition */

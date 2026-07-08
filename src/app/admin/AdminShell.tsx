@@ -7,10 +7,13 @@ import {
   ArrowLeftRight,
   Megaphone,
   LogOut,
+  Moon,
   Settings,
+  Sun,
   Filter,
 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth.context";
+import { useTheme } from "@/lib/contexts/theme.context";
 
 const NAV_ITEMS = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -34,6 +37,7 @@ const mobileInactive = "text-muted-foreground";
 
 export const AdminShell = () => {
   const { adminRole, logout } = useAuth();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -99,6 +103,16 @@ export const AdminShell = () => {
           )}
           <button
             type="button"
+            onClick={toggleTheme}
+            className={`${linkBase} ${linkInactive} w-full text-left`}
+          >
+            {resolvedTheme === "dark"
+              ? <Sun className="w-4 h-4 shrink-0" />
+              : <Moon className="w-4 h-4 shrink-0" />}
+            {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+          <button
+            type="button"
             onClick={handleLogout}
             className={`${linkBase} ${linkInactive} w-full text-left`}
           >
@@ -116,9 +130,16 @@ export const AdminShell = () => {
             <img src="/barterr-main-icon.png" alt="Barterr" className="h-6 w-auto" />
             <span className="text-xs font-bold text-foreground uppercase tracking-widest">Admin</span>
           </div>
-          <button type="button" onClick={handleLogout} className="p-2 rounded-lg hover:bg-accent transition-colors">
-            <LogOut className="w-4 h-4 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-accent transition-colors">
+              {resolvedTheme === "dark"
+                ? <Sun className="w-4 h-4 text-muted-foreground" />
+                : <Moon className="w-4 h-4 text-muted-foreground" />}
+            </button>
+            <button type="button" onClick={handleLogout} className="p-2 rounded-lg hover:bg-accent transition-colors">
+              <LogOut className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
         </header>
 
         {/* Page content */}
