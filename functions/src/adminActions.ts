@@ -1,7 +1,18 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
+import sgMail from "@sendgrid/mail";
+
+const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
+
+const FROM = "trading@barterr.ai";
+
+const TEMPLATES = {
+  ACCOUNT_WARNING: "d-c542034da1ab47c5850245e310ab009d",
+  ACCOUNT_BANNED:  "d-48cd3183d9e649e9a6f231a2d2ac4e86",
+} as const;
 
 const CORS_ORIGINS = [
   "http://localhost:5173",
@@ -31,7 +42,6 @@ export const setAdminRole = onCall({ region: "us-central1", cors: CORS_ORIGINS, 
   if (!uid) throw new HttpsError("invalid-argument", "uid is required.");
 
   if (role === null) {
-    // Remove admin access entirely
     await getAuth().setCustomUserClaims(uid, {});
     await getAuth().revokeRefreshTokens(uid);
   } else {
@@ -42,7 +52,6 @@ export const setAdminRole = onCall({ region: "us-central1", cors: CORS_ORIGINS, 
     await getAuth().revokeRefreshTokens(uid);
   }
 
-  // Log to Firestore for audit trail
   await getFirestore().collection("adminAuditLog").add({
     action: "set_role",
     targetUid: uid,
@@ -75,7 +84,6 @@ export const disableUser = onCall({ region: "us-central1", cors: CORS_ORIGINS, i
     at: FieldValue.serverTimestamp(),
   });
 
-  // Mark on user doc so it's queryable
   await getFirestore().collection("users").doc(uid).set({
     accountStatus: "disabled",
     disabledAt: FieldValue.serverTimestamp(),
@@ -116,25 +124,144 @@ export const enableUser = onCall({ region: "us-central1", cors: CORS_ORIGINS, in
 
 // ─── Resolve flagged attempt ───────────────────────────────────────────────────
 
-export const resolveFlaggedAttempt = onCall({ region: "us-central1", cors: CORS_ORIGINS, invoker: "public" }, async (req) => {
-  if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
-  const claims = (await getAuth().getUser(req.auth.uid)).customClaims ?? {};
-  if (!claims.role) throw new HttpsError("permission-denied", "Admins only.");
+export const resolveFlaggedAttempt = onCall(
+  { region: "us-central1", cors: CORS_ORIGINS, invoker: "public", secrets: [SENDGRID_API_KEY] },
+  async (req) => {
+    sgMail.setApiKey(SENDGRID_API_KEY.value());
 
-  const { attemptId, resolution } = req.data as {
-    attemptId: string;
-    resolution: "dismissed" | "warned" | "banned";
-  };
+    if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
+    const claims = (await getAuth().getUser(req.auth.uid)).customClaims ?? {};
+    if (!claims.role) throw new HttpsError("permission-denied", "Admins only.");
 
-  await getFirestore().collection("flaggedAttempts").doc(attemptId).update({
-    resolved: true,
-    resolution,
-    resolvedBy: req.auth.uid,
-    resolvedAt: FieldValue.serverTimestamp(),
-  });
+    const { attemptId, resolution } = req.data as {
+      attemptId: string;
+      resolution: "dismissed" | "warned" | "banned";
+    };
 
-  return { success: true };
-});
+    const db = getFirestore();
+
+    const attemptSnap = await db.collection("flaggedAttempts").doc(attemptId).get();
+    if (!attemptSnap.exists) throw new HttpsError("not-found", "Flagged attempt not found.");
+    const senderId = (attemptSnap.data()!.senderId) as string;
+
+    await db.collection("flaggedAttempts").doc(attemptId).update({
+      resolved: true,
+      resolution,
+      resolvedBy: req.auth.uid,
+      resolvedAt: FieldValue.serverTimestamp(),
+    });
+
+    if (resolution === "dismissed") return { success: true };
+
+    const userRecord = await getAuth().getUser(senderId);
+    const firstName = (userRecord.displayName ?? "there").split(" ")[0];
+    const email = userRecord.email;
+
+    if (resolution === "warned") {
+      const [userSnap, configSnap] = await Promise.all([
+        db.collection("users").doc(senderId).get(),
+        db.collection("config").doc("moderation").get(),
+      ]);
+
+      const currentCount = (userSnap.data()?.warningCount ?? 0) as number;
+      const threshold = (configSnap.data()?.autoBanThreshold ?? 3) as number;
+      const newCount = currentCount + 1;
+      const shouldAutoBan = newCount >= threshold;
+
+      await Promise.all([
+        db.collection("users").doc(senderId).set({
+          warningCount: FieldValue.increment(1),
+          lastWarnedAt: FieldValue.serverTimestamp(),
+        }, { merge: true }),
+
+        db.collection("users").doc(senderId).collection("notifications").add({
+          type: "account_warning",
+          title: "Account Warning",
+          body: "Your account has received a warning for violating Barterr's Terms of Service.",
+          data: {},
+          read: false,
+          createdAt: FieldValue.serverTimestamp(),
+        }),
+      ]);
+
+      if (email) {
+        await sgMail.send({
+          to: email,
+          from: FROM,
+          subject: "Account Warning — Terms of Service Violation",
+          templateId: TEMPLATES.ACCOUNT_WARNING,
+          dynamicTemplateData: { firstName },
+        }).catch((err) => logger.error("[resolveFlaggedAttempt] Warning email failed", err));
+      }
+
+      if (shouldAutoBan) {
+        await getAuth().updateUser(senderId, { disabled: true });
+        await getAuth().revokeRefreshTokens(senderId);
+
+        await Promise.all([
+          db.collection("users").doc(senderId).set({
+            accountStatus: "disabled",
+            disabledAt: FieldValue.serverTimestamp(),
+            disabledReason: "Automatic ban after reaching warning threshold",
+            disabledBy: "system",
+          }, { merge: true }),
+
+          db.collection("users").doc(senderId).collection("notifications").add({
+            type: "account_banned",
+            title: "Account Suspended",
+            body: "Your account has been suspended after receiving multiple warnings.",
+            data: {},
+            read: false,
+            createdAt: FieldValue.serverTimestamp(),
+          }),
+        ]);
+
+        if (email) {
+          await sgMail.send({
+            to: email,
+            from: FROM,
+            subject: "Account Suspended — Terms of Service Violation",
+            templateId: TEMPLATES.ACCOUNT_BANNED,
+            dynamicTemplateData: { firstName },
+          }).catch((err) => logger.error("[resolveFlaggedAttempt] Auto-ban email failed", err));
+        }
+      }
+    } else if (resolution === "banned") {
+      await getAuth().updateUser(senderId, { disabled: true });
+      await getAuth().revokeRefreshTokens(senderId);
+
+      await Promise.all([
+        db.collection("users").doc(senderId).set({
+          accountStatus: "disabled",
+          disabledAt: FieldValue.serverTimestamp(),
+          disabledReason: "Terms of Service violation",
+          disabledBy: req.auth.uid,
+        }, { merge: true }),
+
+        db.collection("users").doc(senderId).collection("notifications").add({
+          type: "account_banned",
+          title: "Account Suspended",
+          body: "Your account has been suspended for violating Barterr's Terms of Service.",
+          data: {},
+          read: false,
+          createdAt: FieldValue.serverTimestamp(),
+        }),
+      ]);
+
+      if (email) {
+        await sgMail.send({
+          to: email,
+          from: FROM,
+          subject: "Account Suspended — Terms of Service Violation",
+          templateId: TEMPLATES.ACCOUNT_BANNED,
+          dynamicTemplateData: { firstName },
+        }).catch((err) => logger.error("[resolveFlaggedAttempt] Ban email failed", err));
+      }
+    }
+
+    return { success: true };
+  }
+);
 
 // ─── Approve / reject listing ─────────────────────────────────────────────────
 

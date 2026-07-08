@@ -250,7 +250,7 @@ export const MessageThreadPage = () => {
                   Message blocked
                 </div>
                 <div className="text-xs text-red-700 dark:text-red-400 mt-0.5">
-                  Your message appears to contain contact info, payment details, or references to external platforms. Off-platform transactions violate Barterr's Terms of Service. Please edit your message.
+                  Your message appears to contain contact info, payment details, hate speech, or references to external platforms. Off-platform transactions violate Barterr's Terms of Service. Please edit your message.
                 </div>
               </div>
             </div>

@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import {
   collection,
+  doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
+  setDoc,
   where,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { ShieldAlert, CheckCheck, AlertTriangle, Ban } from "lucide-react";
+import { ShieldAlert, CheckCheck, AlertTriangle, Ban, Settings2 } from "lucide-react";
 import { db } from "@/lib/firebase/config";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,6 +42,34 @@ export const FlaggedMessagesPage = () => {
   const [loading, setLoading] = useState(true);
   const [showResolved, setShowResolved] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
+  const [threshold, setThreshold] = useState(3);
+  const [thresholdInput, setThresholdInput] = useState("3");
+  const [savingThreshold, setSavingThreshold] = useState(false);
+
+  useEffect(() => {
+    getDoc(doc(db, "config", "moderation")).then((snap) => {
+      const val = snap.data()?.autoBanThreshold;
+      if (typeof val === "number") {
+        setThreshold(val);
+        setThresholdInput(String(val));
+      }
+    });
+  }, []);
+
+  const saveThreshold = async () => {
+    const val = parseInt(thresholdInput, 10);
+    if (isNaN(val) || val < 1) return;
+    setSavingThreshold(true);
+    try {
+      await setDoc(doc(db, "config", "moderation"), { autoBanThreshold: val }, { merge: true });
+      setThreshold(val);
+      toast({ title: `Auto-ban threshold set to ${val}` });
+    } catch {
+      toast({ title: "Error", description: "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingThreshold(false);
+    }
+  };
 
   useEffect(() => {
     const q = showResolved
@@ -67,7 +98,7 @@ export const FlaggedMessagesPage = () => {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-foreground">Flagged Messages</h1>
         <button
           type="button"
@@ -76,6 +107,36 @@ export const FlaggedMessagesPage = () => {
         >
           {showResolved ? "Hide resolved" : "Show resolved"}
         </button>
+      </div>
+
+      {/* Auto-ban threshold */}
+      <div className="rounded-2xl border border-border bg-card px-4 py-3 mb-5 flex items-center gap-3">
+        <Settings2 className="w-4 h-4 text-muted-foreground shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-semibold text-foreground">Auto-ban threshold</div>
+          <div className="text-[11px] text-muted-foreground">
+            Users are automatically banned after this many warnings. Currently: <span className="font-semibold text-foreground">{threshold}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <input
+            type="number"
+            min={1}
+            max={10}
+            value={thresholdInput}
+            onChange={(e) => setThresholdInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && saveThreshold()}
+            className="w-14 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-center text-foreground focus:outline-none focus:ring-2 focus:ring-[#3366FF]/40"
+          />
+          <button
+            type="button"
+            onClick={saveThreshold}
+            disabled={savingThreshold || thresholdInput === String(threshold)}
+            className="px-3 py-1.5 rounded-lg bg-[#3366FF] text-white text-xs font-semibold hover:bg-[#3366FF]/90 transition-colors disabled:opacity-40"
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       {loading ? (

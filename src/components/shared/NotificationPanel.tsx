@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeftRight, CheckCheck, CheckCircle2, PackageCheck, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Ban, CheckCheck, CheckCircle2, PackageCheck, XCircle } from "lucide-react";
 import type { NotificationDoc, NotificationType } from "@/lib/firebase/useNotifications";
 
 function relativeTime(ts: { toDate: () => Date } | null): string {
@@ -43,10 +43,23 @@ function NotificationIcon({ type }: { type: NotificationType }) {
           <PackageCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
         </div>
       );
+    case "account_warning":
+      return (
+        <div className={`${base} bg-amber-100 dark:bg-amber-900/40`}>
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+        </div>
+      );
+    case "account_banned":
+      return (
+        <div className={`${base} bg-red-100 dark:bg-red-900/40`}>
+          <Ban className="w-4 h-4 text-red-500 dark:text-red-400" />
+        </div>
+      );
   }
 }
 
 function navPathForNotification(n: NotificationDoc): string {
+  if (n.type === "account_warning" || n.type === "account_banned") return "/settings";
   if (n.data.tradeId) return `/trades/${n.data.tradeId}`;
   return "/trades";
 }

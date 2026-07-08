@@ -8,7 +8,9 @@ type NotificationType =
   | "new_trade"
   | "trade_accepted"
   | "trade_declined"
-  | "trade_completed";
+  | "trade_completed"
+  | "account_warning"
+  | "account_banned";
 
 async function writeNotification(
   userId: string,
