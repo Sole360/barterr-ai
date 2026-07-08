@@ -72,6 +72,7 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
   const [listing, setListing] = useState<Listing | null>(null);
   const [post, setPost] = useState<Post | null>(null);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
   const [resubmitting, setResubmitting] = useState(false);
 
   const [tradeValue, setTradeValue] = useState("");
@@ -343,14 +344,6 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
                 <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
                   {listing.reviewFeedback ?? "Please update your listing and resubmit for review."}
                 </p>
-                <Button
-                  size="sm"
-                  className="mt-3 bg-amber-600 hover:bg-amber-700 text-white"
-                  onClick={handleResubmit}
-                  disabled={resubmitting || anyPhotoUploading}
-                >
-                  {resubmitting ? "Resubmitting…" : anyPhotoUploading ? "Uploading photos…" : "Resubmit for Review"}
-                </Button>
               </div>
             )}
 
@@ -446,35 +439,72 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button
-                className="flex-1"
-                onClick={handleSave}
-                disabled={!canSave || saving || anyPhotoUploading}
-              >
-                {anyPhotoUploading ? "Uploading…" : saving ? "Saving…" : "Save"}
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={() => setRemoveConfirmOpen(true)}
-                disabled={saving || anyPhotoUploading}
-              >
-                Remove
-              </Button>
-              <Button variant="outline" className="flex-1" onClick={handleClose}>
-                Cancel
-              </Button>
+            <div className="space-y-2 pt-2">
+              {listing.approvalStatus === "changes_requested" && (
+                <Button
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={() => setSubmitConfirmOpen(true)}
+                  disabled={!canSave || saving || resubmitting || anyPhotoUploading}
+                >
+                  {anyPhotoUploading ? "Uploading photos…" : resubmitting ? "Submitting…" : "Submit for Review"}
+                </Button>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleSave}
+                  disabled={!canSave || saving || resubmitting || anyPhotoUploading}
+                >
+                  {saving ? "Saving…" : listing.approvalStatus === "changes_requested" ? "Save Draft" : "Save"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => setRemoveConfirmOpen(true)}
+                  disabled={saving || resubmitting || anyPhotoUploading}
+                >
+                  Delete Listing
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={handleClose} disabled={saving || resubmitting}>
+                  Cancel
+                </Button>
+              </div>
             </div>
           </div>
         )}
 
+        <AlertDialog open={submitConfirmOpen} onOpenChange={setSubmitConfirmOpen}>
+          <AlertDialogContent className="bg-card">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Submit for review?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your changes will be saved and sent to the Barterr team. You won't be able to make further changes until they respond.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={resubmitting}>Go back</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSubmitConfirmOpen(false);
+                  void handleResubmit();
+                }}
+                disabled={resubmitting}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                Submit for Review
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <AlertDialog open={removeConfirmOpen} onOpenChange={setRemoveConfirmOpen}>
           <AlertDialogContent className="bg-card">
             <AlertDialogHeader>
-              <AlertDialogTitle>Remove from collection?</AlertDialogTitle>
+              <AlertDialogTitle>Delete this listing?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently remove this sneaker from your collection.
+                This will permanently delete this listing and remove the sneaker from your collection. This cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -487,7 +517,7 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
                 disabled={saving}
                 className="bg-red-600 hover:bg-red-600/90"
               >
-                {saving ? "Removing…" : "Remove"}
+                {saving ? "Deleting…" : "Delete Listing"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
