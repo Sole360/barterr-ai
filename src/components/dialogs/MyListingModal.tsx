@@ -4,6 +4,7 @@ import {
   getDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   Timestamp,
   arrayRemove,
 } from "firebase/firestore";
@@ -47,6 +48,7 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
   const [listing, setListing] = useState<Listing | null>(null);
   const [post, setPost] = useState<Post | null>(null);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
 
   const [tradeValue, setTradeValue] = useState("");
   const [conditionGrade, setConditionGrade] = useState(10);
@@ -123,6 +125,25 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
 
     void run();
   }, [open, listingId, currentUser?.uid, onClose, toast]);
+
+  const handleResubmit = async () => {
+    if (!listingId) return;
+    setResubmitting(true);
+    try {
+      await updateDoc(doc(db, "listings", listingId), {
+        approvalStatus: "pending",
+        reviewFeedback: deleteField(),
+        updatedAt: Timestamp.now(),
+      });
+      toast({ title: "Resubmitted for review" });
+      onClose();
+    } catch (err) {
+      console.error("MyListingModal resubmit error:", err);
+      toast({ title: "Error", description: "Failed to resubmit.", variant: "destructive" });
+    } finally {
+      setResubmitting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!listingId || !canSave) return;
@@ -218,6 +239,25 @@ export const MyListingModal = ({ open, listingId, onClose }: Props) => {
                     {post.title}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {listing.approvalStatus === "changes_requested" && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">
+                  Changes Requested
+                </div>
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  {listing.reviewFeedback ?? "Please update your listing and resubmit for review."}
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-3 bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={handleResubmit}
+                  disabled={resubmitting}
+                >
+                  {resubmitting ? "Resubmitting…" : "Resubmit for Review"}
+                </Button>
               </div>
             )}
 

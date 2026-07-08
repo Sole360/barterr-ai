@@ -174,6 +174,7 @@ export const TradeDetailPage = () => {
       case "failed": return "Payment Failed";
       case "processing": return "Processing Payments";
       case "both_confirmed": return "Confirmed — Processing";
+      case "countered": return "Countered";
       case "pending":
       default:
         if (isReceiver) return trade.receiverConfirmed ? "You accepted" : "Action needed";
@@ -388,6 +389,28 @@ export const TradeDetailPage = () => {
             </div>
           )}
 
+          {trade.status === "countered" && (
+            <div className="mb-5 rounded-2xl border border-purple-200 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+              <div className="text-sm font-semibold text-purple-800 dark:text-purple-300">
+                {isSender ? "Counter offer sent" : "You sent a counter offer"}
+              </div>
+              <div className="mt-1 text-xs text-purple-700 dark:text-purple-400">
+                {isSender
+                  ? "The other party responded with a counter offer."
+                  : "Your counter offer is pending their review."}
+              </div>
+              {trade.counteredByTradeId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/trades/${trade.counteredByTradeId}`)}
+                  className="mt-3 text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
+                >
+                  View counter offer →
+                </button>
+              )}
+            </div>
+          )}
+
           {trade.status === "failed" && (
             <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
               <div className="text-sm font-semibold text-red-800 dark:text-red-300">Payment Failed</div>
@@ -573,7 +596,7 @@ export const TradeDetailPage = () => {
           </div>
         </main>
 
-        {/* Sticky Accept / Decline footer */}
+        {/* Sticky Accept / Decline / Counter footer */}
         {receiverNeedsAction && (
           <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-4">
             <div className="mx-auto max-w-2xl flex gap-3">
@@ -583,6 +606,14 @@ export const TradeDetailPage = () => {
                 disabled={acting || !hasPaymentMethod || billingLoading}
               >
                 {acting ? "Processing…" : !hasPaymentMethod ? "Add payment method" : "Accept Trade"}
+              </Button>
+              <Button
+                className="flex-1"
+                variant="outline"
+                onClick={() => navigate(`/trades/${tradeId}/counter`)}
+                disabled={acting}
+              >
+                Counter
               </Button>
               <Button
                 className="flex-1"

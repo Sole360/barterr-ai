@@ -55,6 +55,11 @@ const SneakerCard = ({ item, onClick }: { item: CollectionItem; onClick?: () => 
           Rejected
         </div>
       )}
+      {item.status === "changes_requested" && (
+        <div className="absolute left-2 top-2 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
+          Changes Requested
+        </div>
+      )}
     </div>
     <div className="px-3.5 pt-3 pb-3.5">
       <div className="text-sm font-semibold text-foreground line-clamp-2 leading-snug mb-1.5">

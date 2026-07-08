@@ -9,8 +9,10 @@ type NotificationType =
   | "trade_accepted"
   | "trade_declined"
   | "trade_completed"
+  | "trade_countered"
   | "account_warning"
-  | "account_banned";
+  | "account_banned"
+  | "listing_changes_requested";
 
 async function writeNotification(
   userId: string,
@@ -38,7 +40,7 @@ async function getDisplayName(uid: string): Promise<string> {
   return snap.data()?.displayName ?? "Someone";
 }
 
-// New trade created — notify the receiver
+// New trade created — notify receiver; if it's a counter, notify original sender
 export const onNewTradeNotification = onDocumentCreated(
   "trades/{tradeId}",
   async (event) => {
@@ -46,18 +48,32 @@ export const onNewTradeNotification = onDocumentCreated(
     const data = event.data?.data();
     if (!data) return null;
 
-    const { fromUserId, toUserId } = data;
+    const { fromUserId, toUserId, counterOfTradeId } = data as {
+      fromUserId: string;
+      toUserId: string;
+      counterOfTradeId?: string;
+    };
     if (!fromUserId || !toUserId) return null;
 
     try {
       const senderName = await getDisplayName(fromUserId);
-      await writeNotification(
-        toUserId,
-        "new_trade",
-        "New trade offer",
-        `${senderName} wants to trade with you`,
-        { tradeId, fromUserId }
-      );
+      if (counterOfTradeId) {
+        await writeNotification(
+          toUserId,
+          "trade_countered",
+          "Counter offer received",
+          `${senderName} sent a counter offer`,
+          { tradeId, fromUserId, counterOfTradeId }
+        );
+      } else {
+        await writeNotification(
+          toUserId,
+          "new_trade",
+          "New trade offer",
+          `${senderName} wants to trade with you`,
+          { tradeId, fromUserId }
+        );
+      }
     } catch (err) {
       logger.error("onNewTradeNotification error:", err);
     }

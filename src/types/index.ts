@@ -108,7 +108,8 @@ export type TradeStatus =
   | "processing"
   | "completed"
   | "failed"
-  | "declined";
+  | "declined"
+  | "countered";
 
 /**
  * Payment status for each party
@@ -203,6 +204,10 @@ export interface TradeDocument {
   // Read tracking (for reminder email logic)
   senderRead: boolean;
   receiverRead: boolean;
+
+  // Counter trade linking
+  counterOfTradeId?: string;
+  counteredByTradeId?: string;
 
   // Metadata
   pricingVersion: number;
@@ -302,7 +307,8 @@ export interface Listing {
     insoleStitching?: string;
     dateCode?: string;
   };
-  approvalStatus?: "pending" | "approved" | "rejected";
+  approvalStatus?: "pending" | "approved" | "rejected" | "changes_requested";
+  reviewFeedback?: string;
   createdAt: Timestamp;
 }
 
@@ -449,7 +455,7 @@ export interface MyCollectionItem {
   value: string;
   imageUrl?: string;
   brand?: string;
-  status?: "approved" | "pending" | "rejected";
+  status?: "approved" | "pending" | "rejected" | "changes_requested";
   rank?: number;
   weekly_orders?: number;
   min_price?: number;
@@ -484,7 +490,7 @@ export interface CollectionItem {
   size: string;
   value: string;
   imageUrl?: string;
-  status?: "approved" | "pending" | "rejected";
+  status?: "approved" | "pending" | "rejected" | "changes_requested";
 }
 
 // ============================================

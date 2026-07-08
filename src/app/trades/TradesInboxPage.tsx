@@ -56,6 +56,8 @@ function TradeRow({
       return { text: "Completed", cls: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" };
     if (t.status === "failed")
       return { text: "Failed", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" };
+    if (t.status === "countered")
+      return { text: "Countered", cls: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400" };
     if (t.status === "processing" || t.status === "both_confirmed")
       return { text: "Confirmed", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" };
     if (mode === "received" && !t.receiverConfirmed)
@@ -193,6 +195,21 @@ function TradeRow({
                 </div>
               )}
             </div>
+          </div>
+        )}
+        {t.status === "countered" && t.counteredByTradeId && (
+          <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">A counter offer was sent</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigateToTrade(t.counteredByTradeId!);
+              }}
+              className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline"
+            >
+              View counter offer →
+            </button>
           </div>
         )}
       </div>

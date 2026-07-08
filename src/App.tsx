@@ -18,6 +18,7 @@ import { TradeDetailPage } from "@/app/trades/TradeDetailPage";
 import { TradeComposePage } from "@/app/trades/TradeComposePage";
 import { TradeReviewPage } from "@/app/trades/TradeReviewPage";
 import { TradePaymentMethodPage } from "./app/trades/TradePaymentMethodPage";
+import { TradeCounterPage } from "@/app/trades/TradeCounterPage";
 import { MessagesInboxPage } from "@/app/messages/MessagesInboxPage";
 import { MessageThreadPage } from "@/app/messages/MessageThreadPage";
 import { AdminShell } from "@/app/admin/AdminShell";
@@ -67,6 +68,10 @@ function AppRoutes() {
           <Route
             path="/trades/:tradeId"
             element={<ProtectedRoute><TradeDetailPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/trades/:tradeId/counter"
+            element={<ProtectedRoute><TradeCounterPage /></ProtectedRoute>}
           />
           <Route
             path="/onboarding"

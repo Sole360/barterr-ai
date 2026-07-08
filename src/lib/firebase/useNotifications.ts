@@ -16,8 +16,10 @@ export type NotificationType =
   | "trade_accepted"
   | "trade_declined"
   | "trade_completed"
+  | "trade_countered"
   | "account_warning"
-  | "account_banned";
+  | "account_banned"
+  | "listing_changes_requested";
 
 export type NotificationDoc = {
   id: string;

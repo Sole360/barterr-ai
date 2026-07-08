@@ -10,8 +10,9 @@ const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
 const FROM = "trading@barterr.ai";
 
 const TEMPLATES = {
-  ACCOUNT_WARNING: "d-c542034da1ab47c5850245e310ab009d",
-  ACCOUNT_BANNED:  "d-48cd3183d9e649e9a6f231a2d2ac4e86",
+  ACCOUNT_WARNING:            "d-c542034da1ab47c5850245e310ab009d",
+  ACCOUNT_BANNED:             "d-48cd3183d9e649e9a6f231a2d2ac4e86",
+  LISTING_CHANGES_REQUESTED:  "d-e6b1fe95c3944b7cafbe458039ce510c",
 } as const;
 
 const CORS_ORIGINS = [
@@ -265,34 +266,86 @@ export const resolveFlaggedAttempt = onCall(
 
 // ─── Approve / reject listing ─────────────────────────────────────────────────
 
-export const reviewListing = onCall({ region: "us-central1", cors: CORS_ORIGINS, invoker: "public" }, async (req) => {
-  if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
-  const claims = (await getAuth().getUser(req.auth.uid)).customClaims ?? {};
-  if (!claims.role) throw new HttpsError("permission-denied", "Admins only.");
+export const reviewListing = onCall(
+  { region: "us-central1", cors: CORS_ORIGINS, invoker: "public", secrets: [SENDGRID_API_KEY] },
+  async (req) => {
+    if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
+    const claims = (await getAuth().getUser(req.auth.uid)).customClaims ?? {};
+    if (!claims.role) throw new HttpsError("permission-denied", "Admins only.");
 
-  const { listingId, action, feedback } = req.data as {
-    listingId: string;
-    action: "approve" | "reject" | "request_changes";
-    feedback?: string;
-  };
+    const { listingId, action, feedback } = req.data as {
+      listingId: string;
+      action: "approve" | "reject" | "request_changes";
+      feedback?: string;
+    };
 
-  if ((action === "reject" || action === "request_changes") && !feedback?.trim()) {
-    throw new HttpsError("invalid-argument", "A reason is required when rejecting or requesting changes.");
+    if ((action === "reject" || action === "request_changes") && !feedback?.trim()) {
+      throw new HttpsError("invalid-argument", "A reason is required when rejecting or requesting changes.");
+    }
+
+    const db = getFirestore();
+    const base = { reviewedBy: req.auth.uid, reviewedAt: FieldValue.serverTimestamp() };
+
+    const approvalStatus =
+      action === "approve" ? "approved" :
+      action === "reject" ? "rejected" :
+      "changes_requested";
+
+    // Fetch listing to get owner info before updating
+    const listingSnap = await db.collection("listings").doc(listingId).get();
+    const listingData = listingSnap.data() ?? {};
+    const ownerId = listingData.userId as string | undefined;
+
+    await db.collection("listings").doc(listingId).update({
+      ...base,
+      approvalStatus,
+      ...(feedback ? { reviewFeedback: feedback } : {}),
+    });
+
+    if (action === "request_changes" && ownerId) {
+      try {
+        const userSnap = await db.collection("users").doc(ownerId).get();
+        const userData = userSnap.data() ?? {};
+        const email = userData.email as string | undefined;
+        const displayName = (userData.displayName as string | undefined) ?? "";
+        const firstName = displayName.split(" ")[0] || "there";
+
+        // Fetch post title for the listing
+        let listingTitle = "Your listing";
+        if (listingData.postId) {
+          try {
+            const postSnap = await db.collection("posts").doc(listingData.postId).get();
+            const postData = postSnap.data();
+            if (postData?.title) listingTitle = postData.title as string;
+          } catch { /* ignore */ }
+        }
+
+        // In-app notification
+        await db.collection("users").doc(ownerId).collection("notifications").add({
+          type: "listing_changes_requested",
+          title: "Listing update required",
+          body: `Your listing "${listingTitle}" needs changes before it can be approved.`,
+          data: { listingId },
+          read: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+
+        // Email (skip if template placeholder not yet set)
+        if (email && !TEMPLATES.LISTING_CHANGES_REQUESTED.includes("PLACEHOLDER")) {
+          sgMail.setApiKey(SENDGRID_API_KEY.value());
+          await sgMail.send({
+            to: email,
+            from: FROM,
+            subject: "Your Barterr Listing Needs Updates",
+            templateId: TEMPLATES.LISTING_CHANGES_REQUESTED,
+            dynamicTemplateData: { firstName, listingTitle, feedbackMessage: feedback ?? "" },
+          });
+        }
+      } catch (err) {
+        logger.error("reviewListing changes_requested notification error:", err);
+      }
+    }
+
+    return { success: true };
   }
-
-  const db = getFirestore();
-  const base = { reviewedBy: req.auth.uid, reviewedAt: FieldValue.serverTimestamp() };
-
-  const approvalStatus =
-    action === "approve" ? "approved" :
-    action === "reject" ? "rejected" :
-    "changes_requested";
-
-  await db.collection("listings").doc(listingId).update({
-    ...base,
-    approvalStatus,
-    ...(feedback ? { reviewFeedback: feedback } : {}),
-  });
-
-  return { success: true };
-});
+);

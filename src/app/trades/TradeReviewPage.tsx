@@ -7,6 +7,7 @@ import {
   doc,
   getDoc,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 import useEmblaCarousel from "embla-carousel-react";
 
@@ -51,6 +52,7 @@ const grossUpForStripe = (netCents: number) => {
 
 type TradeReviewLocationState = {
   draft?: TradeReviewDraft;
+  counterOfTradeId?: string;
 };
 
 type BillingDoc = {
@@ -150,6 +152,7 @@ export const TradeReviewPage = () => {
   // --- Draft (from route state) ---
   const state = (location.state as TradeReviewLocationState | null) ?? null;
   const draft = state?.draft ?? null;
+  const counterOfTradeId = state?.counterOfTradeId ?? null;
 
   // Persist draft so the payment route can navigate back without losing it
   useEffect(() => {
@@ -275,6 +278,9 @@ export const TradeReviewPage = () => {
 
         pricingVersion: 1,
 
+        // Counter trade link (only present on counter trades)
+        ...(counterOfTradeId ? { counterOfTradeId } : {}),
+
         // Sender confirmation (confirmed on send)
         senderConfirmed: true,
         senderConfirmedAt: serverTimestamp(),
@@ -335,8 +341,25 @@ export const TradeReviewPage = () => {
         })),
       };
 
-      const ref = await addDoc(collection(db, "trades"), tradeDoc);
-      navigate(`/trades/${ref.id}`, { replace: true });
+      let newTradeId: string;
+
+      if (counterOfTradeId) {
+        // Atomic: create counter trade + mark original as countered
+        const batch = writeBatch(db);
+        const newRef = doc(collection(db, "trades"));
+        batch.set(newRef, tradeDoc);
+        batch.update(doc(db, "trades", counterOfTradeId), {
+          status: "countered",
+          counteredByTradeId: newRef.id,
+        });
+        await batch.commit();
+        newTradeId = newRef.id;
+      } else {
+        const ref = await addDoc(collection(db, "trades"), tradeDoc);
+        newTradeId = ref.id;
+      }
+
+      navigate(`/trades/${newTradeId}`, { replace: true });
     } catch (e) {
       console.error("Send trade error:", e);
       toast({
