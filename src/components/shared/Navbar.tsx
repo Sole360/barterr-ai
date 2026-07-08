@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/contexts/auth.context";
-import { Bell, User, LogOut, Settings, ArrowLeftRight, MessageSquare, Sun, Moon } from "lucide-react";
+import { Bell, User, LogOut, Settings, ArrowLeftRight, MessageSquare, Sun, Moon, ShieldCheck } from "lucide-react";
 import { useTheme } from "@/lib/contexts/theme.context";
 import { AnnouncementRibbon } from "./AnnouncementRibbon";
 import {
@@ -19,7 +19,7 @@ import { getPostById } from "@/lib/firebase/posts.service";
 import { Post } from "@/types";
 
 export const Navbar = () => {
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile, adminRole, logout } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -179,6 +179,15 @@ export const Navbar = () => {
                     <Settings className="w-4 h-4 mr-2" />
                     Settings
                   </DropdownMenuItem>
+                  {adminRole && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/admin")}>
+                        <ShieldCheck className="w-4 h-4 mr-2 text-[#3366FF]" />
+                        <span className="text-[#3366FF] font-medium">Admin Panel</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="w-4 h-4 mr-2" />

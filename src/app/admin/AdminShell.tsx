@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
 import {
   LayoutDashboard,
   ShieldAlert,
@@ -11,6 +11,7 @@ import {
   Settings,
   Sun,
   Filter,
+  LayoutGrid,
 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useTheme } from "@/lib/contexts/theme.context";
@@ -90,6 +91,13 @@ export const AdminShell = () => {
 
         {/* Footer */}
         <div className="px-3 py-4 border-t border-border space-y-1">
+          <Link
+            to="/dashboard"
+            className={`${linkBase} ${linkInactive}`}
+          >
+            <LayoutGrid className="w-4 h-4 shrink-0" />
+            Back to app
+          </Link>
           {adminRole === "super_admin" && (
             <NavLink
               to="/admin/settings"
@@ -131,6 +139,9 @@ export const AdminShell = () => {
             <span className="text-xs font-bold text-foreground uppercase tracking-widest">Admin</span>
           </div>
           <div className="flex items-center gap-1">
+            <Link to="/dashboard" className="p-2 rounded-lg hover:bg-accent transition-colors" title="Back to app">
+              <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+            </Link>
             <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-accent transition-colors">
               {resolvedTheme === "dark"
                 ? <Sun className="w-4 h-4 text-muted-foreground" />

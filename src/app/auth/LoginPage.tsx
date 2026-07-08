@@ -56,16 +56,16 @@ export const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+      <div className="bg-card rounded-lg shadow-xl p-8 w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Welcome Back
           </h1>
-          <p className="text-gray-600">Sign in to your Barterr account</p>
+          <p className="text-muted-foreground">Sign in to your Barterr account</p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-md text-sm">
             {error}
           </div>
         )}
@@ -122,7 +122,7 @@ export const LoginPage = () => {
             Forgot Password?
           </Link>
 
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Don't have an account?{" "}
             <Link
               to="/signup"
