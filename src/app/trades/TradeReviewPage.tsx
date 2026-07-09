@@ -98,14 +98,14 @@ const MiniCarousel = ({ items }: { items: CarouselItem[] }) => {
   }, [emblaApi]);
 
   if (items.length === 0) {
-    return <div className="h-24 w-full rounded-xl bg-gray-100" />;
+    return <div className="h-24 w-full rounded-xl bg-muted" />;
   }
 
   return (
     <div className="w-full">
       <div
         ref={emblaRef}
-        className="overflow-hidden rounded-xl bg-gray-100"
+        className="overflow-hidden rounded-xl bg-muted"
         aria-label="Sneaker carousel"
       >
         <div className="flex">
@@ -132,7 +132,7 @@ const MiniCarousel = ({ items }: { items: CarouselItem[] }) => {
           {items.map((_, i) => (
             <div
               key={`dot-${i}`}
-              className={`h-1.5 w-1.5 rounded-full ${i === selectedIndex ? "bg-[#3366FF]" : "bg-gray-300"}`}
+              className={`h-1.5 w-1.5 rounded-full ${i === selectedIndex ? "bg-[#3366FF]" : "bg-muted-foreground/40"}`}
             />
           ))}
         </div>
@@ -475,7 +475,7 @@ export const TradeReviewPage = () => {
 
         {/* DESKTOP sneaker display */}
         <div className="mt-4 hidden grid-cols-1 gap-4 md:grid md:grid-cols-2">
-          <section className="rounded-2xl border border-gray-200 p-4">
+          <section className="rounded-2xl border border-border bg-card p-4">
             <div className="text-sm font-semibold">
               You’re offering{" "}
               {draft.addCash > 0 ? (
@@ -489,9 +489,9 @@ export const TradeReviewPage = () => {
               {draft.yourItems.map((i) => (
                 <div
                   key={i.id}
-                  className="flex items-center gap-4 rounded-xl border border-gray-200 p-3"
+                  className="flex items-center gap-4 rounded-xl border border-border p-3"
                 >
-                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2">
+                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-muted p-2">
                     {i.imageUrl ? (
                       <img
                         src={i.imageUrl}
@@ -519,7 +519,7 @@ export const TradeReviewPage = () => {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 p-4">
+          <section className="rounded-2xl border border-border bg-card p-4">
             <div className="text-sm font-semibold">
               You’re requesting{" "}
               {draft.askCash > 0 ? (
@@ -533,9 +533,9 @@ export const TradeReviewPage = () => {
               {draft.theirItems.map((i) => (
                 <div
                   key={i.id}
-                  className="flex items-center gap-4 rounded-xl border border-gray-200 p-3"
+                  className="flex items-center gap-4 rounded-xl border border-border p-3"
                 >
-                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2">
+                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-muted p-2">
                     {i.imageUrl ? (
                       <img
                         src={i.imageUrl}
@@ -624,7 +624,7 @@ export const TradeReviewPage = () => {
             </div>
           </div>
 
-          <div className="mt-3 border-t border-gray-100 pt-3">
+          <div className="mt-3 border-t border-border pt-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold">Total</div>
               <div className="text-base font-bold">{formatUsd(totalCents)}</div>

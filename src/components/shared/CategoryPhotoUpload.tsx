@@ -89,14 +89,14 @@ export const CategoryPhotoUpload = ({
   };
 
   return (
-    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors">
+    <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-border/80 transition-colors">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           {/* Placeholder icon - replace with actual icons later */}
-          <div className="w-6 h-6 rounded bg-gray-200 flex items-center justify-center">
-            <Camera className="w-4 h-4 text-gray-600" />
+          <div className="w-6 h-6 rounded bg-muted flex items-center justify-center">
+            <Camera className="w-4 h-4 text-muted-foreground" />
           </div>
-          <span className="text-sm font-medium text-gray-700">
+          <span className="text-sm font-medium text-foreground">
             {categoryLabel}
           </span>
         </div>
@@ -111,7 +111,7 @@ export const CategoryPhotoUpload = ({
 
       {previewUrl ? (
         <div className="relative">
-          <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+          <div className="aspect-square rounded-lg overflow-hidden bg-muted">
             <img
               src={previewUrl}
               alt={categoryLabel}
@@ -144,9 +144,9 @@ export const CategoryPhotoUpload = ({
           )}
         </div>
       ) : (
-        <label className="aspect-square flex flex-col items-center justify-center cursor-pointer bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-          <Camera className="w-8 h-8 text-gray-400 mb-2" />
-          <span className="text-xs text-gray-500">Tap to upload</span>
+        <label className="aspect-square flex flex-col items-center justify-center cursor-pointer bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+          <Camera className="w-8 h-8 text-muted-foreground mb-2" />
+          <span className="text-xs text-muted-foreground">Tap to upload</span>
           <input
             type="file"
             accept="image/*"

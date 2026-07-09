@@ -146,9 +146,11 @@ service cloud.firestore {
     // Orders collection — all writes go through Cloud Functions (admin SDK bypasses rules).
     // Direct client writes are intentionally blocked.
     match /orders/{orderId} {
-      // Only trade participants can read their order (uses the `users` array for O(1) lookup)
+      // Only trade participants can read their order (uses the `users` array for O(1) lookup).
+      // resource == null when the doc doesn't exist yet (Cloud Function creates it after payment
+      // capture, which can take a few seconds) — allow the read so onSnapshot doesn't error out.
       allow read: if isAuthenticated() &&
-                  request.auth.uid in resource.data.users;
+                  (resource == null || request.auth.uid in resource.data.users);
 
       // No direct client writes allowed — Cloud Functions handle all mutations
       allow create, update, delete: if false;

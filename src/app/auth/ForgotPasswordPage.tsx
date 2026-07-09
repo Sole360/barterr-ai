@@ -50,12 +50,12 @@ export const ForgotPasswordPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+      <div className="bg-card rounded-lg shadow-xl p-8 w-full max-w-md">
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Reset Password
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Enter your email and we’ll send you a reset link.
           </p>
         </div>

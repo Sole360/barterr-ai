@@ -110,9 +110,9 @@ function PostDetailBody({ post }: { post: Post }) {
         <button
           onClick={handleWishlistToggle}
           disabled={loading}
-          className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow hover:scale-110 transition-transform disabled:opacity-50"
+          className="absolute top-3 right-3 p-2.5 bg-background/90 backdrop-blur-sm rounded-full shadow hover:scale-110 transition-transform disabled:opacity-50"
         >
-          <Heart className={`w-5 h-5 ${isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"}`} />
+          <Heart className={`w-5 h-5 ${isWishlisted ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
         </button>
       </div>
 

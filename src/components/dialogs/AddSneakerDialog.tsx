@@ -422,11 +422,11 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
             <div className="space-y-6">
               {/* Search Bar */}
               <div className="space-y-2">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   Search for sneakers to add to your collection
                 </p>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5 pointer-events-none" />
                   <Input
                     type="text"
                     placeholder="Search by name, brand, or style ID..."
@@ -442,13 +442,13 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
               {searching && (
                 <div className="text-center py-8">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#3366FF]"></div>
-                  <p className="text-sm text-gray-500 mt-2">Searching...</p>
+                  <p className="text-sm text-muted-foreground mt-2">Searching...</p>
                 </div>
               )}
 
               {showResults && !searching && (
                 <div className="space-y-4">
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm font-medium text-foreground">
                     {searchResults.length} results found
                   </p>
                   <div className="grid grid-cols-1 gap-3">
@@ -456,9 +456,9 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                       <button
                         key={sneaker.id}
                         onClick={() => handleSelectSneaker(sneaker)}
-                        className="flex items-center gap-4 p-4 border-2 border-gray-200 rounded-lg hover:border-[#3366FF] hover:bg-blue-50 transition-colors text-left"
+                        className="flex items-center gap-4 p-4 border-2 border-border rounded-lg hover:border-[#3366FF] hover:bg-[#3366FF]/5 transition-colors text-left"
                       >
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-white rounded-md overflow-hidden">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-muted rounded-md overflow-hidden">
                           <img
                             src={sneaker.imageUrl}
                             alt={sneaker.name}
@@ -470,10 +470,10 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                           <p className="text-xs font-medium text-[#3366FF] mb-1">
                             {sneaker.brand}
                           </p>
-                          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">
+                          <h3 className="font-semibold text-foreground mb-1 line-clamp-2">
                             {sneaker.name}
                           </h3>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             {sneaker.styleId}
                           </p>
                         </div>
@@ -484,7 +484,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
               )}
 
               {!showResults && !searching && (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-muted-foreground">
                   <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>Search for a sneaker to get started</p>
                 </div>
@@ -493,16 +493,16 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
               {/* Selected Sneakers List */}
               {selectedSneakers.length > 0 && (
                 <div className="mt-8 border-t pt-6">
-                  <h3 className="font-semibold text-gray-900 mb-4">
+                  <h3 className="font-semibold text-foreground mb-4">
                     Selected Sneakers ({selectedSneakers.length})
                   </h3>
                   <div className="space-y-3">
                     {selectedSneakers.map((sneaker, index) => (
                       <div
                         key={index}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                        className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
                       >
-                        <div className="w-12 h-12 flex-shrink-0 bg-white rounded overflow-hidden">
+                        <div className="w-12 h-12 flex-shrink-0 bg-muted rounded overflow-hidden">
                           <img
                             src={sneaker.imageUrl}
                             alt={sneaker.name}
@@ -511,10 +511,10 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-gray-900 truncate">
+                          <p className="font-medium text-sm text-foreground truncate">
                             {sneaker.name}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             Size {sneaker.size} • ${sneaker.tradeValue}
                             {sneaker.condition < 10 && " • Pending Review"}
                           </p>
@@ -536,8 +536,8 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
             <div className="space-y-6">
               {/* Selected Sneaker Preview */}
               {selectedSneaker && (
-                <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="w-16 h-16 flex-shrink-0 bg-white rounded overflow-hidden">
+                <div className="flex items-center gap-4 p-4 bg-[#3366FF]/5 border border-[#3366FF]/20 rounded-lg">
+                  <div className="w-16 h-16 flex-shrink-0 bg-muted rounded overflow-hidden">
                     <img
                       src={selectedSneaker.imageUrl}
                       alt={selectedSneaker.name}
@@ -549,13 +549,13 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                     <p className="text-xs font-medium text-[#3366FF]">
                       {selectedSneaker.brand}
                     </p>
-                    <h3 className="font-semibold text-gray-900 truncate">
+                    <h3 className="font-semibold text-foreground truncate">
                       {selectedSneaker.name}
                     </h3>
                   </div>
                   <button
                     onClick={() => setStep("search")}
-                    className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                    className="text-muted-foreground hover:text-foreground flex-shrink-0"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -566,7 +566,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
               <div>
                 <Label
                   htmlFor="size"
-                  className="text-sm font-medium text-gray-700 mb-2 block"
+                  className="text-sm font-medium text-foreground mb-2 block"
                 >
                   Size (US) *
                 </Label>
@@ -588,12 +588,12 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
               <div>
                 <Label
                   htmlFor="tradeValue"
-                  className="text-sm font-medium text-gray-700 mb-2 block"
+                  className="text-sm font-medium text-foreground mb-2 block"
                 >
                   Trade Value (USD) *
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
                     $
                   </span>
                   <Input
@@ -607,7 +607,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                     className="pl-7"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Estimated market value for trade purposes
                 </p>
               </div>
@@ -615,7 +615,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
               {/* Condition Slider */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <Label className="text-sm font-medium text-gray-700">
+                  <Label className="text-sm font-medium text-foreground">
                     Condition
                   </Label>
                   <span className="text-sm font-semibold text-[#3366FF]">
@@ -628,9 +628,9 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                   max="10"
                   value={condition}
                   onChange={(e) => setCondition(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#3366FF]"
+                  className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-[#3366FF]"
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
                   <span>Poor</span>
                   <span>Fair</span>
                   <span>Good</span>
@@ -643,12 +643,12 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
               {condition < 10 && draftListingId && (
                 <div className="border-t pt-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-gray-900">
+                    <h3 className="text-sm font-semibold text-foreground">
                       Required Photos *
                     </h3>
                     <span
                       className={`text-sm font-medium ${
-                        allPhotosUploaded ? "text-green-600" : "text-gray-600"
+                        allPhotosUploaded ? "text-green-600" : "text-muted-foreground"
                       }`}
                     >
                       {uploadedCount}/6 uploaded
@@ -685,7 +685,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
 
               {/* Checkboxes */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium text-gray-700">
+                <Label className="text-sm font-medium text-foreground">
                   What's Included?
                 </Label>
                 <div className="space-y-3 pl-1">
@@ -694,9 +694,9 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                       type="checkbox"
                       checked={hasBox}
                       onChange={(e) => setHasBox(e.target.checked)}
-                      className="w-5 h-5 text-[#3366FF] rounded border-gray-300 focus:ring-[#3366FF] cursor-pointer"
+                      className="w-5 h-5 text-[#3366FF] rounded border-border focus:ring-[#3366FF] cursor-pointer"
                     />
-                    <span className="ml-3 text-sm text-gray-700">
+                    <span className="ml-3 text-sm text-foreground">
                       Original Box
                     </span>
                   </label>
@@ -705,18 +705,18 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                       type="checkbox"
                       checked={hasInsoles}
                       onChange={(e) => setHasInsoles(e.target.checked)}
-                      className="w-5 h-5 text-[#3366FF] rounded border-gray-300 focus:ring-[#3366FF] cursor-pointer"
+                      className="w-5 h-5 text-[#3366FF] rounded border-border focus:ring-[#3366FF] cursor-pointer"
                     />
-                    <span className="ml-3 text-sm text-gray-700">Insoles</span>
+                    <span className="ml-3 text-sm text-foreground">Insoles</span>
                   </label>
                   <label className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={hasLaces}
                       onChange={(e) => setHasLaces(e.target.checked)}
-                      className="w-5 h-5 text-[#3366FF] rounded border-gray-300 focus:ring-[#3366FF] cursor-pointer"
+                      className="w-5 h-5 text-[#3366FF] rounded border-border focus:ring-[#3366FF] cursor-pointer"
                     />
-                    <span className="ml-3 text-sm text-gray-700">
+                    <span className="ml-3 text-sm text-foreground">
                       Original Laces
                     </span>
                   </label>
@@ -728,7 +728,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                 <div>
                   <Label
                     htmlFor="flaws"
-                    className="text-sm font-medium text-gray-700"
+                    className="text-sm font-medium text-foreground"
                   >
                     Flaws or Notes (Optional)
                   </Label>

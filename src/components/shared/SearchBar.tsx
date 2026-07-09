@@ -135,7 +135,7 @@ export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
                   onClick={() => handleSelectResult(hit.objectID)}
                   className="w-full px-4 py-3 hover:bg-accent flex items-center gap-3 text-left transition-colors"
                 >
-                  <div className="w-12 h-12 flex-shrink-0 bg-white rounded-lg overflow-hidden border border-border/50">
+                  <div className="w-12 h-12 flex-shrink-0 bg-muted rounded-lg overflow-hidden border border-border/50">
                     <img
                       src={hit.productImageUrl}
                       alt={hit.title}

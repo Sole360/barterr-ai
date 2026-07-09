@@ -25,7 +25,7 @@ function Step({
         className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold
           ${state === "done" ? "bg-green-500 text-white" : ""}
           ${state === "active" ? "border-2 border-[#3366FF] text-[#3366FF]" : ""}
-          ${state === "upcoming" ? "border-2 border-gray-200 text-gray-300" : ""}
+          ${state === "upcoming" ? "border-2 border-border text-muted-foreground/40" : ""}
         `}
       >
         {state === "done" ? "✓" : ""}
@@ -119,7 +119,7 @@ function PartyShipRow({
   onGetLabel: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+    <div className="rounded-lg border border-border bg-muted/40 p-3">
       <div className="mb-2 flex items-center justify-between">
         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
@@ -164,10 +164,17 @@ export function ShippingSection({ tradeId, isSender }: Props) {
   const purchaseLabel = usePurchaseLabel(tradeId);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "orders", tradeId), (snap) => {
-      setOrder(snap.exists() ? (snap.data() as Order) : null);
-      setOrderLoading(false);
-    });
+    const unsub = onSnapshot(
+      doc(db, "orders", tradeId),
+      (snap) => {
+        setOrder(snap.exists() ? (snap.data() as Order) : null);
+        setOrderLoading(false);
+      },
+      (_err) => {
+        // Order doc may not exist yet — Cloud Function creates it after payment capture.
+        setOrderLoading(false);
+      }
+    );
     return () => unsub();
   }, [tradeId]);
 
@@ -216,7 +223,7 @@ export function ShippingSection({ tradeId, isSender }: Props) {
 
   if (orderLoading) {
     return (
-      <div className="mt-6 rounded-2xl border border-gray-200 p-4">
+      <div className="mt-6 rounded-2xl border border-border bg-card p-4">
         <div className="text-sm text-muted-foreground">
           Loading shipping details…
         </div>
@@ -226,7 +233,7 @@ export function ShippingSection({ tradeId, isSender }: Props) {
 
   if (!order) {
     return (
-      <div className="mt-6 rounded-2xl border border-gray-200 p-4">
+      <div className="mt-6 rounded-2xl border border-border bg-card p-4">
         <div className="text-sm text-muted-foreground">
           Preparing shipment details — check back in a moment.
         </div>
@@ -235,7 +242,7 @@ export function ShippingSection({ tradeId, isSender }: Props) {
   }
 
   return (
-    <div className="mt-6 space-y-5 rounded-2xl border border-gray-200 p-5 shadow-sm">
+    <div className="mt-6 space-y-5 rounded-2xl border border-border bg-card p-5 shadow-sm">
       {/* Header */}
       <div>
         <div className="text-base font-semibold">Shipping &amp; Authentication</div>
@@ -251,7 +258,7 @@ export function ShippingSection({ tradeId, isSender }: Props) {
           1 · Ship to Barterr
         </div>
 
-        <div className="mb-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-muted-foreground">
+        <div className="mb-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Ship to: </span>
           Barterr · 1932 Clinton St · Los Angeles, CA 90026
         </div>
@@ -308,11 +315,11 @@ export function ShippingSection({ tradeId, isSender }: Props) {
         </div>
 
         {authFailed && (
-          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
-            <div className="text-sm font-semibold text-red-800">
+          <div className="mt-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-3">
+            <div className="text-sm font-semibold text-red-800 dark:text-red-300">
               Authentication Issue
             </div>
-            <div className="mt-1 text-xs text-red-700">
+            <div className="mt-1 text-xs text-red-700 dark:text-red-400">
               {order.fakes?.reasons ||
                 "Please check your email for details from the Barterr team."}
             </div>

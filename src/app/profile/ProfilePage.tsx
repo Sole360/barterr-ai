@@ -201,9 +201,9 @@ const WishlistGrid = ({
     {groups.map((g) => (
       <div
         key={g.postId}
-        className="rounded-2xl bg-white dark:bg-card overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.07)]"
+        className="rounded-2xl bg-card overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.07)]"
       >
-        <div className="relative aspect-square bg-white">
+        <div className="relative aspect-square bg-muted">
           {g.imageUrl && (
             <img
               src={g.imageUrl}

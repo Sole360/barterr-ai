@@ -73,7 +73,7 @@ function PhotoGallery({ productImageUrl, photos }: { productImageUrl?: string; p
   return (
     <div className="mb-4">
       {/* Main preview */}
-      <div className="w-full aspect-video rounded-xl bg-white border border-border/50 overflow-hidden mb-2 flex items-center justify-center">
+      <div className="w-full aspect-video rounded-xl bg-muted border border-border/50 overflow-hidden mb-2 flex items-center justify-center">
         <img
           src={current.url}
           alt={current.label}
@@ -92,7 +92,7 @@ function PhotoGallery({ productImageUrl, photos }: { productImageUrl?: string; p
               key={p.url}
               type="button"
               onClick={() => setSelected(p.url)}
-              className={`shrink-0 w-14 h-14 rounded-lg border-2 overflow-hidden transition-colors bg-white ${
+              className={`shrink-0 w-14 h-14 rounded-lg border-2 overflow-hidden transition-colors bg-muted ${
                 selected === p.url ? "border-[#3366FF]" : "border-border/50 hover:border-border"
               }`}
             >
@@ -219,7 +219,7 @@ export const ListingApprovalPage = () => {
                   onClick={() => handleExpand(item)}
                 >
                   {/* Thumbnail */}
-                  <div className="w-14 h-14 shrink-0 rounded-xl bg-white border border-border/50 overflow-hidden">
+                  <div className="w-14 h-14 shrink-0 rounded-xl bg-muted border border-border/50 overflow-hidden">
                     {item.productImageUrl && (
                       <img
                         src={item.productImageUrl}

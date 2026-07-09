@@ -81,7 +81,7 @@ export const SignupPage = () => {
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center">
+        <div className="bg-card rounded-lg shadow-xl p-8 w-full max-w-md text-center">
           <div className="mb-6">
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
               <svg
@@ -98,14 +98,14 @@ export const SignupPage = () => {
                 />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-foreground mb-2">
               Check Your Email
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               We've sent a verification link to{" "}
               <strong>{form.getValues("email")}</strong>
             </p>
-            <p className="text-gray-600 mt-2">
+            <p className="text-muted-foreground mt-2">
               Please verify your email address before signing in. Don't forget
               to check your spam folder.
             </p>
@@ -124,12 +124,12 @@ export const SignupPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+      <div className="bg-card rounded-lg shadow-xl p-8 w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Create Account
           </h1>
-          <p className="text-gray-600">Join Barterr and start trading</p>
+          <p className="text-muted-foreground">Join Barterr and start trading</p>
         </div>
 
         {error && (
@@ -241,7 +241,7 @@ export const SignupPage = () => {
         </Form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
               to="/login"

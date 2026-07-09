@@ -473,7 +473,7 @@ export const TradeComposePage = () => {
   // Render
   // -----------------------------
   return (
-    <div className="min-h-[100dvh] bg-white">
+    <div className="min-h-[100dvh] bg-background">
       {/* Use real Tailwind max width (7xl) */}
       <div className="flex min-h-[100dvh] w-full flex-col px-4 py-4 md:mx-auto md:px-8 md:py-6">
         {/* Header */}
@@ -570,7 +570,7 @@ export const TradeComposePage = () => {
         {/* Content: stack on mobile, 3 columns on desktop */}
         <div className="mt-4 grid flex-1 min-h-0 grid-cols-1 gap-4 pb-28 md:mt-6 md:grid-cols-[1fr_340px_1fr] md:gap-6 md:pb-0">
           {/* LEFT: Your Offer */}
-          <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-gray-200 p-4">
+          <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
             <div className="flex items-baseline justify-between">
               <h2 className="text-sm font-semibold text-[#3366FF]">
                 Your Offer
@@ -602,12 +602,12 @@ export const TradeComposePage = () => {
                         className={`w-full rounded-xl border p-3 text-left transition md:p-4 ${
                           selected
                             ? "border-[#3366FF] bg-[#3366FF]/10"
-                            : "border-gray-200 hover:bg-gray-50"
+                            : "border-border hover:bg-accent"
                         }`}
                       >
                         <div className="flex items-center gap-4">
                           {/* BIGGER IMAGE */}
-                          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2 md:h-32 md:w-32">
+                          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 md:h-32 md:w-32">
                             {item.imageUrl ? (
                               <img
                                 src={item.imageUrl}
@@ -639,7 +639,7 @@ export const TradeComposePage = () => {
 
                           <div
                             className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                              selected ? "border-[#3366FF]" : "border-gray-300"
+                              selected ? "border-[#3366FF]" : "border-border"
                             }`}
                           >
                             {selected ? (
@@ -667,14 +667,14 @@ export const TradeComposePage = () => {
                   <div className="text-sm text-muted-foreground">
                     Fetching current prices...
                   </div>
-                  <div className="mx-auto h-1 w-24 overflow-hidden rounded-full bg-gray-200">
+                  <div className="mx-auto h-1 w-24 overflow-hidden rounded-full bg-muted">
                     <div className="h-full w-1/2 animate-pulse bg-[#3366FF]" />
                   </div>
                 </div>
               ) : (
                 <>
                   <div className="mt-2 flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-extrabold text-[#111]">
+                    <span className="text-5xl font-extrabold text-foreground">
                       {animatedLikelihood}
                     </span>
                     <span className="text-lg font-semibold text-muted-foreground">
@@ -682,7 +682,7 @@ export const TradeComposePage = () => {
                     </span>
                   </div>
 
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99] transition-[width] duration-200"
                       style={{ width: `${clamp(animatedLikelihood, 0, 100)}%` }}
@@ -700,7 +700,7 @@ export const TradeComposePage = () => {
           </section>
 
           {/* RIGHT: Their Listing */}
-          <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-gray-200 p-4">
+          <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
             <div className="flex items-baseline justify-between">
               <h2 className="text-sm font-semibold text-[#3366FF]">
                 Their Listing
@@ -733,12 +733,12 @@ export const TradeComposePage = () => {
                         className={`w-full rounded-xl border p-3 text-left transition md:p-4 ${
                           selected
                             ? "border-[#3366FF] bg-[#3366FF]/10"
-                            : "border-gray-200 hover:bg-gray-50"
+                            : "border-border hover:bg-accent"
                         }`}
                       >
                         <div className="flex items-center gap-4">
                           {/* BIGGER IMAGE */}
-                          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-2 md:h-32 md:w-32">
+                          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 md:h-32 md:w-32">
                             {l.imageUrl ? (
                               <img
                                 src={l.imageUrl}

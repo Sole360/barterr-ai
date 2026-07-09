@@ -32,10 +32,10 @@ export const VerifyEmailPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center space-y-4">
-        <h1 className="text-3xl font-bold text-gray-900">Verify your email</h1>
+      <div className="bg-card rounded-lg shadow-xl p-8 w-full max-w-md text-center space-y-4">
+        <h1 className="text-3xl font-bold text-foreground">Verify your email</h1>
 
-        <p className="text-gray-600">
+        <p className="text-muted-foreground">
           We sent a verification link to{" "}
           <span className="font-semibold">{email || "your email"}</span>.
         </p>
@@ -60,7 +60,7 @@ export const VerifyEmailPage = () => {
           {status === "sending" ? "Sending..." : "Resend verification email"}
         </Button>
 
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           After verifying,{" "}
           <Link to="/login" className="text-[#3366FF] hover:underline">
             go back to Login

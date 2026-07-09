@@ -34,7 +34,7 @@ function formatCents(cents: number): string {
 
 function Thumb({ url, name }: { url?: string; name?: string }) {
   return (
-    <div className="w-12 h-12 shrink-0 rounded-lg bg-white border border-border/50 overflow-hidden shadow-sm">
+    <div className="w-12 h-12 shrink-0 rounded-lg bg-muted border border-border/50 overflow-hidden shadow-sm">
       {url ? (
         <img src={url} alt={name ?? ""} className="w-full h-full object-contain p-0.5" />
       ) : (

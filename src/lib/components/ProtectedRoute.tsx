@@ -13,7 +13,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
@@ -27,7 +27,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (!userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading profile...</div>
+        <div className="text-muted-foreground">Loading profile...</div>
       </div>
     );
   }

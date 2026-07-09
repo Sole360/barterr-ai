@@ -51,7 +51,7 @@ function TradeRow({
 
   const statusBadge = (() => {
     if (t.status === "declined")
-      return { text: "Declined", cls: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" };
+      return { text: "Declined", cls: "bg-muted text-muted-foreground" };
     if (t.status === "completed")
       return { text: "Completed", cls: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" };
     if (t.status === "failed")
