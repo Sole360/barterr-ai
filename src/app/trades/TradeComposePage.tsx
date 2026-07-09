@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   collection,
@@ -23,7 +23,7 @@ import type {
   TradeReviewYourItem,
   TheirListingRow,
 } from "@/types";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 
 /**
  * Helper: clamp a number between min/max.
@@ -364,30 +364,30 @@ export const TradeComposePage = () => {
     return Math.round(clamp(tradePercentage, 0, 100));
   }, [yourSneakerTotal, theirSneakerTotal, addCash, askCash]);
 
-  // Animated likelihood number shown in the UI (counts up/down).
+  // Animated likelihood — ref tracks true current value to avoid stale closure
+  // when target changes mid-flight (e.g. rapid selections).
   const [animatedLikelihood, setAnimatedLikelihood] = useState<number>(0);
+  const animatedLikelihoodRef = useRef<number>(0);
 
   useEffect(() => {
     let raf = 0;
-    const start = animatedLikelihood;
+    const start = animatedLikelihoodRef.current;
     const end = tradeLikelihood;
-
-    const durationMs = 220;
+    const durationMs = 500;
     const startTime = performance.now();
 
     const tick = (now: number) => {
       const t = Math.min(1, (now - startTime) / durationMs);
+      // Cubic ease-out: fast start, smooth deceleration
       const eased = 1 - Math.pow(1 - t, 3);
       const next = Math.round(start + (end - start) * eased);
-
+      animatedLikelihoodRef.current = next;
       setAnimatedLikelihood(next);
-
       if (t < 1) raf = requestAnimationFrame(tick);
     };
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tradeLikelihood]);
 
   // -----------------------------
@@ -470,203 +470,249 @@ export const TradeComposePage = () => {
   }
 
   // -----------------------------
+  // Render helpers
+  // -----------------------------
+
+  // Shared horizontal-scroll card for mobile
+  const MobileYourCard = ({ item }: { item: typeof myCollectionItems[0] }) => {
+    const selected = selectedYourListingIds.includes(item.id);
+    return (
+      <button
+        type="button"
+        onClick={() => toggleYourListing(item.id)}
+        className={`snap-start shrink-0 w-[112px] rounded-xl border-2 p-2 text-left transition-all ${
+          selected ? "border-[#3366FF] bg-[#3366FF]/8" : "border-border bg-card hover:bg-accent"
+        }`}
+      >
+        <div className="relative aspect-square rounded-lg bg-muted overflow-hidden">
+          {item.imageUrl && (
+            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain p-1" />
+          )}
+          {selected && (
+            <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[#3366FF] flex items-center justify-center shadow-sm">
+              <Check className="w-3 h-3 text-white" />
+            </div>
+          )}
+        </div>
+        <div className="mt-1.5">
+          <div className="text-[11px] font-semibold line-clamp-2 leading-tight">{item.name}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">{item.size} · {item.value}</div>
+        </div>
+      </button>
+    );
+  };
+
+  const MobileTheirCard = ({ l }: { l: typeof theirListings[0] }) => {
+    const isRequested = l.id === listingId;
+    const selected = selectedTheirListingIds.includes(l.id);
+    return (
+      <button
+        type="button"
+        onClick={() => toggleTheirListing(l.id)}
+        className={`snap-start shrink-0 w-[112px] rounded-xl border-2 p-2 text-left transition-all ${
+          selected ? "border-[#3366FF] bg-[#3366FF]/8" : "border-border bg-card hover:bg-accent"
+        }`}
+      >
+        <div className="relative aspect-square rounded-lg bg-muted overflow-hidden">
+          {l.imageUrl && (
+            <img src={l.imageUrl} alt={l.title} className="w-full h-full object-contain p-1" />
+          )}
+          {selected && (
+            <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[#3366FF] flex items-center justify-center shadow-sm">
+              <Check className="w-3 h-3 text-white" />
+            </div>
+          )}
+          {isRequested && !selected && (
+            <div className="absolute top-1 left-1 rounded-full bg-[#3366FF] px-1.5 py-0.5 text-[8px] font-bold text-white leading-none">
+              REQ
+            </div>
+          )}
+        </div>
+        <div className="mt-1.5">
+          <div className="text-[11px] font-semibold line-clamp-2 leading-tight">{l.title}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Sz {l.size} · {l.condition}</div>
+        </div>
+      </button>
+    );
+  };
+
+  // -----------------------------
   // Render
   // -----------------------------
   return (
     <div className="min-h-[100dvh] bg-background">
-      {/* Use real Tailwind max width (7xl) */}
       <div className="flex min-h-[100dvh] w-full flex-col px-4 py-4 md:mx-auto md:px-8 md:py-6">
+
         {/* Header */}
         <div className="relative flex w-full items-center">
-          <Button
-            variant="ghost"
-            className="-ml-2 gap-2"
-            onClick={() => navigate(-1)}
-          >
+          <Button variant="ghost" className="-ml-2 gap-2" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-
           <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-base font-semibold md:text-lg">
             Create Trade
           </h1>
         </div>
 
-        {/* Sticky Trade Summary (gradient) */}
-        <div className="mt-3 rounded-xl border bg-[#3366FF] p-4 text-white shadow-sm">
-          <div className="flex items-start justify-between gap-6">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold">Trade Summary</div>
-            </div>
-
-            <div className="flex shrink-0 items-start gap-6 text-right">
-              <div>
-                <div className="text-xs text-white/80">Net</div>
-                <div className="text-lg font-bold leading-none">
+        {/* ── Compact blue summary ── */}
+        <div className="mt-3 rounded-xl border bg-[#3366FF] px-4 py-3 text-white shadow-sm">
+          {/* Row 1: title + net + likelihood */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-sm font-semibold">Trade Summary</div>
+            <div className="flex items-center gap-4 shrink-0">
+              <div className="text-right">
+                <div className="text-[10px] text-white/70 leading-none">Net</div>
+                <div className="mt-0.5 text-sm font-bold leading-none tabular-nums">
                   {netTotal >= 0 ? "+" : "-"}${Math.abs(netTotal).toFixed(0)}
                 </div>
               </div>
-
-              <div>
-                <div className="text-xs text-white/80">Likelihood</div>
-                <div className="text-lg font-bold leading-none">
-                  {animatedLikelihood}%
-                </div>
+              <div className="text-right">
+                <div className="text-[10px] text-white/70 leading-none">Likelihood</div>
+                <div className="mt-0.5 text-sm font-bold leading-none tabular-nums">{animatedLikelihood}%</div>
               </div>
             </div>
           </div>
 
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <div className="rounded-lg bg-white/10 p-3">
-              <div className="text-xs text-white/80">Your sneakers</div>
-              <div className="mt-0.5 text-sm font-semibold">
-                ${yourSneakerTotal.toFixed(0)}
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-white/10 p-3">
-              <div className="text-xs text-white/80">Their sneakers</div>
-              <div className="mt-0.5 text-sm font-semibold">
-                ${theirSneakerTotal.toFixed(0)}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg bg-white/10 p-3">
+          {/* Row 2: sliders side by side */}
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-white/10 px-3 py-2">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Add cash</div>
-                <div className="text-sm font-semibold">${addCash}</div>
+                <span className="text-xs font-medium">Add cash</span>
+                <span className="text-xs font-bold">${addCash}</span>
               </div>
               <input
-                type="range"
-                min={0}
-                max={500}
-                step={10}
-                value={addCash}
+                type="range" min={0} max={500} step={10} value={addCash}
                 onChange={(e) => setAddCash(Number(e.target.value))}
-                className="mt-2 w-full accent-white"
+                className="mt-1.5 w-full accent-white"
               />
             </div>
-
-            <div className="rounded-lg bg-white/10 p-3">
+            <div className="rounded-lg bg-white/10 px-3 py-2">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Ask cash</div>
-                <div className="text-sm font-semibold">${askCash}</div>
+                <span className="text-xs font-medium">Ask cash</span>
+                <span className="text-xs font-bold">${askCash}</span>
               </div>
               <input
-                type="range"
-                min={0}
-                max={500}
-                step={10}
-                value={askCash}
+                type="range" min={0} max={500} step={10} value={askCash}
                 onChange={(e) => setAskCash(Number(e.target.value))}
-                className="mt-2 w-full accent-white"
+                className="mt-1.5 w-full accent-white"
               />
             </div>
           </div>
         </div>
 
-        {/* Content: stack on mobile, 3 columns on desktop */}
-        <div className="mt-4 grid flex-1 min-h-0 grid-cols-1 gap-4 pb-28 md:mt-6 md:grid-cols-[1fr_340px_1fr] md:gap-6 md:pb-0">
+        {/* ── MOBILE layout ── */}
+        <div className="md:hidden mt-4 space-y-4 pb-28">
+          {/* Your Offer */}
+          <div>
+            <div className="flex items-baseline justify-between mb-2">
+              <h2 className="text-sm font-semibold text-[#3366FF]">Your Offer</h2>
+              <span className="text-xs text-muted-foreground">
+                {selectedYourListingIds.length} selected
+              </span>
+            </div>
+            {myCollectionLoading ? (
+              <p className="text-sm text-muted-foreground px-1">Loading your collection…</p>
+            ) : myCollectionItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground px-1">You have no listings yet.</p>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
+                {myCollectionItems.map((item) => (
+                  <MobileYourCard key={item.id} item={item} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Compact likelihood bar */}
+          <div className="flex items-center gap-3 px-1">
+            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+              {pricesFetching ? (
+                <div className="h-full w-1/3 animate-pulse bg-[#3366FF]/50" />
+              ) : (
+                <div
+                  className="h-full bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99]"
+                  style={{ width: `${clamp(animatedLikelihood, 0, 100)}%` }}
+                />
+              )}
+            </div>
+            <div className="shrink-0 text-right w-10">
+              <div className="text-sm font-bold text-[#3366FF] tabular-nums leading-none">
+                {pricesFetching ? "—" : `${animatedLikelihood}%`}
+              </div>
+              <div className="text-[9px] text-muted-foreground leading-none mt-0.5">likely</div>
+            </div>
+          </div>
+
+          {/* Their Listing */}
+          <div>
+            <div className="flex items-baseline justify-between mb-2">
+              <h2 className="text-sm font-semibold text-[#3366FF]">Their Listing</h2>
+              <span className="text-xs text-muted-foreground">
+                {requestedListing?.userName ?? ""}
+              </span>
+            </div>
+            {theirLoading || requestedLoading ? (
+              <p className="text-sm text-muted-foreground px-1">Loading their listings…</p>
+            ) : theirListings.length === 0 ? (
+              <p className="text-sm text-muted-foreground px-1">This user has no listings.</p>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
+                {theirListings.map((l) => (
+                  <MobileTheirCard key={l.id} l={l} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── DESKTOP layout: 3-column grid ── */}
+        <div className="hidden md:grid mt-6 flex-1 min-h-0 grid-cols-[1fr_340px_1fr] gap-6 pb-0">
           {/* LEFT: Your Offer */}
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-semibold text-[#3366FF]">
-                Your Offer
-              </h2>
-              <div className="text-xs text-muted-foreground">
-                Selected: {selectedYourListingIds.length}
-              </div>
+              <h2 className="text-sm font-semibold text-[#3366FF]">Your Offer</h2>
+              <div className="text-xs text-muted-foreground">Selected: {selectedYourListingIds.length}</div>
             </div>
-
-            <div className="flex-1 min-h-0 overflow-auto">
+            <div className="flex-1 min-h-0 overflow-auto space-y-3">
               {myCollectionLoading ? (
-                <div className="text-sm text-muted-foreground">
-                  Loading your collection…
-                </div>
+                <div className="text-sm text-muted-foreground">Loading your collection…</div>
               ) : myCollectionItems.length === 0 ? (
-                <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                  You have no listings yet.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {myCollectionItems.map((item) => {
-                    const selected = selectedYourListingIds.includes(item.id);
-
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => toggleYourListing(item.id)}
-                        className={`w-full rounded-xl border p-3 text-left transition md:p-4 ${
-                          selected
-                            ? "border-[#3366FF] bg-[#3366FF]/10"
-                            : "border-border hover:bg-accent"
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          {/* BIGGER IMAGE */}
-                          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 md:h-32 md:w-32">
-                            {item.imageUrl ? (
-                              <img
-                                src={item.imageUrl}
-                                alt={item.name}
-                                className="h-full w-full object-contain"
-                              />
-                            ) : null}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                {/* Prefer 2-line readability over tiny truncation */}
-                                <div className="line-clamp-2 text-base font-semibold md:text-lg">
-                                  {item.name}
-                                </div>
-                                <div className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
-                                  {item.size} • {item.value}
-                                </div>
-                              </div>
-
-                              {selected ? (
-                                <span className="shrink-0 rounded-full bg-[#3366FF]/10 px-3 py-1 text-xs font-semibold text-[#3366FF]">
-                                  Selected
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <div
-                            className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                              selected ? "border-[#3366FF]" : "border-border"
-                            }`}
-                          >
-                            {selected ? (
-                              <div className="h-3 w-3 rounded-full bg-[#3366FF]" />
-                            ) : null}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                <div className="rounded-lg border p-4 text-sm text-muted-foreground">You have no listings yet.</div>
+              ) : myCollectionItems.map((item) => {
+                const selected = selectedYourListingIds.includes(item.id);
+                return (
+                  <button
+                    key={item.id} type="button"
+                    onClick={() => toggleYourListing(item.id)}
+                    className={`w-full rounded-xl border p-4 text-left transition ${
+                      selected ? "border-[#3366FF] bg-[#3366FF]/10" : "border-border hover:bg-accent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 shrink-0">
+                        {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="line-clamp-2 text-lg font-semibold">{item.name}</div>
+                        <div className="mt-0.5 text-sm text-muted-foreground">{item.size} · {item.value}</div>
+                      </div>
+                      <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selected ? "border-[#3366FF]" : "border-border"}`}>
+                        {selected && <div className="h-3 w-3 rounded-full bg-[#3366FF]" />}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
           {/* CENTER: Likelihood Meter */}
           <section className="flex min-h-0 flex-col items-center justify-start">
             <div className="w-full rounded-2xl border border-[#3366FF]/20 bg-card p-5 text-center shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-wide text-[#3366FF]">
-                Trade Likelihood
-              </div>
-
+              <div className="text-xs font-semibold uppercase tracking-wide text-[#3366FF]">Trade Likelihood</div>
               {pricesFetching ? (
                 <div className="mt-4 space-y-2">
-                  <div className="text-sm text-muted-foreground">
-                    Fetching current prices...
-                  </div>
+                  <div className="text-sm text-muted-foreground">Fetching current prices...</div>
                   <div className="mx-auto h-1 w-24 overflow-hidden rounded-full bg-muted">
                     <div className="h-full w-1/2 animate-pulse bg-[#3366FF]" />
                   </div>
@@ -674,25 +720,17 @@ export const TradeComposePage = () => {
               ) : (
                 <>
                   <div className="mt-2 flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-extrabold text-foreground">
-                      {animatedLikelihood}
-                    </span>
-                    <span className="text-lg font-semibold text-muted-foreground">
-                      %
-                    </span>
+                    <span className="text-5xl font-extrabold text-foreground">{animatedLikelihood}</span>
+                    <span className="text-lg font-semibold text-muted-foreground">%</span>
                   </div>
-
                   <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99] transition-[width] duration-200"
+                      className="h-full bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99]"
                       style={{ width: `${clamp(animatedLikelihood, 0, 100)}%` }}
                     />
                   </div>
-
                   <div className="mt-2 text-xs text-muted-foreground">
-                    Aim for{" "}
-                    <span className="font-semibold text-[#3366FF]">50%+</span> to
-                    continue.
+                    Aim for <span className="font-semibold text-[#3366FF]">50%+</span> to continue.
                   </div>
                 </>
               )}
@@ -702,115 +740,66 @@ export const TradeComposePage = () => {
           {/* RIGHT: Their Listing */}
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-semibold text-[#3366FF]">
-                Their Listing
-              </h2>
-              <div className="text-xs text-muted-foreground">
-                {requestedListing?.userName ?? ""}
-              </div>
+              <h2 className="text-sm font-semibold text-[#3366FF]">Their Listing</h2>
+              <div className="text-xs text-muted-foreground">{requestedListing?.userName ?? ""}</div>
             </div>
-
-            <div className="flex-1 min-h-0 overflow-auto">
+            <div className="flex-1 min-h-0 overflow-auto space-y-3">
               {theirLoading || requestedLoading ? (
-                <div className="text-sm text-muted-foreground">
-                  Loading their listings…
-                </div>
+                <div className="text-sm text-muted-foreground">Loading their listings…</div>
               ) : theirListings.length === 0 ? (
-                <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                  This user has no listings.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {theirListings.map((l) => {
-                    const isRequested = l.id === listingId;
-                    const selected = selectedTheirListingIds.includes(l.id);
-
-                    return (
-                      <button
-                        key={l.id}
-                        type="button"
-                        onClick={() => toggleTheirListing(l.id)}
-                        className={`w-full rounded-xl border p-3 text-left transition md:p-4 ${
-                          selected
-                            ? "border-[#3366FF] bg-[#3366FF]/10"
-                            : "border-border hover:bg-accent"
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          {/* BIGGER IMAGE */}
-                          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 md:h-32 md:w-32">
-                            {l.imageUrl ? (
-                              <img
-                                src={l.imageUrl}
-                                alt={l.title}
-                                className="h-full w-full object-contain"
-                              />
-                            ) : null}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="line-clamp-2 text-base font-semibold md:text-lg">
-                              {l.title}
-                            </div>
-                            <div className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
-                              Size {l.size} • {l.condition}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col items-end gap-2">
-                            {isRequested ? (
-                              <span className="rounded-full border border-[#3366FF] px-3 py-1 text-xs text-[#3366FF]">
-                                Requested
-                              </span>
-                            ) : null}
-
-                            {selected ? (
-                              <span className="rounded-full bg-[#3366FF]/10 px-3 py-1 text-xs font-semibold text-[#3366FF]">
-                                Selected
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                <div className="rounded-lg border p-4 text-sm text-muted-foreground">This user has no listings.</div>
+              ) : theirListings.map((l) => {
+                const isRequested = l.id === listingId;
+                const selected = selectedTheirListingIds.includes(l.id);
+                return (
+                  <button
+                    key={l.id} type="button"
+                    onClick={() => toggleTheirListing(l.id)}
+                    className={`w-full rounded-xl border p-4 text-left transition ${
+                      selected ? "border-[#3366FF] bg-[#3366FF]/10" : "border-border hover:bg-accent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 shrink-0">
+                        {l.imageUrl && <img src={l.imageUrl} alt={l.title} className="h-full w-full object-contain" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="line-clamp-2 text-lg font-semibold">{l.title}</div>
+                        <div className="mt-0.5 text-sm text-muted-foreground">Sz {l.size} · {l.condition}</div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        {isRequested && (
+                          <span className="rounded-full border border-[#3366FF] px-3 py-1 text-xs text-[#3366FF]">Requested</span>
+                        )}
+                        {selected && (
+                          <span className="rounded-full bg-[#3366FF]/10 px-3 py-1 text-xs font-semibold text-[#3366FF]">Selected</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </section>
         </div>
+
         {/* Desktop action */}
-        <div className="hidden pt-2 md:block mx-auto w-64">
-          <Button
-            className="w-full bg-[#3366FF]"
-            disabled={continueDisabled}
-            onClick={handleContinue}
-          >
-            {pricesFetching
-              ? "Fetching prices..."
-              : continueDisabled
-              ? "Increase likelihood to 50%+"
-              : "Continue"}
+        <div className="hidden md:block pt-4 mx-auto w-64">
+          <Button className="w-full bg-[#3366FF]" disabled={continueDisabled} onClick={handleContinue}>
+            {pricesFetching ? "Fetching prices…" : continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
           </Button>
         </div>
 
         {/* Mobile sticky action bar */}
         <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
           <div className="border-t border-border bg-background/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
-            <div className="mx-auto w-full max-w-7xl">
-              <Button
-                className="w-full bg-[#3366FF]"
-                variant="outline"
-                disabled={continueDisabled}
-                onClick={handleContinue}
-              >
-                {pricesFetching
-                  ? "Fetching prices..."
-                  : continueDisabled
-                  ? "Increase likelihood to 50%+"
-                  : "Continue"}
-              </Button>
-            </div>
+            <Button
+              className="w-full bg-[#3366FF]"
+              disabled={continueDisabled}
+              onClick={handleContinue}
+            >
+              {pricesFetching ? "Fetching prices…" : continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
+            </Button>
           </div>
         </div>
       </div>
