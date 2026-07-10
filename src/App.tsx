@@ -29,6 +29,7 @@ import { UserManagementPage } from "@/app/admin/UserManagementPage";
 import { AdminTradesPage } from "@/app/admin/AdminTradesPage";
 import { AnnouncementsPage } from "@/app/admin/AnnouncementsPage";
 import { ContentFilterPage } from "@/app/admin/ContentFilterPage";
+import { AccountSettingsPage } from "@/app/account/AccountSettingsPage";
 function AppRoutes() {
   const location = useLocation();
   return (
@@ -80,6 +81,10 @@ function AppRoutes() {
           <Route
             path="/dashboard"
             element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/account"
+            element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>}
           />
 
           {/* Admin — nested under AdminShell, all guarded by AdminGuard */}

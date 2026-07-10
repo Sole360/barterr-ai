@@ -12,6 +12,7 @@ export interface User {
   biography: string;
   location: string;
   notification: boolean;
+  emailNotifications?: boolean;
   numNotification: number;
   referredBy?: string;
   shoeSize?: number;
