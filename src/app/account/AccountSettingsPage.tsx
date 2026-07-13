@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   EmailAuthProvider,
@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, ArrowLeft, Bell, Lock } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bell, Lock, MapPin } from "lucide-react";
+import { usePlacesAutocomplete, type ParsedAddress } from "@/lib/hooks/usePlacesAutocomplete";
 
 const Toggle = ({
   checked,
@@ -57,11 +58,55 @@ export const AccountSettingsPage = () => {
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [notifSaving, setNotifSaving] = useState(false);
 
+  // Shipping address
+  const [street, setStreet] = useState("");
+  const [street2, setStreet2] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zip, setZip] = useState("");
+  const [addressSaving, setAddressSaving] = useState(false);
+
+  const onAddressSelect = useCallback((parsed: ParsedAddress) => {
+    setStreet(parsed.street);
+    if (parsed.street2) setStreet2(parsed.street2);
+    setCity(parsed.city);
+    setState(parsed.state);
+    setZip(parsed.zip);
+  }, []);
+
+  const { suggestions, fetchSuggestions, selectSuggestion, clearSuggestions } =
+    usePlacesAutocomplete(onAddressSelect);
+
+  const addressDropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!userProfile) return;
     setInAppNotifs(userProfile.notification ?? true);
     setEmailNotifs(userProfile.emailNotifications ?? true);
+    const a = userProfile.address;
+    if (a) {
+      setStreet(a.street ?? "");
+      setStreet2(a.street2 ?? "");
+      setCity(a.city ?? "");
+      setState(a.state ?? "");
+      setZip(a.zip ?? "");
+    }
   }, [userProfile]);
+
+  const handleAddressSave = async () => {
+    if (!currentUser?.uid) return;
+    setAddressSaving(true);
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        address: { street: street.trim(), street2: street2.trim(), city: city.trim(), state: state.trim(), zip: zip.trim() },
+      });
+      toast({ title: "Address saved" });
+    } catch {
+      toast({ title: "Error", description: "Failed to save address", variant: "destructive" });
+    } finally {
+      setAddressSaving(false);
+    }
+  };
 
   // Delete account
   const [showDeleteForm, setShowDeleteForm] = useState(false);
@@ -255,6 +300,77 @@ export const AccountSettingsPage = () => {
                 onClick={handleNotifSave}
               >
                 {notifSaving ? "Saving…" : "Save preferences"}
+              </Button>
+            </div>
+
+            {/* Shipping Address */}
+            <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#3366FF]" />
+                <h2 className="text-sm font-semibold text-foreground">Shipping Address</h2>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-2">
+                Used by Shippo to generate trade shipping labels.
+              </p>
+
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="street">Street address</Label>
+                  <div className="relative" ref={addressDropdownRef}>
+                    <Input
+                      id="street"
+                      value={street}
+                      onChange={(e) => {
+                        setStreet(e.target.value);
+                        fetchSuggestions(e.target.value);
+                      }}
+                      onBlur={() => setTimeout(clearSuggestions, 150)}
+                      placeholder="Start typing your address…"
+                      autoComplete="off"
+                    />
+                    {suggestions.length > 0 && (
+                      <div className="absolute z-50 mt-1 w-full rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                        {suggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onMouseDown={() => selectSuggestion(s)}
+                            className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors border-b border-border last:border-0"
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="street2">Apt, suite, unit <span className="text-muted-foreground">(optional)</span></Label>
+                  <Input id="street2" value={street2} onChange={(e) => setStreet2(e.target.value)} placeholder="Apt 4B" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="New York" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State</Label>
+                    <Input id="state" value={state} onChange={(e) => setState(e.target.value)} placeholder="NY" maxLength={2} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zip">ZIP code</Label>
+                  <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="10001" maxLength={10} className="max-w-[160px]" />
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                className="bg-[#3366FF] hover:bg-[#3366FF]/90"
+                disabled={!street || !city || !state || !zip || addressSaving}
+                onClick={handleAddressSave}
+              >
+                {addressSaving ? "Saving…" : "Save address"}
               </Button>
             </div>
 
