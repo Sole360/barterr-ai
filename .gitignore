@@ -27,8 +27,6 @@ dist-ssr
 *~
 
 # Environment Variables
-.env
-.env.*
 .env*.local
 .env.local
 
