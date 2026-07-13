@@ -91,7 +91,7 @@ export const ProfilePage = () => {
     <PageTransition>
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="pt-32 md:pt-16">
+        <div className="pt-16 md:pt-16">
         <ProfileHeader
           displayName={userProfile?.displayName ?? currentUser?.displayName ?? "Your Profile"}
           location={userProfile?.location}
@@ -108,7 +108,7 @@ export const ProfilePage = () => {
         />
 
         {/* Content */}
-        <div className="max-w-4xl mx-auto px-4 pb-10">
+        <div className="max-w-4xl mx-auto px-4 pb-24 md:pb-10">
           <ProfileTabs value={tab} onValueChange={setTab} />
 
           <div className="mt-5">

@@ -442,7 +442,7 @@ export const TradesInboxPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <PageTransition>
-        <main className="pt-32 md:pt-20 pb-10 px-4 mx-auto max-w-2xl lg:max-w-3xl">
+        <main className="pt-20 pb-24 md:pb-10 px-4 mx-auto max-w-2xl lg:max-w-3xl">
           <h1 className="text-2xl font-bold text-foreground mb-5">Trades</h1>
 
           {/* ── Tabs ── */}

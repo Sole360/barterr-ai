@@ -272,7 +272,7 @@ export const TradeDetailPage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="pt-32 md:pt-20 px-4 mx-auto max-w-2xl">
+        <div className="pt-20 px-4 mx-auto max-w-2xl">
           <div className="text-sm text-muted-foreground">Loading trade…</div>
         </div>
       </div>
@@ -283,7 +283,7 @@ export const TradeDetailPage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="pt-32 md:pt-20 px-4 mx-auto max-w-2xl">
+        <div className="pt-20 px-4 mx-auto max-w-2xl">
           <button onClick={() => navigate("/trades")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
@@ -297,7 +297,7 @@ export const TradeDetailPage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="pt-32 md:pt-20 px-4 mx-auto max-w-2xl">
+        <div className="pt-20 px-4 mx-auto max-w-2xl">
           <button onClick={() => navigate("/trades")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
@@ -316,7 +316,7 @@ export const TradeDetailPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <PageTransition>
-        <main className={`pt-32 md:pt-20 px-4 mx-auto max-w-2xl ${receiverNeedsAction ? "pb-32" : "pb-10"}`}>
+        <main className={`pt-20 px-4 mx-auto max-w-2xl ${receiverNeedsAction ? "pb-32" : "pb-24 md:pb-10"}`}>
           {/* Back */}
           <button
             onClick={() => navigate("/trades")}

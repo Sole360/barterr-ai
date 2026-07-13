@@ -56,7 +56,7 @@ export const DashboardPage = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        <main className="pt-32 md:pt-20 pb-10 px-4 sm:px-6 lg:px-8">
+        <main className="pt-24 md:pt-20 pb-24 md:pb-10 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
 
             {/* Header */}
@@ -150,7 +150,7 @@ export const DashboardPage = () => {
         {/* FAB */}
         <button
           onClick={() => setAddSneakerOpen(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg hover:scale-110 transition-all flex items-center justify-center z-40 bg-gradient-to-br from-[#3366FF] to-[#33FF99]"
+          className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg hover:scale-110 transition-all items-center justify-center z-40 bg-gradient-to-br from-[#3366FF] to-[#33FF99]"
         >
           <Plus className="w-6 h-6 text-white" />
         </button>
