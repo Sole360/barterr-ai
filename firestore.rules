@@ -227,9 +227,15 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // Admin audit log — no client access
+    // Legacy admin audit log — no client access
     match /adminAuditLog/{docId} {
       allow read, write: if false;
+    }
+
+    // Audit log — admins can read; all writes go through Cloud Functions
+    match /auditLogs/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     // Deny all other collections by default
