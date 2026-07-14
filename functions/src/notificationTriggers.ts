@@ -1,6 +1,7 @@
 import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
+import { writeAuditLog } from "./utils/auditLog";
 
 const db = getFirestore();
 
@@ -65,6 +66,16 @@ export const onNewTradeNotification = onDocumentCreated(
           `${senderName} sent a counter offer`,
           { tradeId, fromUserId, counterOfTradeId }
         );
+        await writeAuditLog({
+          eventType: "trade.created",
+          functionName: "onNewTradeNotification",
+          actorId: fromUserId,
+          targetId: tradeId,
+          targetType: "trade",
+          status: "success",
+          durationMs: 0,
+          metadata: { type: "counter", counterOfTradeId, toUserId },
+        });
       } else {
         await writeNotification(
           toUserId,
@@ -73,6 +84,16 @@ export const onNewTradeNotification = onDocumentCreated(
           `${senderName} wants to trade with you`,
           { tradeId, fromUserId }
         );
+        await writeAuditLog({
+          eventType: "trade.created",
+          functionName: "onNewTradeNotification",
+          actorId: fromUserId,
+          targetId: tradeId,
+          targetType: "trade",
+          status: "success",
+          durationMs: 0,
+          metadata: { type: "new_offer", toUserId },
+        });
       }
     } catch (err) {
       logger.error("onNewTradeNotification error:", err);
@@ -107,13 +128,25 @@ export const onTradeStatusNotification = onDocumentUpdated(
         );
       } else if (after.status === "declined") {
         const receiverName = await getDisplayName(toUserId);
-        await writeNotification(
-          fromUserId,
-          "trade_declined",
-          "Trade declined",
-          `${receiverName} declined your trade offer`,
-          { tradeId }
-        );
+        await Promise.all([
+          writeNotification(
+            fromUserId,
+            "trade_declined",
+            "Trade declined",
+            `${receiverName} declined your trade offer`,
+            { tradeId }
+          ),
+          writeAuditLog({
+            eventType: "trade.declined",
+            functionName: "onTradeStatusNotification",
+            actorId: toUserId,
+            targetId: tradeId,
+            targetType: "trade",
+            status: "success",
+            durationMs: 0,
+            metadata: { fromUserId, toUserId },
+          }),
+        ]);
       } else if (after.status === "completed") {
         const [fromName, toName] = await Promise.all([
           getDisplayName(fromUserId),

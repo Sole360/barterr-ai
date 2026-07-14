@@ -2,6 +2,8 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 
 export type AuditEventType =
+  | "trade.created"
+  | "trade.declined"
   | "trade.accepted"
   | "trade.payment_captured"
   | "trade.payment_failed"

@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { X, Package, CheckCircle2, Truck, ShieldCheck, ShieldX, Mail, ExternalLink } from "lucide-react";
+import { X, Package, CheckCircle2, Truck, ShieldCheck, ShieldX, Mail, ExternalLink, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Timestamp } from "firebase/firestore";
@@ -101,6 +102,7 @@ function AddressBlock({ address, name }: { address?: UserAddress; name: string }
 
 export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [acting, setActing] = useState<string | null>(null);
   const [failReasonSide, setFailReasonSide] = useState<Side | null>(null);
   const [failReasons, setFailReasons] = useState("");
@@ -311,20 +313,30 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
         <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-foreground">Order Details</h2>
-            <p className="text-xs text-muted-foreground font-mono">{order.tradeId}</p>
             {order.confirmedAt && (
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Confirmed {format(order.confirmedAt.toDate(), "MMM d, yyyy 'at' h:mm a")}
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-accent transition-colors"
-          >
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => { onClose(); navigate(`/admin/audit?q=${order.tradeId}`); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="View audit trail for this order"
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              Audit Trail
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-full hover:bg-accent transition-colors"
+            >
+              <X className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         <div className="p-6 grid gap-4 md:grid-cols-2">

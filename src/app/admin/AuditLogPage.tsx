@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   collection,
   onSnapshot,
@@ -26,6 +27,8 @@ interface AuditEntry {
 }
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
+  "trade.created": "Trade Sent",
+  "trade.declined": "Trade Declined",
   "trade.accepted": "Trade Accepted",
   "trade.payment_captured": "Payment Captured",
   "trade.payment_failed": "Payment Failed",
@@ -43,6 +46,8 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
+  "trade.created": "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+  "trade.declined": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   "trade.payment_captured": "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   "trade.payment_failed": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   "trade.completed": "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
@@ -87,6 +92,8 @@ export const AuditLogPage = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | AuditStatus>("all");
   const [groupFilter, setGroupFilter] = useState("all");
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,9 +114,11 @@ export const AuditLogPage = () => {
     return () => unsub();
   }, []);
 
+  const searchLower = search.trim().toLowerCase();
   const filtered = entries.filter((e) => {
     if (statusFilter !== "all" && e.status !== statusFilter) return false;
     if (groupFilter !== "all" && !e.eventType.startsWith(groupFilter)) return false;
+    if (searchLower && !e.targetId.toLowerCase().includes(searchLower) && !e.actorId.toLowerCase().includes(searchLower)) return false;
     return true;
   });
 
@@ -122,6 +131,15 @@ export const AuditLogPage = () => {
 
       {/* Filters */}
       <div className="flex flex-col gap-3 mb-5">
+        {/* Trade / order ID search */}
+        <input
+          type="text"
+          placeholder="Filter by trade ID or user ID…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full text-sm rounded-xl border border-border bg-background px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3366FF]/40 placeholder:text-muted-foreground"
+        />
+
         {/* Event type group pills */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {EVENT_TYPE_GROUPS.map((g) => (
