@@ -51,6 +51,15 @@ interface Props {
 
 type Side = "sender" | "poster";
 
+function trackingUrl(carrier: string, tracking: string): string {
+  const c = carrier.toLowerCase();
+  if (c.includes("usps")) return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${tracking}`;
+  if (c.includes("ups")) return `https://www.ups.com/track?tracknum=${tracking}`;
+  if (c.includes("fedex")) return `https://www.fedex.com/fedextrack/?trknbr=${tracking}`;
+  if (c.includes("dhl")) return `https://www.dhl.com/us-en/home/tracking/tracking-express.html?submit=1&tracking-id=${tracking}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(`${carrier} tracking ${tracking}`)}`;
+}
+
 function TrackingRow({ label, info }: { label: string; info?: TrackingInfo }) {
   if (!info) {
     return (
@@ -60,7 +69,15 @@ function TrackingRow({ label, info }: { label: string; info?: TrackingInfo }) {
   return (
     <div className="text-xs">
       <span className="text-muted-foreground">{label}: </span>
-      <span className="font-mono text-foreground">{info.carrier} {info.tracking}</span>
+      <span className="font-mono text-foreground">{info.carrier} </span>
+      <a
+        href={trackingUrl(info.carrier, info.tracking)}
+        target="_blank"
+        rel="noreferrer"
+        className="font-mono text-[#3366FF] hover:underline"
+      >
+        {info.tracking}
+      </a>
       {" · "}
       <a href={info.label} target="_blank" rel="noreferrer" className="text-[#3366FF] hover:underline font-semibold">
         Download Label

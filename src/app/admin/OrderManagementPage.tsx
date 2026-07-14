@@ -191,20 +191,15 @@ export const OrderManagementPage = () => {
               className="w-full text-left rounded-2xl border border-border bg-card p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 transition-all duration-200"
             >
               <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-mono text-muted-foreground truncate max-w-[180px]">
-                      {order.tradeId}
-                    </span>
-                    {order.completed && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                        Completed
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-foreground">
+                <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                  <div className="text-sm font-semibold text-foreground">
                     {order.sender.name} ↔ {order.poster.name}
                   </div>
+                  {order.completed && (
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                      Completed
+                    </span>
+                  )}
                 </div>
                 <div className="shrink-0 text-[11px] text-muted-foreground text-right">
                   {order.confirmedAt

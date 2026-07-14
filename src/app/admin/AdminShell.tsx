@@ -27,6 +27,7 @@ const NAV_ITEMS = [
   { to: "/admin/trades", label: "Trades", icon: ArrowLeftRight },
   { to: "/admin/orders", label: "Orders", icon: PackageCheck },
   { to: "/admin/announcements", label: "Broadcast", icon: Megaphone },
+  { to: "/admin/content-filter", label: "Content Filter", icon: Filter },
   { to: "/admin/audit", label: "Audit Log", icon: ClipboardList },
   { to: "/admin/revenue", label: "Revenue", icon: DollarSign },
 ];
@@ -36,11 +37,9 @@ const linkBase =
 const linkActive = "bg-[#3366FF]/10 text-[#3366FF]";
 const linkInactive = "text-muted-foreground hover:bg-accent hover:text-foreground";
 
-// Mobile bottom tab — icon + short label
-const mobileBase =
-  "flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors";
-const mobileActive = "text-[#3366FF]";
-const mobileInactive = "text-muted-foreground";
+const mobileTab = "shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors min-w-[60px]";
+const mobileTabActive = "text-[#3366FF]";
+const mobileTabInactive = "text-muted-foreground";
 
 export const AdminShell = () => {
   const { adminRole, logout } = useAuth();
@@ -84,15 +83,6 @@ export const AdminShell = () => {
               {label}
             </NavLink>
           ))}
-          <NavLink
-            to="/admin/content-filter"
-            className={({ isActive }) =>
-              `${linkBase} ${isActive ? linkActive : linkInactive}`
-            }
-          >
-            <Filter className="w-4 h-4 shrink-0" />
-            Content Filter
-          </NavLink>
         </nav>
 
         {/* Footer */}
@@ -165,15 +155,15 @@ export const AdminShell = () => {
         </main>
       </div>
 
-      {/* ── Mobile bottom tab bar ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border flex items-center justify-around px-1 safe-area-inset-bottom">
+      {/* ── Mobile bottom tab bar (scrollable) ── */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border flex overflow-x-auto scrollbar-hide safe-area-inset-bottom">
         {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
             className={({ isActive }) =>
-              `${mobileBase} ${isActive ? mobileActive : mobileInactive}`
+              `${mobileTab} ${isActive ? mobileTabActive : mobileTabInactive}`
             }
           >
             <Icon className="w-5 h-5" />

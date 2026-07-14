@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import {
   AreaChart,
@@ -89,7 +89,7 @@ const KPI_ITEMS = (stats: RevenueStats) => [
 
 export const RevenueDashboardPage = () => {
   const { toast } = useToast();
-  const [preset, setPreset] = useState<Preset | null>(null);
+  const [preset, setPreset] = useState<Preset>("month");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [stats, setStats] = useState<RevenueStats | null>(null);
@@ -114,6 +114,12 @@ export const RevenueDashboardPage = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const today = new Date();
+    fetchStats(toIso(startOfMonth(today)), toIso(today));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectPreset = (p: Preset) => {
     setPreset(p);
@@ -206,9 +212,9 @@ export const RevenueDashboardPage = () => {
       {/* Loading skeleton */}
       {loading && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />
+              <div key={i} className="h-16 sm:h-24 rounded-xl sm:rounded-2xl bg-muted animate-pulse" />
             ))}
           </div>
           <div className="h-64 rounded-2xl bg-muted animate-pulse" />
@@ -219,18 +225,18 @@ export const RevenueDashboardPage = () => {
       {!loading && stats && (
         <>
           {/* KPI cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
             {KPI_ITEMS(stats).map((k) => (
               <div
                 key={k.label}
-                className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_12px_rgba(0,0,0,0.05)]"
+                className="rounded-xl sm:rounded-2xl border border-border bg-card p-2 sm:p-4 shadow-[0_2px_12px_rgba(0,0,0,0.05)]"
               >
-                <div className={`inline-flex p-2 rounded-xl mb-3 ${k.color}`}>
-                  {k.icon}
+                <div className={`inline-flex p-1 sm:p-2 rounded-lg sm:rounded-xl mb-1.5 sm:mb-3 ${k.color}`}>
+                  <span className="w-3.5 h-3.5 sm:w-5 sm:h-5 [&>svg]:w-full [&>svg]:h-full">{k.icon}</span>
                 </div>
-                <div className="text-xl font-bold text-foreground tabular-nums">{k.value}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
-                {k.sub && <div className="text-[10px] text-muted-foreground mt-0.5">{k.sub}</div>}
+                <div className="text-sm sm:text-xl font-bold text-foreground tabular-nums leading-tight">{k.value}</div>
+                <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">{k.label}</div>
+                {k.sub && <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5 hidden sm:block">{k.sub}</div>}
               </div>
             ))}
           </div>
