@@ -4,6 +4,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import sgMail from "@sendgrid/mail";
+import { writeAuditLog } from "./utils/auditLog";
 
 const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
 
@@ -53,12 +54,15 @@ export const setAdminRole = onCall({ region: "us-central1", cors: CORS_ORIGINS, 
     await getAuth().revokeRefreshTokens(uid);
   }
 
-  await getFirestore().collection("adminAuditLog").add({
-    action: "set_role",
-    targetUid: uid,
-    role: role ?? "removed",
-    performedBy: req.auth.uid,
-    at: FieldValue.serverTimestamp(),
+  await writeAuditLog({
+    eventType: "admin.role_set",
+    functionName: "setAdminRole",
+    actorId: req.auth.uid,
+    targetId: uid,
+    targetType: "user",
+    status: "success",
+    durationMs: 0,
+    metadata: { role: role ?? "removed" },
   });
 
   logger.info(`Role ${role ?? "removed"} set on ${uid} by ${req.auth.uid}`);
@@ -77,12 +81,15 @@ export const disableUser = onCall({ region: "us-central1", cors: CORS_ORIGINS, i
   await getAuth().updateUser(uid, { disabled: true });
   await getAuth().revokeRefreshTokens(uid);
 
-  await getFirestore().collection("adminAuditLog").add({
-    action: "disable_user",
-    targetUid: uid,
-    reason: reason ?? "",
-    performedBy: req.auth.uid,
-    at: FieldValue.serverTimestamp(),
+  await writeAuditLog({
+    eventType: "admin.user_disabled",
+    functionName: "disableUser",
+    actorId: req.auth.uid,
+    targetId: uid,
+    targetType: "user",
+    status: "success",
+    durationMs: 0,
+    metadata: { reason: reason ?? "" },
   });
 
   await getFirestore().collection("users").doc(uid).set({
@@ -107,11 +114,15 @@ export const enableUser = onCall({ region: "us-central1", cors: CORS_ORIGINS, in
 
   await getAuth().updateUser(uid, { disabled: false });
 
-  await getFirestore().collection("adminAuditLog").add({
-    action: "enable_user",
-    targetUid: uid,
-    performedBy: req.auth.uid,
-    at: FieldValue.serverTimestamp(),
+  await writeAuditLog({
+    eventType: "admin.user_enabled",
+    functionName: "enableUser",
+    actorId: req.auth.uid,
+    targetId: uid,
+    targetType: "user",
+    status: "success",
+    durationMs: 0,
+    metadata: {},
   });
 
   await getFirestore().collection("users").doc(uid).set({
@@ -152,7 +163,19 @@ export const resolveFlaggedAttempt = onCall(
       resolvedAt: FieldValue.serverTimestamp(),
     });
 
-    if (resolution === "dismissed") return { success: true };
+    if (resolution === "dismissed") {
+      await writeAuditLog({
+        eventType: "admin.flag_resolved",
+        functionName: "resolveFlaggedAttempt",
+        actorId: req.auth.uid,
+        targetId: attemptId,
+        targetType: "flaggedAttempt",
+        status: "success",
+        durationMs: 0,
+        metadata: { resolution, senderId },
+      });
+      return { success: true };
+    }
 
     const userRecord = await getAuth().getUser(senderId);
     const firstName = (userRecord.displayName ?? "there").split(" ")[0];
@@ -260,6 +283,16 @@ export const resolveFlaggedAttempt = onCall(
       }
     }
 
+    await writeAuditLog({
+      eventType: "admin.flag_resolved",
+      functionName: "resolveFlaggedAttempt",
+      actorId: req.auth.uid,
+      targetId: attemptId,
+      targetType: "flaggedAttempt",
+      status: "success",
+      durationMs: 0,
+      metadata: { resolution, senderId },
+    });
     return { success: true };
   }
 );
@@ -346,6 +379,16 @@ export const reviewListing = onCall(
       }
     }
 
+    await writeAuditLog({
+      eventType: "admin.listing_reviewed",
+      functionName: "reviewListing",
+      actorId: req.auth.uid,
+      targetId: listingId,
+      targetType: "listing",
+      status: "success",
+      durationMs: 0,
+      metadata: { action, approvalStatus, ownerId: ownerId ?? null, feedback: feedback ?? null },
+    });
     return { success: true };
   }
 );

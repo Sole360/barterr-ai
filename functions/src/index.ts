@@ -6,6 +6,7 @@ import { setGlobalOptions } from "firebase-functions";
 import { deleteListingPhotos } from "./cleanupPhotoStorage";
 import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
 import { acceptTrade, onTradeConfirmed, retryPayment } from "./tradePayments";
+import { getRevenueStats } from "./stripeReporting";
 import {
   onNewTrade,
   onTradeStatusChange,
@@ -55,6 +56,8 @@ export {
   acceptTrade,
   onTradeConfirmed,
   retryPayment,
+  // Stripe reporting
+  getRevenueStats,
   // Email notifications
   onNewTrade,
   onTradeStatusChange,

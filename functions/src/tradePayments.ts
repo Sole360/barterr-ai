@@ -5,6 +5,7 @@ import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
 import { serviceFeeCentsForCount, grossUpForStripe } from "./utils/tradePricing";
+import { writeAuditLog } from "./utils/auditLog";
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -232,6 +233,17 @@ export const acceptTrade = onCall(
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    await writeAuditLog({
+      eventType: "trade.accepted",
+      functionName: "acceptTrade",
+      actorId: uid,
+      targetId: tradeId,
+      targetType: "trade",
+      status: "success",
+      durationMs: 0,
+      metadata: { receiverTotalCents: grossCents, receiverSneakerCount },
+    });
+
     return {
       success: true,
       receiverTotalCents: grossCents,
@@ -333,6 +345,21 @@ export const onTradeConfirmed = onDocumentUpdated(
           status: "completed",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+        await writeAuditLog({
+          eventType: "trade.payment_captured",
+          functionName: "onTradeConfirmed",
+          actorId: "system",
+          targetId: tradeId,
+          targetType: "trade",
+          status: "success",
+          durationMs: 0,
+          metadata: {
+            senderPaymentIntentId: senderResult.paymentIntentId,
+            senderTotalCents: after.senderTotalCents,
+            receiverPaymentIntentId: receiverResult.paymentIntentId,
+            receiverTotalCents: after.receiverTotalCents,
+          },
+        });
       } catch (captureError: unknown) {
         const message =
           captureError instanceof Error
@@ -363,6 +390,16 @@ export const onTradeConfirmed = onDocumentUpdated(
 
           status: "failed",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await writeAuditLog({
+          eventType: "trade.payment_failed",
+          functionName: "onTradeConfirmed",
+          actorId: "system",
+          targetId: tradeId,
+          targetType: "trade",
+          status: "failure",
+          durationMs: 0,
+          metadata: { error: message, stage: "capture" },
         });
       }
     } else {
@@ -396,6 +433,22 @@ export const onTradeConfirmed = onDocumentUpdated(
 
         status: "failed",
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await writeAuditLog({
+        eventType: "trade.payment_failed",
+        functionName: "onTradeConfirmed",
+        actorId: "system",
+        targetId: tradeId,
+        targetType: "trade",
+        status: "failure",
+        durationMs: 0,
+        metadata: {
+          stage: "authorization",
+          senderStatus: senderResult.status,
+          senderError: senderResult.error,
+          receiverStatus: receiverResult.status,
+          receiverError: receiverResult.error,
+        },
       });
     }
   }
@@ -525,6 +578,16 @@ export const retryPayment = onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
+          await writeAuditLog({
+            eventType: "trade.payment_retried",
+            functionName: "retryPayment",
+            actorId: uid,
+            targetId: tradeId,
+            targetType: "trade",
+            status: "success",
+            durationMs: 0,
+            metadata: { role, newPaymentIntentId: result.paymentIntentId },
+          });
           return { success: true, status: "completed" };
         } catch (captureError: unknown) {
           const message =

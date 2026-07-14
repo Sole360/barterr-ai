@@ -5,6 +5,7 @@ import { logger } from "firebase-functions/v2";
 import admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import axios from "axios";
+import { writeAuditLog } from "./utils/auditLog";
 
 const SHIPPO_API_KEY = defineSecret("SHIPPO_API_KEY");
 
@@ -406,6 +407,17 @@ export const purchaseShippoLabel = onCall(
     const updateField = isSender ? "trackingSender" : "trackingPoster";
     await db.doc(`orders/${tradeId}`).update({ [updateField]: trackingInfo });
 
+    await writeAuditLog({
+      eventType: "label.inbound_created",
+      functionName: "purchaseShippoLabel",
+      actorId: req.auth.uid,
+      targetId: tradeId,
+      targetType: "trade",
+      status: "success",
+      durationMs: 0,
+      metadata: { role: isSender ? "sender" : "poster", carrier: trackingInfo.carrier, tracking: trackingInfo.tracking },
+    });
+
     return trackingInfo;
   },
 );
@@ -504,6 +516,17 @@ export const onTradeCompleted = onDocumentUpdated(
       completed: false,
     });
     console.log(`[onTradeCompleted] orders/${tradeId} created successfully`);
+
+    await writeAuditLog({
+      eventType: "trade.completed",
+      functionName: "onTradeCompleted",
+      actorId: "system",
+      targetId: tradeId,
+      targetType: "order",
+      status: "success",
+      durationMs: 0,
+      metadata: { fromUserId: after.fromUserId, toUserId: after.toUserId },
+    });
   },
 );
 
@@ -538,6 +561,17 @@ export const markSneakersReceived = onCall(
       .update({
         [`${role}.sneakerReceived`]: true,
       });
+
+    await writeAuditLog({
+      eventType: "auth.sneakers_received",
+      functionName: "markSneakersReceived",
+      actorId: req.auth.uid,
+      targetId: tradeId,
+      targetType: "order",
+      status: "success",
+      durationMs: 0,
+      metadata: { role },
+    });
 
     return { success: true };
   },
@@ -574,6 +608,16 @@ export const markAuthResult = onCall({ region: "us-central1", cors: CORS_ORIGINS
     await orderRef.update({
       fakes: { userId: failedUserId, reasons: reasons || "" },
     });
+    await writeAuditLog({
+      eventType: "auth.result",
+      functionName: "markAuthResult",
+      actorId: req.auth.uid,
+      targetId: tradeId,
+      targetType: "order",
+      status: "success",
+      durationMs: 0,
+      metadata: { role, passed: false, reasons: reasons || "" },
+    });
     return { success: true };
   }
 
@@ -583,6 +627,17 @@ export const markAuthResult = onCall({ region: "us-central1", cors: CORS_ORIGINS
   if (order.sender?.authenticated && order.poster?.authenticated) {
     await orderRef.update({ completed: true });
   }
+
+  await writeAuditLog({
+    eventType: "auth.result",
+    functionName: "markAuthResult",
+    actorId: req.auth.uid,
+    targetId: tradeId,
+    targetType: "order",
+    status: "success",
+    durationMs: 0,
+    metadata: { role, passed: true },
+  });
 
   return { success: true };
 });
@@ -681,6 +736,17 @@ export const createOutboundLabel = onCall(
     const updateField =
       recipient === "sender" ? "senderOutbound" : "posterOutbound";
     await db.doc(`orders/${tradeId}`).update({ [updateField]: trackingInfo });
+
+    await writeAuditLog({
+      eventType: "label.outbound_created",
+      functionName: "createOutboundLabel",
+      actorId: req.auth.uid,
+      targetId: tradeId,
+      targetType: "order",
+      status: "success",
+      durationMs: 0,
+      metadata: { recipient, carrier: trackingInfo.carrier, tracking: trackingInfo.tracking },
+    });
 
     return trackingInfo;
   },

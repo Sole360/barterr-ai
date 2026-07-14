@@ -12,6 +12,9 @@ import {
   Sun,
   Filter,
   LayoutGrid,
+  ClipboardList,
+  PackageCheck,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useTheme } from "@/lib/contexts/theme.context";
@@ -22,7 +25,10 @@ const NAV_ITEMS = [
   { to: "/admin/listings", label: "Listings", icon: PackageSearch },
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/trades", label: "Trades", icon: ArrowLeftRight },
+  { to: "/admin/orders", label: "Orders", icon: PackageCheck },
   { to: "/admin/announcements", label: "Broadcast", icon: Megaphone },
+  { to: "/admin/audit", label: "Audit Log", icon: ClipboardList },
+  { to: "/admin/revenue", label: "Revenue", icon: DollarSign },
 ];
 
 const linkBase =
