@@ -367,6 +367,16 @@ export const purchaseShippoLabel = onCall(
         uid: req.auth.uid,
         shippoError: err.response?.data ?? err.message,
       });
+      await writeAuditLog({
+        eventType: "label.inbound_created",
+        functionName: "purchaseShippoLabel",
+        actorId: req.auth.uid,
+        targetId: tradeId,
+        targetType: "trade",
+        status: "failure",
+        durationMs: 0,
+        metadata: { role: isSender ? "sender" : "poster", step: "address_creation", error: err.response?.data ?? err.message },
+      });
       throw new HttpsError("internal", "Failed to create shipping address. Please try again.");
     }
 
@@ -393,10 +403,37 @@ export const purchaseShippoLabel = onCall(
         tradeId,
         shippoError: err.response?.data ?? err.message,
       });
+      await writeAuditLog({
+        eventType: "label.inbound_created",
+        functionName: "purchaseShippoLabel",
+        actorId: req.auth.uid,
+        targetId: tradeId,
+        targetType: "trade",
+        status: "failure",
+        durationMs: 0,
+        metadata: { role: isSender ? "sender" : "poster", step: "shipment_creation", error: err.response?.data ?? err.message },
+      });
       throw new HttpsError("internal", "Failed to get shipping rates. Please try again.");
     }
 
-    const { transaction, rate } = await purchaseBestRate(api, rates);
+    let transaction: ShippoTransaction;
+    let rate: ShippoRate;
+    try {
+      ({ transaction, rate } = await purchaseBestRate(api, rates));
+    } catch (err: any) {
+      logger.error("[purchaseShippoLabel] label purchase failed", { tradeId, error: err.message });
+      await writeAuditLog({
+        eventType: "label.inbound_created",
+        functionName: "purchaseShippoLabel",
+        actorId: req.auth.uid,
+        targetId: tradeId,
+        targetType: "trade",
+        status: "failure",
+        durationMs: 0,
+        metadata: { role: isSender ? "sender" : "poster", step: "label_purchase", error: err.message },
+      });
+      throw err instanceof HttpsError ? err : new HttpsError("internal", "Failed to purchase shipping label. Please try again.");
+    }
 
     const trackingInfo = {
       carrier: rate.provider,
@@ -555,12 +592,21 @@ export const markSneakersReceived = onCall(
       throw new HttpsError("invalid-argument", "tradeId and role required");
     }
 
-    await admin
-      .firestore()
-      .doc(`orders/${tradeId}`)
-      .update({
-        [`${role}.sneakerReceived`]: true,
+    try {
+      await admin.firestore().doc(`orders/${tradeId}`).update({ [`${role}.sneakerReceived`]: true });
+    } catch (err: any) {
+      await writeAuditLog({
+        eventType: "auth.sneakers_received",
+        functionName: "markSneakersReceived",
+        actorId: req.auth.uid,
+        targetId: tradeId,
+        targetType: "order",
+        status: "failure",
+        durationMs: 0,
+        metadata: { role, error: err.message },
       });
+      throw new HttpsError("internal", "Failed to mark sneakers received.");
+    }
 
     await writeAuditLog({
       eventType: "auth.sneakers_received",
@@ -601,13 +647,30 @@ export const markAuthResult = onCall({ region: "us-central1", cors: CORS_ORIGINS
   const db = admin.firestore();
   const orderRef = db.doc(`orders/${tradeId}`);
 
-  if (!passed) {
+  try {
+    if (!passed) {
+      const order = (await orderRef.get()).data()!;
+      const failedUserId = role === "sender" ? order.sender?.id : order.poster?.id;
+      await orderRef.update({ fakes: { userId: failedUserId, reasons: reasons || "" } });
+      await writeAuditLog({
+        eventType: "auth.result",
+        functionName: "markAuthResult",
+        actorId: req.auth.uid,
+        targetId: tradeId,
+        targetType: "order",
+        status: "success",
+        durationMs: 0,
+        metadata: { role, passed: false, reasons: reasons || "" },
+      });
+      return { success: true };
+    }
+
+    await orderRef.update({ [`${role}.authenticated`]: true });
     const order = (await orderRef.get()).data()!;
-    const failedUserId =
-      role === "sender" ? order.sender?.id : order.poster?.id;
-    await orderRef.update({
-      fakes: { userId: failedUserId, reasons: reasons || "" },
-    });
+    if (order.sender?.authenticated && order.poster?.authenticated) {
+      await orderRef.update({ completed: true });
+    }
+
     await writeAuditLog({
       eventType: "auth.result",
       functionName: "markAuthResult",
@@ -616,30 +679,24 @@ export const markAuthResult = onCall({ region: "us-central1", cors: CORS_ORIGINS
       targetType: "order",
       status: "success",
       durationMs: 0,
-      metadata: { role, passed: false, reasons: reasons || "" },
+      metadata: { role, passed: true },
     });
+
     return { success: true };
+  } catch (err: any) {
+    if (err instanceof HttpsError) throw err;
+    await writeAuditLog({
+      eventType: "auth.result",
+      functionName: "markAuthResult",
+      actorId: req.auth.uid,
+      targetId: tradeId,
+      targetType: "order",
+      status: "failure",
+      durationMs: 0,
+      metadata: { role, passed, error: err.message },
+    });
+    throw new HttpsError("internal", "Failed to record auth result.");
   }
-
-  await orderRef.update({ [`${role}.authenticated`]: true });
-
-  const order = (await orderRef.get()).data()!;
-  if (order.sender?.authenticated && order.poster?.authenticated) {
-    await orderRef.update({ completed: true });
-  }
-
-  await writeAuditLog({
-    eventType: "auth.result",
-    functionName: "markAuthResult",
-    actorId: req.auth.uid,
-    targetId: tradeId,
-    targetType: "order",
-    status: "success",
-    durationMs: 0,
-    metadata: { role, passed: true },
-  });
-
-  return { success: true };
 });
 
 /**
@@ -704,37 +761,44 @@ export const createOutboundLabel = onCall(
 
     const api = shippoApi(SHIPPO_API_KEY.value());
 
-    const shipmentResponse = await api.post<{
-      object_id: string;
-      rates: ShippoRate[];
-    }>("/shipments/", {
-      address_from: barterrAddress,
-      address_to: {
-        name: user.displayName || `${user.firstName} ${user.lastName}`,
-        street1: addr.street,
-        street2: addr.street2 || "",
-        city: addr.city,
-        state: addr.state,
-        zip: addr.zip,
-        country: "US",
-      },
-      parcels: [SHOEBOX_PARCEL],
-      async: false,
-    });
+    let trackingInfo: { carrier: string; tracking: string; label: string };
+    try {
+      const shipmentResponse = await api.post<{
+        object_id: string;
+        rates: ShippoRate[];
+      }>("/shipments/", {
+        address_from: barterrAddress,
+        address_to: {
+          name: user.displayName || `${user.firstName} ${user.lastName}`,
+          street1: addr.street,
+          street2: addr.street2 || "",
+          city: addr.city,
+          state: addr.state,
+          zip: addr.zip,
+          country: "US",
+        },
+        parcels: [SHOEBOX_PARCEL],
+        async: false,
+      });
 
-    const { transaction, rate } = await purchaseBestRate(
-      api,
-      shipmentResponse.data.rates,
-    );
+      const { transaction, rate } = await purchaseBestRate(api, shipmentResponse.data.rates);
+      trackingInfo = { carrier: rate.provider, tracking: transaction.tracking_number, label: transaction.label_url };
+    } catch (err: any) {
+      logger.error("[createOutboundLabel] Shippo error", { tradeId, recipient, error: err.message });
+      await writeAuditLog({
+        eventType: "label.outbound_created",
+        functionName: "createOutboundLabel",
+        actorId: req.auth.uid,
+        targetId: tradeId,
+        targetType: "order",
+        status: "failure",
+        durationMs: 0,
+        metadata: { recipient, error: err instanceof HttpsError ? err.message : (err.response?.data ?? err.message) },
+      });
+      throw err instanceof HttpsError ? err : new HttpsError("internal", "Failed to generate outbound label. Please try again.");
+    }
 
-    const trackingInfo = {
-      carrier: rate.provider,
-      tracking: transaction.tracking_number,
-      label: transaction.label_url,
-    };
-
-    const updateField =
-      recipient === "sender" ? "senderOutbound" : "posterOutbound";
+    const updateField = recipient === "sender" ? "senderOutbound" : "posterOutbound";
     await db.doc(`orders/${tradeId}`).update({ [updateField]: trackingInfo });
 
     await writeAuditLog({
