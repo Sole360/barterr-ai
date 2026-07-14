@@ -392,3 +392,44 @@ export const reviewListing = onCall(
     return { success: true };
   }
 );
+
+export const sendOrderPhotosEmail = onCall(
+  { secrets: [SENDGRID_API_KEY], cors: CORS_ORIGINS },
+  async (req) => {
+    if (!req.auth) throw new HttpsError("unauthenticated", "Must be authenticated");
+    const claims = req.auth.token as { role?: string };
+    if (!["admin", "super_admin"].includes(claims.role ?? "")) {
+      throw new HttpsError("permission-denied", "Admin only");
+    }
+
+    const { tradeId, senderPhotos, posterPhotos, senderName, posterName } = req.data as {
+      tradeId: string;
+      senderPhotos: string[];
+      posterPhotos: string[];
+      senderName: string;
+      posterName: string;
+    };
+
+    const photoGrid = (urls: string[], label: string) => `
+      <h3 style="font-family:sans-serif;margin:24px 0 8px;">${label}</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${urls.map((u) => `<a href="${u}" target="_blank"><img src="${u}" width="180" height="180" style="object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;" /></a>`).join("")}
+      </div>`;
+
+    sgMail.setApiKey(SENDGRID_API_KEY.value());
+    await sgMail.send({
+      to: "terrence@barterr.ai",
+      from: FROM,
+      subject: `Order Photos — ${senderName} ↔ ${posterName}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:640px;margin:0 auto;padding:24px;">
+          <h2 style="margin:0 0 4px;">Order Photo Review</h2>
+          <p style="color:#6b7280;margin:0 0 16px;font-size:13px;">Trade ID: ${tradeId}</p>
+          ${photoGrid(senderPhotos, `Sender — ${senderName}`)}
+          ${photoGrid(posterPhotos, `Poster — ${posterName}`)}
+        </div>`,
+    });
+
+    return { success: true };
+  }
+);

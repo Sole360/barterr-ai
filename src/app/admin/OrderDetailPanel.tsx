@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { X, Package, CheckCircle2, Truck, ShieldCheck, ShieldX } from "lucide-react";
+import { X, Package, CheckCircle2, Truck, ShieldCheck, ShieldX, Mail, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Timestamp } from "firebase/firestore";
@@ -46,6 +46,7 @@ interface UserAddress {
 interface Props {
   order: OrderDoc;
   addresses: { sender?: UserAddress; poster?: UserAddress };
+  photos: { sender: string[]; poster: string[] };
   onClose: () => void;
 }
 
@@ -98,7 +99,7 @@ function AddressBlock({ address, name }: { address?: UserAddress; name: string }
   );
 }
 
-export const OrderDetailPanel = ({ order, addresses, onClose }: Props) => {
+export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) => {
   const { toast } = useToast();
   const [acting, setActing] = useState<string | null>(null);
   const [failReasonSide, setFailReasonSide] = useState<Side | null>(null);
@@ -118,6 +119,19 @@ export const OrderDetailPanel = ({ order, addresses, onClose }: Props) => {
     }
   };
 
+  const emailPhotos = () =>
+    callFn(
+      "sendOrderPhotosEmail",
+      {
+        tradeId: order.tradeId,
+        senderPhotos: photos.sender,
+        posterPhotos: photos.poster,
+        senderName: order.sender.name,
+        posterName: order.poster.name,
+      },
+      "email_photos"
+    );
+
   const markReceived = (role: Side) =>
     callFn("markSneakersReceived", { tradeId: order.tradeId, role }, `received_${role}`);
 
@@ -132,6 +146,7 @@ export const OrderDetailPanel = ({ order, addresses, onClose }: Props) => {
     const inboundTracking = role === "sender" ? order.trackingSender : order.trackingPoster;
     const outboundTracking = role === "sender" ? order.senderOutbound : order.posterOutbound;
     const address = role === "sender" ? addresses.sender : addresses.poster;
+    const photoUrls = role === "sender" ? photos.sender : photos.poster;
     const isFake = order.fakes?.userId === party.id;
 
     return (
@@ -153,6 +168,23 @@ export const OrderDetailPanel = ({ order, addresses, onClose }: Props) => {
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Shipping Address</p>
           <AddressBlock address={address} name={party.name} />
         </div>
+
+        {/* Photos */}
+        {photoUrls.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Photos</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {photoUrls.map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noreferrer" className="relative group block aspect-square rounded-lg overflow-hidden border border-border">
+                  <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                    <ExternalLink className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Inbound tracking */}
         <div>
@@ -301,10 +333,25 @@ export const OrderDetailPanel = ({ order, addresses, onClose }: Props) => {
         </div>
 
         {order.completed && (
-          <div className="mx-6 mb-6 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-4 text-center">
+          <div className="mx-6 mb-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-4 text-center">
             <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
               ✓ Order fully completed — both sides authenticated and outbound labels generated
             </p>
+          </div>
+        )}
+
+        {/* Email photos */}
+        {(photos.sender.length > 0 || photos.poster.length > 0) && (
+          <div className="mx-6 mb-6">
+            <button
+              type="button"
+              disabled={!!acting}
+              onClick={emailPhotos}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-accent transition-colors disabled:opacity-40 w-full justify-center"
+            >
+              <Mail className="w-4 h-4" />
+              {acting === "email_photos" ? "Sending…" : `Email All Photos to terrence@barterr.ai`}
+            </button>
           </div>
         )}
       </div>

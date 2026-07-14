@@ -1,7 +1,7 @@
 import { processImageJobs } from "./processImageJobs";
 import { indexPost, unindexPost, indexUser, unindexUser } from "./algoliaIndex";
 import { onNewTradeNotification, onTradeStatusNotification } from "./notificationTriggers";
-import { setAdminRole, disableUser, enableUser, resolveFlaggedAttempt, reviewListing } from "./adminActions";
+import { setAdminRole, disableUser, enableUser, resolveFlaggedAttempt, reviewListing, sendOrderPhotosEmail } from "./adminActions";
 import { setGlobalOptions } from "firebase-functions";
 import { deleteListingPhotos } from "./cleanupPhotoStorage";
 import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
@@ -47,6 +47,7 @@ export {
   enableUser,
   resolveFlaggedAttempt,
   reviewListing,
+  sendOrderPhotosEmail,
   // Storage
   deleteListingPhotos,
   // Stripe

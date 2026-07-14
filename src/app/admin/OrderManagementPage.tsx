@@ -20,6 +20,13 @@ interface OrderParty {
   authenticated?: boolean;
 }
 
+interface SneakerItem {
+  id?: string; // listingId
+  imageUrl?: string;
+  name?: string;
+  title?: string;
+}
+
 interface OrderDoc {
   id: string;
   tradeId: string;
@@ -27,6 +34,10 @@ interface OrderDoc {
   toUserId: string;
   sender: OrderParty;
   poster: OrderParty;
+  tradeDeal?: {
+    senderOffer: { sneakers: SneakerItem[]; cash: number };
+    posterOffer: { sneakers: SneakerItem[]; cash: number };
+  };
   trackingSender?: TrackingInfo;
   trackingPoster?: TrackingInfo;
   senderOutbound?: TrackingInfo;
@@ -60,7 +71,7 @@ function ProgressBar({ order }: { order: OrderDoc }) {
     !!order.senderOutbound && !!order.posterOutbound,
   ];
   const doneCount = steps.filter(Boolean).length;
-  const labels = ["Rcvd Sender", "Rcvd Poster", "Authenticated", "Outbound"];
+  const labels = ["Received (S)", "Received (P)", "Authenticated", "Outbound"];
 
   return (
     <div className="flex items-center gap-2 mt-2">
@@ -82,6 +93,7 @@ export const OrderManagementPage = () => {
   const [filter, setFilter] = useState<FilterTab>("all");
   const [selectedOrder, setSelectedOrder] = useState<OrderDoc | null>(null);
   const [addresses, setAddresses] = useState<{ sender?: UserAddress; poster?: UserAddress }>({});
+  const [photos, setPhotos] = useState<{ sender: string[]; poster: string[] }>({ sender: [], poster: [] });
 
   useEffect(() => {
     const q = query(collection(db, "orders"), orderBy("confirmedAt", "desc"));
@@ -92,25 +104,47 @@ export const OrderManagementPage = () => {
     return () => unsub();
   }, []);
 
-  // When an order is selected, fetch both users' addresses
+  // When an order is selected, fetch addresses and listing verification photos
   useEffect(() => {
-    if (!selectedOrder) { setAddresses({}); return; }
+    if (!selectedOrder) { setAddresses({}); setPhotos({ sender: [], poster: [] }); return; }
     let cancelled = false;
 
-    const fetchAddresses = async () => {
-      const [senderSnap, posterSnap] = await Promise.all([
+    const fetchOrderData = async () => {
+      const senderListingIds = (selectedOrder.tradeDeal?.senderOffer.sneakers ?? [])
+        .map((s) => s.id).filter((id): id is string => !!id);
+      const posterListingIds = (selectedOrder.tradeDeal?.posterOffer.sneakers ?? [])
+        .map((s) => s.id).filter((id): id is string => !!id);
+
+      const allListingIds = [...senderListingIds, ...posterListingIds];
+
+      const [senderSnap, posterSnap, ...listingSnaps] = await Promise.all([
         getDoc(doc(db, "users", selectedOrder.fromUserId)),
         getDoc(doc(db, "users", selectedOrder.toUserId)),
+        ...allListingIds.map((id) => getDoc(doc(db, "listings", id))),
       ]);
-      if (!cancelled) {
-        setAddresses({
-          sender: senderSnap.data()?.address,
-          poster: posterSnap.data()?.address,
+
+      if (cancelled) return;
+
+      setAddresses({
+        sender: senderSnap.data()?.address,
+        poster: posterSnap.data()?.address,
+      });
+
+      const getListingPhotos = (ids: string[]) =>
+        ids.flatMap((id) => {
+          const snap = listingSnaps.find((s) => s.id === id);
+          if (!snap?.exists()) return [];
+          const d = snap.data();
+          return [d.productImageUrl, ...(d.verificationPhotos ?? [])].filter(Boolean) as string[];
         });
-      }
+
+      setPhotos({
+        sender: getListingPhotos(senderListingIds),
+        poster: getListingPhotos(posterListingIds),
+      });
     };
 
-    fetchAddresses();
+    fetchOrderData();
     return () => { cancelled = true; };
   }, [selectedOrder?.id]);
 
@@ -218,6 +252,7 @@ export const OrderManagementPage = () => {
         <OrderDetailPanel
           order={selectedOrder}
           addresses={addresses}
+          photos={photos}
           onClose={() => setSelectedOrder(null)}
         />
       )}
