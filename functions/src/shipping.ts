@@ -17,7 +17,13 @@ const CORS_ORIGINS = [
 ];
 
 // Admin UID (Barterr/Sole360 operator)
-const ADMIN_UID = "Vu6dB5O5zKYExw3kpVxbGy0OZ3B2";
+function assertAdmin(req: { auth?: { uid: string; token: Record<string, unknown> } | null }) {
+  if (!req.auth?.uid) throw new HttpsError("unauthenticated", "Must be signed in");
+  const role = req.auth.token?.role as string | undefined;
+  if (role !== "admin" && role !== "super_admin") {
+    throw new HttpsError("permission-denied", "Admin only");
+  }
+}
 
 // Standard shoebox dimensions
 const SHOEBOX_PARCEL = {
@@ -581,8 +587,7 @@ export const markSneakersReceived = onCall(
   async (req) => {
     if (!req.auth?.uid)
       throw new HttpsError("unauthenticated", "Must be signed in");
-    if (req.auth.uid !== ADMIN_UID)
-      throw new HttpsError("permission-denied", "Admin only");
+    assertAdmin(req);
 
     const { tradeId, role } = req.data as {
       tradeId: string;
@@ -629,10 +634,8 @@ export const markSneakersReceived = onCall(
  * - passed=true  → marks that side authenticated; if both pass → completed=true
  */
 export const markAuthResult = onCall({ region: "us-central1", cors: CORS_ORIGINS, invoker: "public" }, async (req) => {
-  if (!req.auth?.uid)
-    throw new HttpsError("unauthenticated", "Must be signed in");
-  if (req.auth.uid !== ADMIN_UID)
-    throw new HttpsError("permission-denied", "Admin only");
+  if (!req.auth?.uid) throw new HttpsError("unauthenticated", "Must be signed in");
+  assertAdmin(req);
 
   const { tradeId, role, passed, reasons } = req.data as {
     tradeId: string;
@@ -716,8 +719,7 @@ export const createOutboundLabel = onCall(
   async (req) => {
     if (!req.auth?.uid)
       throw new HttpsError("unauthenticated", "Must be signed in");
-    if (req.auth.uid !== ADMIN_UID)
-      throw new HttpsError("permission-denied", "Admin only");
+    assertAdmin(req);
 
     const { tradeId, recipient } = req.data as {
       tradeId: string;
