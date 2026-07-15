@@ -476,6 +476,34 @@ export const cancelOrder = onCall(
       ...(notes?.trim() ? { cancellationNotes: notes.trim() } : {}),
     });
 
+    // Flag the trades document so the user-facing trade detail page reflects cancellation
+    await db.collection("trades").doc(tradeId).update({ orderCancelled: true });
+
+    // In-app notifications to both parties
+    const notifBodies: Record<string, string> = {
+      no_show: "Your trade was cancelled because the other party didn't ship on time.",
+      auth_failure_no_response: "Your trade was cancelled due to an unresolved authentication issue with the sneakers.",
+      other: "Your trade has been cancelled by Barterr. Please check your email for details.",
+    };
+    const notifBody = notifBodies[reason] ?? "Your trade has been cancelled.";
+    const notifParties = [
+      order.sender?.id,
+      order.poster?.id,
+    ].filter((id): id is string => !!id);
+
+    await Promise.all(
+      notifParties.map((id) =>
+        db.collection("users").doc(id).collection("notifications").add({
+          type: "order_cancelled",
+          title: "Trade Cancelled",
+          body: notifBody,
+          data: { tradeId },
+          read: false,
+          createdAt: FieldValue.serverTimestamp(),
+        })
+      )
+    );
+
     sgMail.setApiKey(SENDGRID_API_KEY.value());
 
     const cancellationReason: Record<string, string> = {

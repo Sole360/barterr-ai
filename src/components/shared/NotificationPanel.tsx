@@ -67,6 +67,12 @@ function NotificationIcon({ type }: { type: NotificationType }) {
           <RefreshCw className="w-4 h-4 text-purple-600 dark:text-purple-400" />
         </div>
       );
+    case "order_cancelled":
+      return (
+        <div className={`${base} bg-red-100 dark:bg-red-900/40`}>
+          <XCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
+        </div>
+      );
   }
 }
 

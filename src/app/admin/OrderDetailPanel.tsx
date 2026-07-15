@@ -104,6 +104,7 @@ function AddressBlock({ address, name }: { address?: UserAddress; name: string }
 export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isCancelled = order.status === "cancelled";
   const [acting, setActing] = useState<string | null>(null);
   const [failReasonSide, setFailReasonSide] = useState<Side | null>(null);
   const [failReasons, setFailReasons] = useState("");
@@ -231,7 +232,7 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
             <div className="flex flex-col gap-1">
               <button
                 type="button"
-                disabled={!!acting || !inboundTracking}
+                disabled={!!acting || !inboundTracking || isCancelled}
                 onClick={() => markReceived(role)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#3366FF] text-white text-xs font-semibold hover:bg-[#3366FF]/90 transition-colors disabled:opacity-40"
               >
@@ -269,7 +270,7 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={!failReasons.trim() || !!acting}
+                    disabled={!failReasons.trim() || !!acting || isCancelled}
                     onClick={() => {
                       markAuth(role, false, failReasons);
                       setFailReasonSide(null);
@@ -292,7 +293,7 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
               <div className="flex gap-2">
                 <button
                   type="button"
-                  disabled={!!acting}
+                  disabled={!!acting || isCancelled}
                   onClick={() => markAuth(role, true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 disabled:opacity-40"
                 >
@@ -301,7 +302,7 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
                 </button>
                 <button
                   type="button"
-                  disabled={!!acting}
+                  disabled={!!acting || isCancelled}
                   onClick={() => setFailReasonSide(role)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40"
                 >
@@ -321,7 +322,7 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
             ) : (
               <button
                 type="button"
-                disabled={!!acting}
+                disabled={!!acting || isCancelled}
                 onClick={() => generateOutbound(role)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 disabled:opacity-40"
               >
@@ -385,8 +386,8 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
         )}
 
         {/* Email photos */}
-        {(photos.sender.length > 0 || photos.poster.length > 0) && (
-          <div className="mx-6 mb-4">
+        <div className="mx-6 mb-4">
+          {photos.sender.length > 0 || photos.poster.length > 0 ? (
             <button
               type="button"
               disabled={!!acting}
@@ -394,10 +395,15 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-accent transition-colors disabled:opacity-40 w-full justify-center"
             >
               <Mail className="w-4 h-4" />
-              {acting === "email_photos" ? "Sending…" : `Email All Photos to terrence@barterr.ai`}
+              {acting === "email_photos" ? "Sending…" : "Email All Photos to terrence@barterr.ai"}
             </button>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm text-muted-foreground w-full justify-center">
+              <Mail className="w-4 h-4" />
+              No photos on file for this order
+            </div>
+          )}
+        </div>
 
         {/* Cancel order */}
         {order.status === "cancelled" ? (

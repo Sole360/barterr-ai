@@ -111,10 +111,12 @@ export const OrderManagementPage = () => {
     let cancelled = false;
 
     const fetchOrderData = async () => {
+      const extractId = (s: SneakerItem) =>
+        s.id ?? (s as unknown as Record<string, string>).listingId ?? undefined;
       const senderListingIds = (selectedOrder.tradeDeal?.senderOffer.sneakers ?? [])
-        .map((s) => s.id).filter((id): id is string => !!id);
+        .map(extractId).filter((id): id is string => !!id);
       const posterListingIds = (selectedOrder.tradeDeal?.posterOffer.sneakers ?? [])
-        .map((s) => s.id).filter((id): id is string => !!id);
+        .map(extractId).filter((id): id is string => !!id);
 
       const allListingIds = [...senderListingIds, ...posterListingIds];
 

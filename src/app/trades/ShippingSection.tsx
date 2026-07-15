@@ -241,6 +241,28 @@ export function ShippingSection({ tradeId, isSender }: Props) {
     );
   }
 
+  const cancelReasonLabels: Record<string, string> = {
+    no_show: "The other party did not ship their sneakers within the required timeframe.",
+    auth_failure_no_response: "There was an unresolved authentication issue with the sneakers.",
+    other: "Barterr support cancelled this trade.",
+  };
+
+  if (order.status === "cancelled") {
+    return (
+      <div className="mt-6 rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-5 shadow-sm">
+        <div className="text-base font-semibold text-red-800 dark:text-red-300">Trade Cancelled</div>
+        <div className="mt-1 text-sm text-red-700 dark:text-red-400">
+          {order.cancellationReason
+            ? cancelReasonLabels[order.cancellationReason] ?? "This trade was cancelled by Barterr."
+            : "This trade was cancelled by Barterr."}
+        </div>
+        <div className="mt-3 text-xs text-red-600 dark:text-red-500">
+          If you have questions about this cancellation, please contact Barterr support.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-6 space-y-5 rounded-2xl border border-border bg-card p-5 shadow-sm">
       {/* Header */}

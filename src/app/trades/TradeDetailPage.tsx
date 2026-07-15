@@ -168,6 +168,7 @@ export const TradeDetailPage = () => {
 
   const statusText = useMemo(() => {
     if (!trade) return "";
+    if (trade.orderCancelled) return "Cancelled";
     switch (trade.status) {
       case "declined": return "Declined";
       case "completed": return "Completed";
@@ -369,7 +370,16 @@ export const TradeDetailPage = () => {
           </div>
 
           {/* Status banners */}
-          {trade.status === "completed" && (
+          {trade.orderCancelled && (
+            <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+              <div className="text-sm font-semibold text-red-800 dark:text-red-300">Trade Cancelled</div>
+              <div className="mt-1 text-xs text-red-700 dark:text-red-400">
+                This trade has been cancelled by Barterr. See the shipping section below for details. If you have questions, please contact support.
+              </div>
+            </div>
+          )}
+
+          {trade.status === "completed" && !trade.orderCancelled && (
             <div className="mb-5 rounded-2xl border border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
               <div className="text-sm font-semibold text-green-800 dark:text-green-300">
                 Payments captured — time to ship!
@@ -590,7 +600,7 @@ export const TradeDetailPage = () => {
             )}
 
             {/* Shipping */}
-            {trade.status === "completed" && tradeId && (
+            {(trade.status === "completed" || trade.orderCancelled) && tradeId && (
               <ShippingSection tradeId={tradeId} isSender={isSender} />
             )}
           </div>

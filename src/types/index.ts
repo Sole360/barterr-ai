@@ -210,6 +210,9 @@ export interface TradeDocument {
   counterOfTradeId?: string;
   counteredByTradeId?: string;
 
+  // Order-level cancellation (set by admin cancelOrder function)
+  orderCancelled?: boolean;
+
   // Metadata
   pricingVersion: number;
   likelihood: number;
@@ -276,6 +279,9 @@ export interface Order {
     userId: string;
     reasons: string;
   };
+  status?: "cancelled";
+  cancellationReason?: string;
+  cancelledAt?: Timestamp;
 }
 
 export interface Listing {
