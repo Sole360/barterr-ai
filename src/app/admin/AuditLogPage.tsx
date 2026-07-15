@@ -43,6 +43,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   "admin.user_enabled": "User Enabled",
   "admin.flag_resolved": "Flag Resolved",
   "admin.role_set": "Role Set",
+  "admin.order_cancelled": "Order Cancelled",
 };
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -55,6 +56,7 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   "label.outbound_created": "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   "auth.result": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   "auth.sneakers_received": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  "admin.order_cancelled": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
 const EVENT_TYPE_GROUPS = [

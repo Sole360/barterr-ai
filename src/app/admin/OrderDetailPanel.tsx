@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { X, Package, CheckCircle2, Truck, ShieldCheck, ShieldX, Mail, ExternalLink, ClipboardList } from "lucide-react";
+import { X, Package, CheckCircle2, Truck, ShieldCheck, ShieldX, Mail, ExternalLink, ClipboardList, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Timestamp } from "firebase/firestore";
@@ -33,6 +33,7 @@ interface OrderDoc {
   posterOutbound?: TrackingInfo;
   fakes?: { userId: string; reasons: string };
   completed: boolean;
+  status?: string;
   confirmedAt: Timestamp | null;
 }
 
@@ -106,6 +107,11 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
   const [acting, setActing] = useState<string | null>(null);
   const [failReasonSide, setFailReasonSide] = useState<Side | null>(null);
   const [failReasons, setFailReasons] = useState("");
+  const [cancelState, setCancelState] = useState<{
+    reason: "no_show" | "auth_failure_no_response" | "other" | "";
+    noShowRole: "sender" | "poster" | "";
+    notes: string;
+  } | null>(null);
 
   const callFn = async (name: string, data: Record<string, unknown>, key: string) => {
     setActing(key);
@@ -142,6 +148,27 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
 
   const generateOutbound = (recipient: Side) =>
     callFn("createOutboundLabel", { tradeId: order.tradeId, recipient }, `outbound_${recipient}`);
+
+  const handleCancelOrder = async () => {
+    if (!cancelState || !cancelState.reason) return;
+    setActing("cancel_order");
+    try {
+      const fns = getFunctions(undefined, "us-central1");
+      await (httpsCallable(fns, "cancelOrder"))({
+        tradeId: order.tradeId,
+        reason: cancelState.reason,
+        ...(cancelState.noShowRole ? { noShowRole: cancelState.noShowRole } : {}),
+        ...(cancelState.notes.trim() ? { notes: cancelState.notes } : {}),
+      });
+      toast({ title: "Order cancelled", description: "Both parties have been notified by email." });
+      setCancelState(null);
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message ?? "Cancel failed";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setActing(null);
+    }
+  };
 
   const renderSide = (role: Side) => {
     const party = role === "sender" ? order.sender : order.poster;
@@ -201,15 +228,20 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
               <CheckCircle2 className="w-4 h-4" /> Sneakers received
             </div>
           ) : (
-            <button
-              type="button"
-              disabled={!!acting}
-              onClick={() => markReceived(role)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#3366FF] text-white text-xs font-semibold hover:bg-[#3366FF]/90 transition-colors disabled:opacity-40"
-            >
-              <Package className="w-3.5 h-3.5" />
-              {acting === `received_${role}` ? "Marking…" : "Mark Received"}
-            </button>
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                disabled={!!acting || !inboundTracking}
+                onClick={() => markReceived(role)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#3366FF] text-white text-xs font-semibold hover:bg-[#3366FF]/90 transition-colors disabled:opacity-40"
+              >
+                <Package className="w-3.5 h-3.5" />
+                {acting === `received_${role}` ? "Marking…" : "Mark Received"}
+              </button>
+              {!inboundTracking && (
+                <span className="text-[10px] text-muted-foreground">Awaiting inbound label</span>
+              )}
+            </div>
           )}
         </div>
 
@@ -354,7 +386,7 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
 
         {/* Email photos */}
         {(photos.sender.length > 0 || photos.poster.length > 0) && (
-          <div className="mx-6 mb-6">
+          <div className="mx-6 mb-4">
             <button
               type="button"
               disabled={!!acting}
@@ -366,6 +398,98 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
             </button>
           </div>
         )}
+
+        {/* Cancel order */}
+        {order.status === "cancelled" ? (
+          <div className="mx-6 mb-6 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 p-3 text-center">
+            <p className="text-sm font-semibold text-red-600 dark:text-red-400">This order has been cancelled</p>
+          </div>
+        ) : !order.completed && !cancelState ? (
+          <div className="mx-6 mb-6">
+            <button
+              type="button"
+              disabled={!!acting}
+              onClick={() => setCancelState({ reason: "", noShowRole: "", notes: "" })}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-800 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full justify-center"
+            >
+              <XCircle className="w-4 h-4" />
+              Cancel Order
+            </button>
+          </div>
+        ) : cancelState ? (
+          <div className="mx-6 mb-6 rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10 p-4 space-y-3">
+            <h3 className="text-sm font-bold text-red-700 dark:text-red-400">Cancel Order</h3>
+
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Reason</label>
+              <select
+                value={cancelState.reason}
+                onChange={(e) => setCancelState({ ...cancelState, reason: e.target.value as typeof cancelState.reason, noShowRole: "" })}
+                className="w-full text-sm rounded-lg border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400/40"
+              >
+                <option value="">Select a reason…</option>
+                <option value="no_show">No-Show — Didn't Purchase Label</option>
+                <option value="auth_failure_no_response">Auth Failure — No Response</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {cancelState.reason === "no_show" && (
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">Which party is the no-show?</label>
+                <div className="flex gap-4">
+                  {(["sender", "poster"] as const).map((side) => (
+                    <label key={side} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <input
+                        type="radio"
+                        name="noShowRole"
+                        value={side}
+                        checked={cancelState.noShowRole === side}
+                        onChange={() => setCancelState({ ...cancelState, noShowRole: side })}
+                        className="accent-red-500"
+                      />
+                      <span className="capitalize">{side} — {side === "sender" ? order.sender.name : order.poster.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Notes (optional)</label>
+              <textarea
+                value={cancelState.notes}
+                onChange={(e) => setCancelState({ ...cancelState, notes: e.target.value })}
+                placeholder="Any additional context…"
+                rows={2}
+                className="w-full text-xs rounded-lg border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400/40 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={
+                  !cancelState.reason ||
+                  (cancelState.reason === "no_show" && !cancelState.noShowRole) ||
+                  !!acting
+                }
+                onClick={handleCancelOrder}
+                className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40 transition-colors"
+              >
+                {acting === "cancel_order" ? "Cancelling…" : "Confirm Cancel"}
+              </button>
+              <button
+                type="button"
+                disabled={!!acting}
+                onClick={() => setCancelState(null)}
+                className="px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

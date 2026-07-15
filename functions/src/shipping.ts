@@ -5,9 +5,17 @@ import { logger } from "firebase-functions/v2";
 import admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import axios from "axios";
+import sgMail from "@sendgrid/mail";
 import { writeAuditLog } from "./utils/auditLog";
 
 const SHIPPO_API_KEY = defineSecret("SHIPPO_API_KEY");
+const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
+
+const FROM = "trading@barterr.ai";
+
+const TEMPLATES = {
+  AUTH_ISSUE_NOTICE: "d-e7bf1f33e36a45c58c4d2e18431c9b5a",
+} as const;
 
 const CORS_ORIGINS = [
   "http://localhost:5173",
@@ -597,6 +605,18 @@ export const markSneakersReceived = onCall(
       throw new HttpsError("invalid-argument", "tradeId and role required");
     }
 
+    const orderSnap = await admin.firestore().doc(`orders/${tradeId}`).get();
+    if (!orderSnap.exists) throw new HttpsError("not-found", "Order not found");
+    const order = orderSnap.data()!;
+
+    const trackingField = role === "sender" ? "trackingSender" : "trackingPoster";
+    if (!order[trackingField]?.tracking) {
+      throw new HttpsError(
+        "failed-precondition",
+        `Cannot mark ${role} sneakers received — no inbound shipping label exists yet.`
+      );
+    }
+
     try {
       await admin.firestore().doc(`orders/${tradeId}`).update({ [`${role}.sneakerReceived`]: true });
     } catch (err: any) {
@@ -633,7 +653,7 @@ export const markSneakersReceived = onCall(
  * - passed=false → writes `fakes` field (fires onFakeShoes email)
  * - passed=true  → marks that side authenticated; if both pass → completed=true
  */
-export const markAuthResult = onCall({ region: "us-central1", cors: CORS_ORIGINS, invoker: "public" }, async (req) => {
+export const markAuthResult = onCall({ region: "us-central1", secrets: [SENDGRID_API_KEY], cors: CORS_ORIGINS, invoker: "public" }, async (req) => {
   if (!req.auth?.uid) throw new HttpsError("unauthenticated", "Must be signed in");
   assertAdmin(req);
 
@@ -655,6 +675,21 @@ export const markAuthResult = onCall({ region: "us-central1", cors: CORS_ORIGINS
       const order = (await orderRef.get()).data()!;
       const failedUserId = role === "sender" ? order.sender?.id : order.poster?.id;
       await orderRef.update({ fakes: { userId: failedUserId, reasons: reasons || "" } });
+
+      // Email the legitimate party (the one whose sneakers are NOT fake)
+      const legitEmail = role === "sender" ? order.poster?.email : order.sender?.email;
+      const legitName = role === "sender" ? order.poster?.name : order.sender?.name;
+      if (legitEmail && !TEMPLATES.AUTH_ISSUE_NOTICE.startsWith("PLACEHOLDER")) {
+        sgMail.setApiKey(SENDGRID_API_KEY.value());
+        await sgMail.send({
+          to: legitEmail,
+          from: FROM,
+          subject: "Important Update on Your Barterr Trade",
+          templateId: TEMPLATES.AUTH_ISSUE_NOTICE,
+          dynamicTemplateData: { firstName: (legitName ?? "there").split(" ")[0] },
+        }).catch((err) => logger.error("[markAuthResult] legitimate party email failed", err));
+      }
+
       await writeAuditLog({
         eventType: "auth.result",
         functionName: "markAuthResult",

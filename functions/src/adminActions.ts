@@ -14,6 +14,7 @@ const TEMPLATES = {
   ACCOUNT_WARNING:            "d-c542034da1ab47c5850245e310ab009d",
   ACCOUNT_BANNED:             "d-48cd3183d9e649e9a6f231a2d2ac4e86",
   LISTING_CHANGES_REQUESTED:  "d-e6b1fe95c3944b7cafbe458039ce510c",
+  ORDER_CANCELLED:            "d-a5eb3e834ee74308ba91b37538988f4d",
 } as const;
 
 const CORS_ORIGINS = [
@@ -428,6 +429,99 @@ export const sendOrderPhotosEmail = onCall(
           ${photoGrid(senderPhotos, `Sender — ${senderName}`)}
           ${photoGrid(posterPhotos, `Poster — ${posterName}`)}
         </div>`,
+    });
+
+    return { success: true };
+  }
+);
+
+// ─── Cancel order ─────────────────────────────────────────────────────────────
+
+export const cancelOrder = onCall(
+  { region: "us-central1", secrets: [SENDGRID_API_KEY], cors: CORS_ORIGINS, invoker: "public" },
+  async (req) => {
+    if (!req.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
+    const claims = req.auth.token as { role?: string };
+    if (!["admin", "super_admin"].includes(claims.role ?? "")) {
+      throw new HttpsError("permission-denied", "Admin only");
+    }
+
+    const { tradeId, reason, noShowRole, notes } = req.data as {
+      tradeId: string;
+      reason: "no_show" | "auth_failure_no_response" | "other";
+      noShowRole?: "sender" | "poster";
+      notes?: string;
+    };
+
+    if (!tradeId || !reason) {
+      throw new HttpsError("invalid-argument", "tradeId and reason are required");
+    }
+
+    const db = getFirestore();
+    const orderRef = db.collection("orders").doc(tradeId);
+    const orderSnap = await orderRef.get();
+    if (!orderSnap.exists) throw new HttpsError("not-found", "Order not found");
+
+    const order = orderSnap.data()!;
+    if (order.status === "cancelled") {
+      throw new HttpsError("failed-precondition", "Order is already cancelled");
+    }
+
+    await orderRef.update({
+      status: "cancelled",
+      cancelledAt: FieldValue.serverTimestamp(),
+      cancellationReason: reason,
+      cancelledBy: req.auth.uid,
+      ...(noShowRole ? { noShowRole } : {}),
+      ...(notes?.trim() ? { cancellationNotes: notes.trim() } : {}),
+    });
+
+    sgMail.setApiKey(SENDGRID_API_KEY.value());
+
+    const cancellationReason: Record<string, string> = {
+      no_show: "the other party not shipping their sneakers within the required timeframe",
+      auth_failure_no_response: "an unresolved authentication issue with the other party's sneakers",
+      other: "an issue with this order",
+    };
+
+    if (!TEMPLATES.ORDER_CANCELLED.startsWith("PLACEHOLDER")) {
+      await Promise.allSettled([
+        order.sender?.email
+          ? sgMail.send({
+              to: order.sender.email,
+              from: FROM,
+              subject: "Your Barterr Trade Has Been Cancelled",
+              templateId: TEMPLATES.ORDER_CANCELLED,
+              dynamicTemplateData: {
+                firstName: (order.sender.name ?? "there").split(" ")[0],
+                cancellationReason: cancellationReason[reason] ?? "an issue with this order",
+              },
+            })
+          : Promise.resolve(),
+        order.poster?.email
+          ? sgMail.send({
+              to: order.poster.email,
+              from: FROM,
+              subject: "Your Barterr Trade Has Been Cancelled",
+              templateId: TEMPLATES.ORDER_CANCELLED,
+              dynamicTemplateData: {
+                firstName: (order.poster.name ?? "there").split(" ")[0],
+                cancellationReason: cancellationReason[reason] ?? "an issue with this order",
+              },
+            })
+          : Promise.resolve(),
+      ]);
+    }
+
+    await writeAuditLog({
+      eventType: "admin.order_cancelled",
+      functionName: "cancelOrder",
+      actorId: req.auth.uid,
+      targetId: tradeId,
+      targetType: "order",
+      status: "success",
+      durationMs: 0,
+      metadata: { reason, noShowRole: noShowRole ?? null, notes: notes ?? null },
     });
 
     return { success: true };

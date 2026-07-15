@@ -17,7 +17,8 @@ export type AuditEventType =
   | "admin.user_disabled"
   | "admin.user_enabled"
   | "admin.flag_resolved"
-  | "admin.role_set";
+  | "admin.role_set"
+  | "admin.order_cancelled";
 
 export type AuditTargetType = "trade" | "order" | "user" | "listing" | "flaggedAttempt";
 

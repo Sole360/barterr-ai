@@ -44,6 +44,7 @@ interface OrderDoc {
   posterOutbound?: TrackingInfo;
   fakes?: { userId: string; reasons: string };
   completed: boolean;
+  status?: string;
   confirmedAt: Timestamp | null;
 }
 
@@ -55,7 +56,7 @@ interface UserAddress {
   zip?: string;
 }
 
-type FilterTab = "all" | "in_progress" | "completed";
+type FilterTab = "all" | "in_progress" | "completed" | "cancelled";
 
 function StepDot({ done }: { done: boolean }) {
   return done
@@ -157,7 +158,8 @@ export const OrderManagementPage = () => {
 
   const filtered = orders.filter((o) => {
     if (filter === "completed") return o.completed;
-    if (filter === "in_progress") return !o.completed;
+    if (filter === "in_progress") return !o.completed && o.status !== "cancelled";
+    if (filter === "cancelled") return o.status === "cancelled";
     return true;
   });
 
@@ -165,6 +167,7 @@ export const OrderManagementPage = () => {
     { label: "All", value: "all" },
     { label: "In Progress", value: "in_progress" },
     { label: "Completed", value: "completed" },
+    { label: "Cancelled", value: "cancelled" },
   ];
 
   return (
@@ -232,6 +235,11 @@ export const OrderManagementPage = () => {
                   {order.completed && (
                     <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                       Completed
+                    </span>
+                  )}
+                  {order.status === "cancelled" && (
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                      Cancelled
                     </span>
                   )}
                 </div>
