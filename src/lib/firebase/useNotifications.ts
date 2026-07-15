@@ -18,6 +18,7 @@ export type NotificationType =
   | "trade_completed"
   | "trade_countered"
   | "order_cancelled"
+  | "auth_issue"
   | "account_warning"
   | "account_banned"
   | "listing_changes_requested";

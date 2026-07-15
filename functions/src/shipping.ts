@@ -676,9 +676,22 @@ export const markAuthResult = onCall({ region: "us-central1", secrets: [SENDGRID
       const failedUserId = role === "sender" ? order.sender?.id : order.poster?.id;
       await orderRef.update({ fakes: { userId: failedUserId, reasons: reasons || "" } });
 
-      // Email the legitimate party (the one whose sneakers are NOT fake)
+      // Notify the legitimate party (the one whose sneakers are NOT fake)
+      const legitId    = role === "sender" ? order.poster?.id    : order.sender?.id;
       const legitEmail = role === "sender" ? order.poster?.email : order.sender?.email;
-      const legitName = role === "sender" ? order.poster?.name : order.sender?.name;
+      const legitName  = role === "sender" ? order.poster?.name  : order.sender?.name;
+
+      if (legitId) {
+        await db.collection("users").doc(legitId).collection("notifications").add({
+          type: "auth_issue",
+          title: "Authentication Issue",
+          body: "We've detected a potential issue with the other party's sneakers. We're investigating — your sneakers are safe.",
+          data: { tradeId },
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        }).catch((err) => logger.error("[markAuthResult] auth_issue notification failed", err));
+      }
+
       if (legitEmail && !TEMPLATES.AUTH_ISSUE_NOTICE.startsWith("PLACEHOLDER")) {
         sgMail.setApiKey(SENDGRID_API_KEY.value());
         await sgMail.send({
