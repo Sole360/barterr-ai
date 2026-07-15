@@ -484,34 +484,37 @@ export const cancelOrder = onCall(
       other: "an issue with this order",
     };
 
-    if (!TEMPLATES.ORDER_CANCELLED.startsWith("PLACEHOLDER")) {
-      await Promise.allSettled([
-        order.sender?.email
-          ? sgMail.send({
-              to: order.sender.email,
-              from: FROM,
-              subject: "Your Barterr Trade Has Been Cancelled",
-              templateId: TEMPLATES.ORDER_CANCELLED,
-              dynamicTemplateData: {
-                firstName: (order.sender.name ?? "there").split(" ")[0],
-                cancellationReason: cancellationReason[reason] ?? "an issue with this order",
-              },
-            })
-          : Promise.resolve(),
-        order.poster?.email
-          ? sgMail.send({
-              to: order.poster.email,
-              from: FROM,
-              subject: "Your Barterr Trade Has Been Cancelled",
-              templateId: TEMPLATES.ORDER_CANCELLED,
-              dynamicTemplateData: {
-                firstName: (order.poster.name ?? "there").split(" ")[0],
-                cancellationReason: cancellationReason[reason] ?? "an issue with this order",
-              },
-            })
-          : Promise.resolve(),
-      ]);
-    }
+    const emailParties = [
+      { role: "sender", email: order.sender?.email, name: order.sender?.name },
+      { role: "poster", email: order.poster?.email, name: order.poster?.name },
+    ];
+
+    const emailResults = !TEMPLATES.ORDER_CANCELLED.startsWith("PLACEHOLDER")
+      ? await Promise.allSettled(
+          emailParties.map(({ email, name }) =>
+            email
+              ? sgMail.send({
+                  to: email,
+                  from: FROM,
+                  subject: "Your Barterr Trade Has Been Cancelled",
+                  templateId: TEMPLATES.ORDER_CANCELLED,
+                  dynamicTemplateData: {
+                    firstName: (name ?? "there").split(" ")[0],
+                    cancellationReason: cancellationReason[reason] ?? "an issue with this order",
+                  },
+                })
+              : Promise.resolve()
+          )
+        )
+      : [];
+
+    const emailFailures = emailResults
+      .map((result, i) =>
+        result.status === "rejected"
+          ? { party: emailParties[i].role, error: (result.reason as Error)?.message ?? "unknown" }
+          : null
+      )
+      .filter((e): e is { party: string; error: string } => e !== null);
 
     await writeAuditLog({
       eventType: "admin.order_cancelled",
@@ -521,7 +524,12 @@ export const cancelOrder = onCall(
       targetType: "order",
       status: "success",
       durationMs: 0,
-      metadata: { reason, noShowRole: noShowRole ?? null, notes: notes ?? null },
+      metadata: {
+        reason,
+        noShowRole: noShowRole ?? null,
+        notes: notes ?? null,
+        ...(emailFailures.length > 0 ? { emailFailures } : {}),
+      },
     });
 
     return { success: true };
