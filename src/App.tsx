@@ -33,6 +33,11 @@ import { AuditLogPage } from "@/app/admin/AuditLogPage";
 import { OrderManagementPage } from "@/app/admin/OrderManagementPage";
 import { RevenueDashboardPage } from "@/app/admin/RevenueDashboardPage";
 import { AccountSettingsPage } from "@/app/account/AccountSettingsPage";
+import { LandingPage } from "@/app/marketing/LandingPage";
+import { AboutPage } from "@/app/marketing/AboutPage";
+import { PricingPage } from "@/app/marketing/PricingPage";
+import { FAQPage } from "@/app/marketing/FAQPage";
+import { TermsPage } from "@/app/marketing/TermsPage";
 function AppRoutes() {
   const location = useLocation();
   return (
@@ -107,7 +112,12 @@ function AppRoutes() {
             <Route path="revenue" element={<RevenueDashboardPage />} />
           </Route>
 
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* Marketing / public pages */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/terms" element={<TermsPage />} />
         </Routes>
       </AnimatePresence>
     </>
