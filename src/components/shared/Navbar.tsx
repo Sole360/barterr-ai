@@ -88,7 +88,7 @@ export const Navbar = () => {
         {/* ── MOBILE top bar ── */}
         <div className="md:hidden bg-background border-b border-border h-14 flex items-center justify-between px-4">
           <Link to="/dashboard">
-            <img src="/barterr-main-icon.png" alt="Barterr" className="h-7 w-auto" />
+            <img src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-icon-glyph-gradient.png?alt=media&token=1ebf5744-52b4-4d42-9673-a9799b5fb1c1" alt="Barterr" className="h-7 w-auto" />
           </Link>
 
           <div className="flex items-center gap-1">
@@ -139,7 +139,7 @@ export const Navbar = () => {
               {/* Logo */}
               <Link to="/dashboard" className="flex items-center">
                 <img
-                  src="/barterr-main-icon.png"
+                  src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-icon-glyph-gradient.png?alt=media&token=1ebf5744-52b4-4d42-9673-a9799b5fb1c1"
                   alt="Barterr"
                   className="h-8 w-auto md:h-10 lg:h-12"
                 />
