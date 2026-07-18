@@ -458,7 +458,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                         onClick={() => handleSelectSneaker(sneaker)}
                         className="flex items-center gap-4 p-4 border-2 border-border rounded-lg hover:border-[#3366FF] hover:bg-[#3366FF]/5 transition-colors text-left"
                       >
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-muted rounded-md overflow-hidden">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-white dark:bg-zinc-900 rounded-md overflow-hidden">
                           <img
                             src={sneaker.imageUrl}
                             alt={sneaker.name}
@@ -502,7 +502,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
                         key={index}
                         className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
                       >
-                        <div className="w-12 h-12 flex-shrink-0 bg-muted rounded overflow-hidden">
+                        <div className="w-12 h-12 flex-shrink-0 bg-white dark:bg-zinc-900 rounded overflow-hidden">
                           <img
                             src={sneaker.imageUrl}
                             alt={sneaker.name}
@@ -537,7 +537,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
               {/* Selected Sneaker Preview */}
               {selectedSneaker && (
                 <div className="flex items-center gap-4 p-4 bg-[#3366FF]/5 border border-[#3366FF]/20 rounded-lg">
-                  <div className="w-16 h-16 flex-shrink-0 bg-muted rounded overflow-hidden">
+                  <div className="w-16 h-16 flex-shrink-0 bg-white dark:bg-zinc-900 rounded overflow-hidden">
                     <img
                       src={selectedSneaker.imageUrl}
                       alt={selectedSneaker.name}

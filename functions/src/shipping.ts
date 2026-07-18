@@ -89,26 +89,29 @@ function shippoApi(apiKey: string) {
  * Falls back to a hardcoded default only if the config doc is missing.
  * Update the doc via Firebase console or the admin panel — no redeploy needed.
  */
+const BARTERR_ADDRESS_DEFAULTS: ShippoAddress = {
+  name: "Terrence Whaley",
+  company: "Barterr",
+  street1: "1932 Clinton St",
+  city: "Los Angeles",
+  state: "CA",
+  zip: "90026",
+  country: "US",
+  phone: "7192135621",
+  email: "terrence@barterr.ai",
+};
+
 async function getBarterrAddress(
   db: FirebaseFirestore.Firestore,
 ): Promise<ShippoAddress> {
   const snap = await db.doc("config/shipping").get();
   if (snap.exists) {
     const data = snap.data()!;
-    if (data.barterrAddress) return data.barterrAddress as ShippoAddress;
+    // Merge with defaults so required fields (email, phone) are always present
+    // even if the Firestore config doc was seeded without them.
+    if (data.barterrAddress) return { ...BARTERR_ADDRESS_DEFAULTS, ...data.barterrAddress };
   }
-  // Fallback — should only hit if config doc hasn't been seeded yet
-  return {
-    name: "Terrence Whaley",
-    company: "Barterr",
-    street1: "1932 Clinton St",
-    city: "Los Angeles",
-    state: "CA",
-    zip: "90026",
-    country: "US",
-    phone: "7192135621",
-    email: "terrence@barterr.ai",
-  };
+  return BARTERR_ADDRESS_DEFAULTS;
 }
 
 /**

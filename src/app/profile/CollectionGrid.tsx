@@ -36,7 +36,7 @@ const SneakerCard = ({ item, onClick }: { item: CollectionItem; onClick?: () => 
     onClick={onClick}
     className="group text-left rounded-2xl bg-white dark:bg-card overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 transition-all duration-200"
   >
-    <div className="relative aspect-square bg-gray-50 dark:bg-muted/60 overflow-hidden">
+    <div className="relative aspect-square bg-white dark:bg-zinc-900 overflow-hidden">
       {item.imageUrl && (
         <img
           src={item.imageUrl}

@@ -205,6 +205,7 @@ export function ShippingSection({ tradeId, isSender }: Props) {
   const bothReceived = !!myReceived && !!theirReceived;
   const bothAuthenticated = !!myAuthenticated && !!theirAuthenticated;
   const outboundReady = !!myOutbound;
+  const bothOutbound = !!order?.senderOutbound && !!order?.posterOutbound;
 
   // ── Handler ──────────────────────────────────────────────────────────────
 
@@ -376,14 +377,16 @@ export function ShippingSection({ tradeId, isSender }: Props) {
       {/* ── Phase 4: Complete ─────────────────────────────────────────────── */}
       <div>
         <Step
-          state={order.completed ? "done" : "upcoming"}
+          state={bothOutbound ? "done" : "upcoming"}
           label="Trade complete"
           sublabel={
-            order.completed
+            bothOutbound
               ? "Your new sneakers are on their way!"
-              : bothShipped
-                ? "Waiting on authentication and outbound shipping"
-                : "Complete all steps above to finish your trade"
+              : bothAuthenticated
+                ? "Waiting on outbound shipping"
+                : bothShipped
+                  ? "Waiting on authentication and outbound shipping"
+                  : "Complete all steps above to finish your trade"
           }
         />
       </div>

@@ -44,7 +44,7 @@ function SneakerThumb({
   const name = "name" in item ? item.name : item.title;
   return (
     <div className="shrink-0 w-28 rounded-2xl bg-background border border-border overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-      <div className="relative aspect-square bg-muted">
+      <div className="relative aspect-square bg-white dark:bg-zinc-900">
         {item.imageUrl ? (
           <img
             src={item.imageUrl}

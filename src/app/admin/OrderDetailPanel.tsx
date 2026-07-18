@@ -203,10 +203,10 @@ export const OrderDetailPanel = ({ order, addresses, photos, onClose }: Props) =
         {photoUrls.length > 0 && (
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Photos</p>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {photoUrls.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noreferrer" className="relative group block aspect-square rounded-lg overflow-hidden border border-border">
-                  <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                <a key={i} href={url} target="_blank" rel="noreferrer" className="relative group shrink-0 w-24 h-24 rounded-lg overflow-hidden border border-border block bg-white dark:bg-zinc-900">
+                  <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-contain p-1" />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                     <ExternalLink className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>

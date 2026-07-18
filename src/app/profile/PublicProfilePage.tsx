@@ -100,7 +100,7 @@ export const PublicProfilePage = () => {
                     key={item.id}
                     className="rounded-2xl bg-card border border-border overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.07)]"
                   >
-                    <div className="relative aspect-square bg-gray-50 dark:bg-muted/60 overflow-hidden">
+                    <div className="relative aspect-square bg-white dark:bg-zinc-900 overflow-hidden">
                       {item.imageUrl && (
                         <img
                           src={item.imageUrl}

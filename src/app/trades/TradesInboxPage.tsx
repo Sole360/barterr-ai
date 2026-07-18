@@ -149,7 +149,7 @@ function TradeRow({
           <div className="mt-3 flex items-center gap-2">
             <div className="flex flex-1 justify-end gap-1.5">
               {yourImages.slice(0, MAX_SHOWN).map((url, idx) => (
-                <div key={idx} className="shrink-0 h-14 w-14 rounded-xl bg-muted/60 overflow-hidden border border-border">
+                <div key={idx} className="shrink-0 h-14 w-14 rounded-xl bg-white dark:bg-zinc-900 overflow-hidden border border-border">
                   <img src={url} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
                 </div>
               ))}
@@ -169,7 +169,7 @@ function TradeRow({
 
             <div className="flex flex-1 gap-1.5">
               {theirImages.slice(0, MAX_SHOWN).map((url, idx) => (
-                <div key={idx} className="shrink-0 h-14 w-14 rounded-xl bg-muted/60 overflow-hidden border border-border">
+                <div key={idx} className="shrink-0 h-14 w-14 rounded-xl bg-white dark:bg-zinc-900 overflow-hidden border border-border">
                   <img src={url} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
                 </div>
               ))}
@@ -254,7 +254,7 @@ function CounterChildRow({ t, mode, userProfiles, onNavigateToTrade }: CounterCh
             <div className="flex items-center gap-2">
               <div className="flex flex-1 justify-end gap-1.5">
                 {yourImages.slice(0, MAX_SHOWN).map((url, idx) => (
-                  <div key={idx} className="shrink-0 h-14 w-14 rounded-xl bg-muted/60 overflow-hidden border border-border">
+                  <div key={idx} className="shrink-0 h-14 w-14 rounded-xl bg-white dark:bg-zinc-900 overflow-hidden border border-border">
                     <img src={url} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
                   </div>
                 ))}
@@ -272,7 +272,7 @@ function CounterChildRow({ t, mode, userProfiles, onNavigateToTrade }: CounterCh
               </div>
               <div className="flex flex-1 gap-1.5">
                 {theirImages.slice(0, MAX_SHOWN).map((url, idx) => (
-                  <div key={idx} className="shrink-0 h-14 w-14 rounded-xl bg-muted/60 overflow-hidden border border-border">
+                  <div key={idx} className="shrink-0 h-14 w-14 rounded-xl bg-white dark:bg-zinc-900 overflow-hidden border border-border">
                     <img src={url} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
                   </div>
                 ))}
