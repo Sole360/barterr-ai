@@ -484,7 +484,7 @@ export const TradeComposePage = () => {
           selected ? "border-[#3366FF] bg-[#3366FF]/8" : "border-border bg-card hover:bg-accent"
         }`}
       >
-        <div className="relative aspect-square rounded-lg bg-white dark:bg-zinc-900 overflow-hidden">
+        <div className="relative aspect-square rounded-lg bg-white overflow-hidden">
           {item.imageUrl && (
             <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain p-1" />
           )}
@@ -513,7 +513,7 @@ export const TradeComposePage = () => {
           selected ? "border-[#3366FF] bg-[#3366FF]/8" : "border-border bg-card hover:bg-accent"
         }`}
       >
-        <div className="relative aspect-square rounded-lg bg-white dark:bg-zinc-900 overflow-hidden">
+        <div className="relative aspect-square rounded-lg bg-white overflow-hidden">
           {l.imageUrl && (
             <img src={l.imageUrl} alt={l.title} className="w-full h-full object-contain p-1" />
           )}

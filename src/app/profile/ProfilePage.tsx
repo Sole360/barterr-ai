@@ -203,7 +203,7 @@ const WishlistGrid = ({
         key={g.postId}
         className="rounded-2xl bg-card overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.07)]"
       >
-        <div className="relative aspect-square bg-white dark:bg-zinc-900">
+        <div className="relative aspect-square bg-white overflow-hidden rounded-t-2xl">
           {g.imageUrl && (
             <img
               src={g.imageUrl}

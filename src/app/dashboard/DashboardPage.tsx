@@ -108,7 +108,7 @@ export const DashboardPage = () => {
             {loading && !error && (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
                 {[...Array(8)].map((_, i) => (
-                  <div key={i} className="bg-white dark:bg-card rounded-2xl overflow-hidden animate-pulse shadow-[0_2px_16px_rgba(0,0,0,0.07)]">
+                  <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-[0_2px_16px_rgba(0,0,0,0.07)]">
                     <div className="aspect-square bg-gray-100 dark:bg-muted" />
                     <div className="p-4 space-y-2.5">
                       <div className="h-2.5 bg-muted rounded-full w-1/3" />
@@ -182,7 +182,7 @@ function SneakerCard({ post, onClick }: { post: Post; onClick: () => void }) {
         hover:-translate-y-1
         transition-all duration-200"
     >
-      <div className="relative aspect-square bg-white dark:bg-zinc-900 overflow-hidden">
+      <div className="relative aspect-square bg-white overflow-hidden rounded-t-2xl">
         <img
           src={post.productImageUrl}
           alt={post.title}
