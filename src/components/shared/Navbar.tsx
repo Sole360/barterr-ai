@@ -11,7 +11,7 @@ import {
   Sun,
   Moon,
   ShieldCheck,
-  LayoutGrid,
+  Home,
   Plus,
 } from "lucide-react";
 import { useTheme } from "@/lib/contexts/theme.context";
@@ -32,7 +32,7 @@ import { getPostById } from "@/lib/firebase/posts.service";
 import { Post } from "@/types";
 
 const BOTTOM_NAV = [
-  { label: "Home", icon: LayoutGrid, path: "/dashboard" },
+  { label: "Home", icon: Home, path: "/dashboard" },
   { label: "Trades", icon: ArrowLeftRight, path: "/trades" },
   { label: "Messages", icon: MessageSquare, path: "/messages" },
   { label: "Profile", icon: User, path: "/profile" },
@@ -129,6 +129,54 @@ export const Navbar = () => {
                 </div>
               )}
             </div>
+
+            {/* Mobile profile / sign-out menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-1 hover:bg-accent rounded-lg transition-colors">
+                  {userProfile?.photoURL ? (
+                    <img
+                      src={userProfile.photoURL}
+                      alt="Profile"
+                      className="w-7 h-7 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium text-foreground">{userProfile?.displayName}</p>
+                  <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/account")}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Account Settings
+                </DropdownMenuItem>
+                {adminRole && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/admin")}>
+                      <ShieldCheck className="w-4 h-4 mr-2 text-[#3366FF]" />
+                      <span className="text-[#3366FF] font-medium">Admin Panel</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

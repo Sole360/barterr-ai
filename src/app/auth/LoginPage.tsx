@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-// Form validation schema
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -31,10 +30,7 @@ export const LoginPage = () => {
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   async function onSubmit(values: LoginFormValues) {
@@ -55,79 +51,113 @@ export const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center p-4">
-      <div className="bg-card rounded-lg shadow-xl p-8 w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Welcome Back
-          </h1>
-          <p className="text-muted-foreground">Sign in to your Barterr account</p>
+    <div className="min-h-screen flex">
+      {/* ── Left panel ── */}
+      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-[#33FF99] via-[#33c9bc] to-[#3366FF] flex-col p-10 overflow-hidden">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2.5 shrink-0">
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-icon-glyph-gradient.png?alt=media&token=1ebf5744-52b4-4d42-9673-a9799b5fb1c1"
+            alt="Barterr"
+            className="h-8 w-auto brightness-0 invert"
+          />
+          <span className="text-white font-black text-xl tracking-tight">Barterr</span>
+        </Link>
+
+        {/* Illustration — fills middle, mix-blend-multiply drops the white background */}
+        <div className="flex-1 flex items-center justify-center py-6">
+          <img
+            src="/illustrations/Dashboard.png"
+            alt=""
+            className="w-full max-w-sm object-contain mix-blend-multiply"
+            aria-hidden="true"
+          />
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-md text-sm">
-            {error}
+        {/* Tagline — always visible at bottom */}
+        <div className="shrink-0">
+          <h2 className="text-3xl font-black text-white leading-tight mb-2">
+            Trade sneakers<br />with confidence.
+          </h2>
+          <p className="text-white/80 text-sm max-w-xs leading-relaxed">
+            Authenticated trades, payment protection for both sides, and prepaid shipping — all in one place.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Right panel ── */}
+      <div className="w-full md:w-1/2 flex items-center justify-center bg-background px-6 py-12">
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="md:hidden text-center mb-8">
+            <Link to="/" className="inline-flex items-center gap-2">
+              <img
+                src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-icon-glyph-gradient.png?alt=media&token=1ebf5744-52b4-4d42-9673-a9799b5fb1c1"
+                alt="Barterr"
+                className="h-8 w-auto"
+              />
+            </Link>
           </div>
-        )}
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="you@example.com"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-red-500" />
-                </FormItem>
-              )}
-            />
+          <div className="mb-8">
+            <h1 className="text-2xl font-black text-foreground mb-1">Welcome back</h1>
+            <p className="text-sm text-muted-foreground">Sign in to your Barterr account</p>
+          </div>
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
-                  <FormMessage className="text-red-500" />
-                </FormItem>
-              )}
-            />
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl text-sm">
+              {error}
+            </div>
+          )}
 
-            <Button
-              type="submit"
-              className="w-full bg-[#3366FF] hover:bg-[#3366FF]/90"
-              disabled={loading}
-            >
-              {loading ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
-        </Form>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="you@example.com" className="rounded-xl h-11" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )}
+              />
 
-        <div className="mt-6 text-center space-y-2">
-          <Link
-            to="/forgot-password"
-            className="text-sm text-[#3366FF] hover:underline block"
-          >
-            Forgot Password?
-          </Link>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Password</FormLabel>
+                      <Link to="/forgot-password" className="text-xs text-[#3366FF] hover:underline font-semibold">
+                        Forgot password?
+                      </Link>
+                    </div>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" className="rounded-xl h-11" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )}
+              />
 
-          <p className="text-sm text-muted-foreground">
+              <Button
+                type="submit"
+                className="w-full h-11 rounded-xl font-black text-sm bg-[#3366FF] hover:bg-[#3366FF]/90"
+                disabled={loading}
+              >
+                {loading ? "Signing in…" : "Sign In"}
+              </Button>
+            </form>
+          </Form>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="text-[#3366FF] hover:underline font-medium"
-            >
+            <Link to="/signup" className="text-[#3366FF] hover:underline font-bold">
               Sign Up
             </Link>
           </p>

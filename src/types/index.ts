@@ -147,7 +147,7 @@ export interface TradeDocumentTheirItem {
 
 /**
  * New unified trade document schema for `trades` collection.
- * Supports bilateral escrow where both parties are charged.
+ * Both parties have payment holds placed simultaneously — neither is charged until both sneakers pass authentication.
  */
 export interface TradeDocument {
   // Identification

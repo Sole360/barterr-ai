@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-// Form validation schema
 const signupSchema = z
   .object({
     firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -23,9 +22,7 @@ const signupSchema = z
     email: z.string().email("Invalid email address"),
     phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
     password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z
-      .string()
-      .min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -41,8 +38,6 @@ export const SignupPage = () => {
   const { signUp } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  // Get referral ID from URL if present
   const referralId = searchParams.get("refId");
 
   const form = useForm<SignupFormValues>({
@@ -61,14 +56,12 @@ export const SignupPage = () => {
     try {
       setError("");
       setLoading(true);
-
       await signUp(values.email, values.password, {
         firstName: values.firstName,
         lastName: values.lastName,
         mobile: values.phoneNumber,
         referredBy: referralId ?? undefined,
       });
-
       setSuccess(true);
     } catch (err: any) {
       setError(err.message ?? "Failed to create account");
@@ -77,43 +70,27 @@ export const SignupPage = () => {
     }
   }
 
-  // Show success message after signup
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center p-4">
-        <div className="bg-card rounded-lg shadow-xl p-8 w-full max-w-md text-center">
-          <div className="mb-6">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <svg
-                className="w-8 h-8 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              Check Your Email
-            </h1>
-            <p className="text-muted-foreground">
-              We've sent a verification link to{" "}
-              <strong>{form.getValues("email")}</strong>
-            </p>
-            <p className="text-muted-foreground mt-2">
-              Please verify your email address before signing in. Don't forget
-              to check your spam folder.
-            </p>
-          </div>
-
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#33FF99] via-[#33c9bc] to-[#3366FF] p-4">
+        <div className="bg-card rounded-3xl shadow-[0_4px_32px_rgba(0,0,0,0.10)] p-10 w-full max-w-md text-center">
+          <img
+            src="/illustrations/Confirm-Email.png"
+            alt=""
+            className="w-36 mx-auto mb-6 object-contain"
+            aria-hidden="true"
+          />
+          <h1 className="text-2xl font-black text-foreground mb-2">Check your email</h1>
+          <p className="text-sm text-muted-foreground mb-1">
+            We sent a verification link to{" "}
+            <strong className="text-foreground">{form.getValues("email")}</strong>
+          </p>
+          <p className="text-sm text-muted-foreground mb-8">
+            Verify your email before signing in. Don't forget to check spam.
+          </p>
           <Button
             onClick={() => navigate("/login")}
-            className="w-full bg-[#3366FF] hover:bg-[#3366FF]/90"
+            className="w-full h-11 rounded-xl font-black bg-[#3366FF] hover:bg-[#3366FF]/90"
           >
             Go to Login
           </Button>
@@ -123,130 +100,165 @@ export const SignupPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center p-4">
-      <div className="bg-card rounded-lg shadow-xl p-8 w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Create Account
-          </h1>
-          <p className="text-muted-foreground">Join Barterr and start trading</p>
+    <div className="min-h-screen flex">
+      {/* ── Left panel ── */}
+      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-[#33FF99] via-[#33c9bc] to-[#3366FF] flex-col p-10 overflow-hidden">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2.5 shrink-0">
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-icon-glyph-gradient.png?alt=media&token=1ebf5744-52b4-4d42-9673-a9799b5fb1c1"
+            alt="Barterr"
+            className="h-8 w-auto brightness-0 invert"
+          />
+          <span className="text-white font-black text-xl tracking-tight">Barterr</span>
+        </Link>
+
+        {/* Illustration */}
+        <div className="flex-1 flex items-center justify-center py-6">
+          <img
+            src="/illustrations/Create-Trade.png"
+            alt=""
+            className="w-full max-w-sm object-contain mix-blend-multiply"
+            aria-hidden="true"
+          />
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
-            {error}
+        {/* Tagline */}
+        <div className="shrink-0">
+          <h2 className="text-3xl font-black text-white leading-tight mb-2">
+            Your sneakers<br />deserve better trades.
+          </h2>
+          <p className="text-white/80 text-sm max-w-xs leading-relaxed">
+            Join thousands of sneakerheads who trade smarter with authentication you can trust.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Right panel ── */}
+      <div className="w-full md:w-1/2 flex items-center justify-center bg-background px-6 py-12 overflow-y-auto">
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="md:hidden text-center mb-8">
+            <Link to="/" className="inline-flex items-center gap-2">
+              <img
+                src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-icon-glyph-gradient.png?alt=media&token=1ebf5744-52b4-4d42-9673-a9799b5fb1c1"
+                alt="Barterr"
+                className="h-8 w-auto"
+              />
+            </Link>
           </div>
-        )}
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>First Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John" {...field} />
-                    </FormControl>
-                    <FormMessage className="text-red-500" />
-                  </FormItem>
-                )}
-              />
+          <div className="mb-8">
+            <h1 className="text-2xl font-black text-foreground mb-1">Create account</h1>
+            <p className="text-sm text-muted-foreground">Join Barterr and start trading</p>
+          </div>
 
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Last Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Doe" {...field} />
-                    </FormControl>
-                    <FormMessage className="text-red-500" />
-                  </FormItem>
-                )}
-              />
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+              {error}
             </div>
+          )}
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="you@example.com"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-red-500" />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wide">First</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John" className="rounded-xl h-11" {...field} />
+                      </FormControl>
+                      <FormMessage className="text-red-500" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Last</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Doe" className="rounded-xl h-11" {...field} />
+                      </FormControl>
+                      <FormMessage className="text-red-500" />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-            <FormField
-              control={form.control}
-              name="phoneNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
-                  <FormControl>
-                    <Input type="tel" placeholder="(555) 123-4567" {...field} />
-                  </FormControl>
-                  <FormMessage className="text-red-500" />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="you@example.com" className="rounded-xl h-11" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
-                  <FormMessage className="text-red-500" />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Phone</FormLabel>
+                    <FormControl>
+                      <Input type="tel" placeholder="(555) 123-4567" className="rounded-xl h-11" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
-                  <FormMessage className="text-red-500" />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" className="rounded-xl h-11" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )}
+              />
 
-            <Button
-              type="submit"
-              className="w-full bg-[#3366FF] hover:bg-[#3366FF]/90"
-              disabled={loading}
-            >
-              {loading ? "Creating account..." : "Sign Up"}
-            </Button>
-          </form>
-        </Form>
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" className="rounded-xl h-11" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )}
+              />
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-muted-foreground">
+              <Button
+                type="submit"
+                className="w-full h-11 rounded-xl font-black text-sm bg-[#3366FF] hover:bg-[#3366FF]/90"
+                disabled={loading}
+              >
+                {loading ? "Creating account…" : "Create Account"}
+              </Button>
+            </form>
+          </Form>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link
-              to="/login"
-              className="text-[#3366FF] hover:underline font-medium"
-            >
+            <Link to="/login" className="text-[#3366FF] hover:underline font-bold">
               Sign In
             </Link>
           </p>

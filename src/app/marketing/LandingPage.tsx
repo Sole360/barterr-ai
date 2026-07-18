@@ -34,7 +34,7 @@ export const LandingPage = () => {
             </span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Barterr is the only sneaker trading platform with built-in authentication, bilateral escrow, and door-to-door shipping — so both sides are protected from start to finish.
+            Barterr is the only sneaker trading platform with built-in authentication, payment protection for both sides, and door-to-door shipping — so both traders are covered from start to finish.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link

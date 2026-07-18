@@ -10,7 +10,7 @@ const faqs = [
   },
   {
     q: "What does the service fee cover?",
-    a: "Your flat-rate fee covers everything: your prepaid inbound shipping label, expert authentication at our facility, bilateral Stripe escrow protection, and your outbound shipping label to your trade partner. No hidden costs.",
+    a: "Your flat-rate fee covers everything: your prepaid inbound shipping label, expert authentication at our facility, payment protection for both sides, and your outbound shipping label to your trade partner. No hidden costs.",
   },
   {
     q: "How is pricing calculated?",
