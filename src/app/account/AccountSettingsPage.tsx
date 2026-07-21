@@ -10,13 +10,14 @@ import {
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
+import { useTour } from "@/lib/contexts/tour.context";
 import { Navbar } from "@/components/shared/Navbar";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, ArrowLeft, Bell, Lock, MapPin } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bell, Lock, MapPin, PlayCircle } from "lucide-react";
 import { usePlacesAutocomplete, type ParsedAddress } from "@/lib/hooks/usePlacesAutocomplete";
 
 const Toggle = ({
@@ -46,6 +47,7 @@ const Toggle = ({
 export const AccountSettingsPage = () => {
   const navigate = useNavigate();
   const { currentUser, userProfile } = useAuth();
+  const { startTour } = useTour();
   const { toast } = useToast();
 
   // Email change
@@ -372,6 +374,31 @@ export const AccountSettingsPage = () => {
               >
                 {addressSaving ? "Saving…" : "Save address"}
               </Button>
+            </div>
+
+            {/* App Tour */}
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <PlayCircle className="w-4 h-4 text-[#3366FF] shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">App walkthrough</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Replay the guided tour of Barterr's key features
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigate("/dashboard");
+                    startTour();
+                  }}
+                >
+                  Take the tour
+                </Button>
+              </div>
             </div>
 
             {/* Danger Zone */}

@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { ThemeProvider } from "@/lib/contexts/theme.context";
+import { TourProvider } from "@/lib/contexts/tour.context";
+import { AppTour } from "@/components/shared/AppTour";
 import { ProtectedRoute } from "@/lib/components/ProtectedRoute";
 import { AdminGuard } from "@/lib/components/AdminGuard";
 import { LoginPage } from "@/app/auth/LoginPage";
@@ -129,8 +131,11 @@ function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <AppRoutes />
-          <Toaster />
+          <TourProvider>
+            <AppRoutes />
+            <AppTour />
+            <Toaster />
+          </TourProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

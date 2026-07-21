@@ -134,7 +134,7 @@ export const Navbar = () => {
                 </button>
 
                 {/* Notifications */}
-                <div ref={mobileNotifRef} className="relative">
+                <div ref={mobileNotifRef} className="relative" data-tour="notifications-mobile">
                   <button
                     onClick={() => setNotifOpen((v) => !v)}
                     className="relative p-2 hover:bg-accent rounded-lg transition-colors"
@@ -245,6 +245,7 @@ export const Navbar = () => {
 
                 {/* Messages */}
                 <button
+                  data-tour="messages-desktop"
                   onClick={() => navigate("/messages")}
                   className="relative p-2 hover:bg-accent rounded-lg transition-colors"
                   title="Messages"
@@ -254,6 +255,7 @@ export const Navbar = () => {
 
                 {/* Trades */}
                 <button
+                  data-tour="trades-desktop"
                   onClick={() => navigate("/trades")}
                   className="relative p-2 hover:bg-accent rounded-lg transition-colors"
                   title="My Trades"
@@ -262,7 +264,7 @@ export const Navbar = () => {
                 </button>
 
                 {/* Notifications */}
-                <div ref={notifRef} className="relative">
+                <div ref={notifRef} className="relative" data-tour="notifications-desktop">
                   <button
                     onClick={() => setNotifOpen((v) => !v)}
                     className="relative p-2 hover:bg-accent rounded-lg transition-colors"
@@ -289,7 +291,7 @@ export const Navbar = () => {
                 {/* Profile Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center space-x-2 p-2 hover:bg-accent rounded-lg transition-colors">
+                    <button data-tour="profile-desktop" className="flex items-center space-x-2 p-2 hover:bg-accent rounded-lg transition-colors">
                       {userProfile?.photoURL ? (
                         <img
                           src={userProfile.photoURL}
@@ -352,6 +354,7 @@ export const Navbar = () => {
           {BOTTOM_NAV.slice(0, 2).map(({ label, icon: Icon, path }) => (
             <button
               key={path}
+              data-tour={label === "Trades" ? "trades-mobile" : undefined}
               onClick={() => navigate(path)}
               className={`flex flex-col items-center gap-0.5 px-4 py-2 text-[10px] font-medium transition-colors ${
                 isActive(path) ? "text-[#3366FF]" : "text-muted-foreground"
@@ -364,6 +367,7 @@ export const Navbar = () => {
 
           {/* Center Add button */}
           <button
+            data-tour="add-sneaker-mobile"
             onClick={() => setAddOpen(true)}
             className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#3366FF] to-[#33FF99] shadow-md -mt-4 transition-transform active:scale-95"
             title="Add Sneaker"
@@ -374,6 +378,13 @@ export const Navbar = () => {
           {BOTTOM_NAV.slice(2).map(({ label, icon: Icon, path }) => (
             <button
               key={path}
+              data-tour={
+                label === "Messages"
+                  ? "messages-mobile"
+                  : label === "Profile"
+                  ? "profile-mobile"
+                  : undefined
+              }
               onClick={() => navigate(path)}
               className={`flex flex-col items-center gap-0.5 px-4 py-2 text-[10px] font-medium transition-colors ${
                 isActive(path) ? "text-[#3366FF]" : "text-muted-foreground"

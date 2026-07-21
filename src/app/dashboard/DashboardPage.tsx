@@ -5,6 +5,7 @@ import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { useAuth } from "@/lib/contexts/auth.context";
+import { useTour } from "@/lib/contexts/tour.context";
 import type { Post, BrandFilter } from "@/types";
 import {
   subscribeToPosts,
@@ -14,7 +15,8 @@ import {
 const brands: BrandFilter[] = ["All", "Nike", "Adidas", "Jordan", "New Balance", "Other"];
 
 export const DashboardPage = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
+  const { isRunning, startTour } = useTour();
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [addSneakerOpen, setAddSneakerOpen] = useState(false);
@@ -43,6 +45,15 @@ export const DashboardPage = () => {
     return () => unsubscribe?.();
   }, [selectedBrand]);
 
+  // Auto-start tour on first visit
+  useEffect(() => {
+    if (userProfile && !userProfile.hasSeenTour && !isRunning) {
+      const t = setTimeout(startTour, 800);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile?.hasSeenTour]);
+
   // Hide posts where the current user is the sole owner
   const visiblePosts = posts.filter((post) => {
     if (!currentUser) return true;
@@ -60,7 +71,7 @@ export const DashboardPage = () => {
           <div className="max-w-7xl mx-auto">
 
             {/* Header */}
-            <div className="mb-6 pt-4">
+            <div className="mb-6 pt-4" data-tour="listings">
               <h1 className="text-3xl font-bold text-foreground">Discover</h1>
               <p className="text-muted-foreground mt-1">Browse sneakers available for trade</p>
             </div>
@@ -149,6 +160,7 @@ export const DashboardPage = () => {
 
         {/* FAB */}
         <button
+          data-tour="add-sneaker-desktop"
           onClick={() => setAddSneakerOpen(true)}
           className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg hover:scale-110 transition-all items-center justify-center z-40 bg-gradient-to-br from-[#3366FF] to-[#33FF99]"
         >

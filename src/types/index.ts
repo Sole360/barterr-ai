@@ -21,6 +21,7 @@ export interface User {
   wishlistCount?: number;
   address?: Address;
   onboardingFinished: boolean;
+  hasSeenTour?: boolean;
   coverPhoto?: string;
   styleTags?: string[];
 }
