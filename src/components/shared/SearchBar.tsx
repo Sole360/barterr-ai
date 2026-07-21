@@ -51,7 +51,7 @@ export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
                 hitsPerPage: 8,
                 attributesToRetrieve: [
                   "objectID",
-                  "title",
+                  "productName",
                   "brand",
                   "styleId",
                   "productImageUrl",
@@ -138,7 +138,7 @@ export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
                   <div className="w-12 h-12 flex-shrink-0 bg-muted rounded-lg overflow-hidden border border-border/50">
                     <img
                       src={hit.productImageUrl}
-                      alt={hit.title}
+                      alt={hit.productName}
                       className="w-full h-full object-contain"
                       referrerPolicy="no-referrer"
                     />
@@ -148,7 +148,7 @@ export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
                       {hit.brand}
                     </p>
                     <p className="font-medium text-foreground text-sm truncate">
-                      {hit.title}
+                      {hit.productName}
                     </p>
                     {hit.styleId && (
                       <p className="text-xs text-muted-foreground">{hit.styleId}</p>

@@ -327,6 +327,7 @@ export const createListing = async (listingData: {
   productName?: string;
   productImageUrl?: string;
   brand?: string;
+  styleId?: string;
   apiID?: string;
   source?: "stockx" | "goat";
   photos?: {
@@ -361,6 +362,7 @@ export const createListing = async (listingData: {
       ? { productImageUrl: listingData.productImageUrl }
       : {}),
     ...(listingData.brand ? { brand: listingData.brand } : {}),
+    ...(listingData.styleId ? { styleId: listingData.styleId } : {}),
     ...(listingData.apiID ? { apiID: listingData.apiID } : {}),
     ...(listingData.source ? { source: listingData.source } : {}),
     ...(listingData.photos ? { photos: listingData.photos } : {}),

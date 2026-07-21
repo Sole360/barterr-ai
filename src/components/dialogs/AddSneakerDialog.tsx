@@ -278,6 +278,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
             productName: sneaker.name,
             productImageUrl: sneaker.imageUrl,
             brand: sneaker.brand,
+            styleId: sneaker.styleId,
             apiID: sneaker.id,
             source: sneaker.source,
           });

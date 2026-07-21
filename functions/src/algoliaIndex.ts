@@ -38,10 +38,10 @@ async function deletePostFromAlgolia(objectID: string) {
   });
 }
 
-// Index or update post
+// Index or update listing
 export const indexPost = onDocumentWritten(
   {
-    document: "posts/{postId}",
+    document: "listings/{postId}",
     secrets: ["ALGOLIA_APP_ID", "ALGOLIA_ADMIN_API_KEY"],
   },
   async (event) => {
@@ -64,11 +64,11 @@ export const indexPost = onDocumentWritten(
 
     const algoliaObject = {
       objectID: postId,
-      title: data.title,
-      brand: data.brand,
-      styleId: data.styleId,
-      productImageUrl: data.productImageUrl,
-      apiID: data.apiID,
+      productName: data.productName ?? "",
+      brand: data.brand ?? "",
+      styleId: data.styleId ?? "",
+      productImageUrl: data.productImageUrl ?? "",
+      apiID: data.apiID ?? "",
       active: data.active,
       postedAt: data.postedAt?.seconds ?? Math.floor(Date.now() / 1000),
       updatedAt: data.updatedAt?.seconds ?? Math.floor(Date.now() / 1000),
@@ -141,7 +141,7 @@ export const unindexUser = onDocumentDeleted(
 // Remove from index when deleted
 export const unindexPost = onDocumentDeleted(
   {
-    document: "posts/{postId}",
+    document: "listings/{postId}",
     secrets: ["ALGOLIA_APP_ID", "ALGOLIA_ADMIN_API_KEY"],
   },
   async (event) => {

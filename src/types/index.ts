@@ -299,6 +299,7 @@ export interface Listing {
   productName?: string;
   productImageUrl?: string;
   brand?: string;
+  styleId?: string;
   apiID?: string;
   source?: "stockx" | "goat";
   hasBox?: boolean;
@@ -441,7 +442,7 @@ export interface ImageJob {
  */
 export interface AlgoliaHit {
   objectID: string;
-  title: string;
+  productName: string;
   brand: string;
   styleId?: string;
   productImageUrl: string;
