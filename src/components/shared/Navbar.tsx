@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   Home,
   Plus,
+  Search,
+  X,
 } from "lucide-react";
 import { useTheme } from "@/lib/contexts/theme.context";
 import { AnnouncementRibbon } from "./AnnouncementRibbon";
@@ -46,6 +48,7 @@ export const Navbar = () => {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const mobileNotifRef = useRef<HTMLDivElement>(null);
 
@@ -86,98 +89,125 @@ export const Navbar = () => {
         <AnnouncementRibbon />
 
         {/* ── MOBILE top bar ── */}
-        <div className="md:hidden bg-background border-b border-border h-14 flex items-center justify-between px-4">
-          <Link to="/dashboard">
-            <img src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-icon-glyph-gradient.png?alt=media&token=1ebf5744-52b4-4d42-9673-a9799b5fb1c1" alt="Barterr" className="h-7 w-auto" />
-          </Link>
-
-          <div className="flex items-center gap-1">
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 hover:bg-accent rounded-lg transition-colors"
-              title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {resolvedTheme === "dark" ? (
-                <Sun className="w-5 h-5 text-foreground" />
-              ) : (
-                <Moon className="w-5 h-5 text-foreground" />
-              )}
-            </button>
-
-            {/* Notifications */}
-            <div ref={mobileNotifRef} className="relative">
+        <div className="md:hidden bg-background border-b border-border h-14 flex items-center px-4 gap-2">
+          {mobileSearchOpen ? (
+            /* Search mode */
+            <>
               <button
-                onClick={() => setNotifOpen((v) => !v)}
-                className="relative p-2 hover:bg-accent rounded-lg transition-colors"
-                title="Notifications"
+                onClick={() => setMobileSearchOpen(false)}
+                className="p-2 shrink-0 hover:bg-accent rounded-lg transition-colors"
               >
-                <Bell className="w-5 h-5 text-foreground" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-[#3366FF] rounded-full" />
-                )}
+                <X className="w-5 h-5 text-foreground" />
               </button>
-              {notifOpen && (
-                <div className="absolute right-0 top-full mt-2 z-50">
-                  <NotificationPanel
-                    notifications={notifications}
-                    loading={notifLoading}
-                    unreadCount={unreadCount}
-                    onMarkAllRead={markAllRead}
-                    onMarkRead={markRead}
-                  />
-                </div>
-              )}
-            </div>
+              <div className="flex-1">
+                <SearchBar onSelectPost={(postId) => { handleSelectPost(postId); setMobileSearchOpen(false); }} />
+              </div>
+            </>
+          ) : (
+            /* Normal mode */
+            <>
+              <Link to="/dashboard" className="shrink-0">
+                <img src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-icon-glyph-gradient.png?alt=media&token=1ebf5744-52b4-4d42-9673-a9799b5fb1c1" alt="Barterr" className="h-7 w-auto" />
+              </Link>
 
-            {/* Mobile profile / sign-out menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="p-1 hover:bg-accent rounded-lg transition-colors">
-                  {userProfile?.photoURL ? (
-                    <img
-                      src={userProfile.photoURL}
-                      alt="Profile"
-                      className="w-7 h-7 rounded-full object-cover"
-                    />
+              <div className="flex items-center gap-1 ml-auto">
+                {/* Search */}
+                <button
+                  onClick={() => setMobileSearchOpen(true)}
+                  className="p-2 hover:bg-accent rounded-lg transition-colors"
+                  title="Search"
+                >
+                  <Search className="w-5 h-5 text-foreground" />
+                </button>
+
+                {/* Theme toggle */}
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 hover:bg-accent rounded-lg transition-colors"
+                  title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                >
+                  {resolvedTheme === "dark" ? (
+                    <Sun className="w-5 h-5 text-foreground" />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center">
-                      <User className="w-4 h-4 text-white" />
-                    </div>
+                    <Moon className="w-5 h-5 text-foreground" />
                   )}
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium text-foreground">{userProfile?.displayName}</p>
-                  <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+
+                {/* Notifications */}
+                <div ref={mobileNotifRef} className="relative">
+                  <button
+                    onClick={() => setNotifOpen((v) => !v)}
+                    className="relative p-2 hover:bg-accent rounded-lg transition-colors"
+                    title="Notifications"
+                  >
+                    <Bell className="w-5 h-5 text-foreground" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-[#3366FF] rounded-full" />
+                    )}
+                  </button>
+                  {notifOpen && (
+                    <div className="absolute right-0 top-full mt-2 z-50">
+                      <NotificationPanel
+                        notifications={notifications}
+                        loading={notifLoading}
+                        unreadCount={unreadCount}
+                        onMarkAllRead={markAllRead}
+                        onMarkRead={markRead}
+                      />
+                    </div>
+                  )}
                 </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/profile")}>
-                  <User className="w-4 h-4 mr-2" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/account")}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Account Settings
-                </DropdownMenuItem>
-                {adminRole && (
-                  <>
+
+                {/* Mobile profile / sign-out menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-1 hover:bg-accent rounded-lg transition-colors">
+                      {userProfile?.photoURL ? (
+                        <img
+                          src={userProfile.photoURL}
+                          alt="Profile"
+                          className="w-7 h-7 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center">
+                          <User className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <div className="px-2 py-1.5">
+                      <p className="text-sm font-medium text-foreground">{userProfile?.displayName}</p>
+                      <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+                    </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate("/admin")}>
-                      <ShieldCheck className="w-4 h-4 mr-2 text-[#3366FF]" />
-                      <span className="text-[#3366FF] font-medium">Admin Panel</span>
+                    <DropdownMenuItem onClick={() => navigate("/profile")}>
+                      <User className="w-4 h-4 mr-2" />
+                      Profile
                     </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                    <DropdownMenuItem onClick={() => navigate("/account")}>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Account Settings
+                    </DropdownMenuItem>
+                    {adminRole && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate("/admin")}>
+                          <ShieldCheck className="w-4 h-4 mr-2 text-[#3366FF]" />
+                          <span className="text-[#3366FF] font-medium">Admin Panel</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </>
+          )}
         </div>
 
         {/* ── DESKTOP nav bar ── */}
