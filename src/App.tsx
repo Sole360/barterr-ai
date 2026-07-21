@@ -35,6 +35,7 @@ import { AuditLogPage } from "@/app/admin/AuditLogPage";
 import { OrderManagementPage } from "@/app/admin/OrderManagementPage";
 import { RevenueDashboardPage } from "@/app/admin/RevenueDashboardPage";
 import { AccountSettingsPage } from "@/app/account/AccountSettingsPage";
+import { FindYourSizePage } from "@/app/find-your-size/FindYourSizePage";
 import { LandingPage } from "@/app/marketing/LandingPage";
 import { AboutPage } from "@/app/marketing/AboutPage";
 import { PricingPage } from "@/app/marketing/PricingPage";
@@ -95,6 +96,10 @@ function AppRoutes() {
           <Route
             path="/account"
             element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/find-your-size"
+            element={<ProtectedRoute><FindYourSizePage /></ProtectedRoute>}
           />
 
           {/* Admin — nested under AdminShell, all guarded by AdminGuard */}

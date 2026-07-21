@@ -446,6 +446,7 @@ export interface AlgoliaHit {
   productName: string;
   brand: string;
   styleId?: string;
+  size?: number;
   productImageUrl: string;
 }
 

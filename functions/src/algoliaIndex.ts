@@ -67,6 +67,7 @@ export const indexPost = onDocumentWritten(
       productName: data.productName ?? "",
       brand: data.brand ?? "",
       styleId: data.styleId ?? "",
+      size: data.size ?? null,
       productImageUrl: data.productImageUrl ?? "",
       apiID: data.apiID ?? "",
       active: data.active,

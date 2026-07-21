@@ -59,6 +59,7 @@ async function reindexListings() {
       productName: data.productName ?? "",
       brand: data.brand ?? "",
       styleId: data.styleId ?? "",
+      size: data.size ?? null,
       productImageUrl: data.productImageUrl ?? "",
       apiID: data.apiID ?? "",
       active: data.active ?? true,
@@ -99,10 +100,24 @@ async function reindexUsers() {
   console.log(`  ✓ Indexed ${objects.length} users.`);
 }
 
+async function configureListingsIndex() {
+  console.log("Configuring user_POSTS index settings...");
+  await algolia.setSettings({
+    indexName: "user_POSTS",
+    indexSettings: {
+      // brand must be facetable for string filters to work; size uses filterOnly
+      // since we don't need facet counts for it (numeric range queries work without).
+      attributesForFaceting: ["brand", "filterOnly(size)"],
+    },
+  });
+  console.log("  ✓ attributesForFaceting set.");
+}
+
 try {
+  await configureListingsIndex();
   await reindexListings();
   await reindexUsers();
-  console.log("\nDone. Both indexes are up to date.");
+  console.log("\nDone. Index configured and both indexes are up to date.");
   process.exit(0);
 } catch (err) {
   console.error("\nError during re-index:", err.message);

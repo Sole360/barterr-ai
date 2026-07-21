@@ -7,6 +7,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   Timestamp,
   Unsubscribe,
@@ -139,13 +140,15 @@ export const addToCollection = async (
 // Subscribe to all active posts (real-time)
 export const subscribeToPosts = (
   callback: (posts: Post[]) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  pageSize = 20
 ): Unsubscribe => {
   const postsRef = collection(db, "posts");
   const q = query(
     postsRef,
     where("active", "==", true),
-    orderBy("postedAt", "desc")
+    orderBy("postedAt", "desc"),
+    limit(pageSize)
   );
 
   return onSnapshot(
@@ -165,14 +168,16 @@ export const subscribeToPosts = (
 export const subscribeToPostsByBrand = (
   brand: string,
   callback: (posts: Post[]) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  pageSize = 20
 ): Unsubscribe => {
   const postsRef = collection(db, "posts");
   const q = query(
     postsRef,
     where("active", "==", true),
     where("brand", "==", brand),
-    orderBy("postedAt", "desc")
+    orderBy("postedAt", "desc"),
+    limit(pageSize)
   );
 
   return onSnapshot(

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+import { Plus, Ruler } from "lucide-react";
 import { Navbar } from "@/components/shared/Navbar";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
@@ -13,37 +14,60 @@ import {
 } from "@/lib/firebase/posts.service";
 
 const brands: BrandFilter[] = ["All", "Nike", "Adidas", "Jordan", "New Balance", "Other"];
+const PAGE_SIZE = 20;
 
 export const DashboardPage = () => {
   const { currentUser, userProfile } = useAuth();
   const { isRunning, startTour } = useTour();
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
+  const [pageLimit, setPageLimit] = useState(PAGE_SIZE);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [addSneakerOpen, setAddSneakerOpen] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // Ref read on every render so the observer never sees a stale closure
+  const canLoadMoreRef = useRef(false);
+
+  // Brand filter change: reset both together so subscription effect fires once
+  const handleBrandChange = (brand: BrandFilter) => {
+    setSelectedBrand(brand);
+    setPageLimit(PAGE_SIZE);
+  };
 
   useEffect(() => {
-    setLoading(true);
     setError(null);
+
+    if (pageLimit === PAGE_SIZE) {
+      // Initial load or brand change — full skeleton
+      setLoading(true);
+      setLoadingMore(false);
+      setPosts([]);
+    } else {
+      // User scrolled to bottom — keep existing results, show bottom spinner
+      setLoadingMore(true);
+    }
 
     const handlePosts = (fetchedPosts: Post[]) => {
       setPosts(fetchedPosts);
       setLoading(false);
+      setLoadingMore(false);
     };
     const handleError = () => {
       setError("Failed to load sneakers");
       setLoading(false);
+      setLoadingMore(false);
     };
 
     const unsubscribe =
       selectedBrand === "All"
-        ? subscribeToPosts(handlePosts, handleError)
-        : subscribeToPostsByBrand(selectedBrand, handlePosts, handleError);
+        ? subscribeToPosts(handlePosts, handleError, pageLimit)
+        : subscribeToPostsByBrand(selectedBrand, handlePosts, handleError, pageLimit);
 
     return () => unsubscribe?.();
-  }, [selectedBrand]);
+  }, [selectedBrand, pageLimit]);
 
   // Auto-start tour on first visit
   useEffect(() => {
@@ -51,8 +75,25 @@ export const DashboardPage = () => {
       const t = setTimeout(startTour, 800);
       return () => clearTimeout(t);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile?.hasSeenTour]);
+
+  // Infinite scroll — set up observer once, read canLoadMoreRef on each intersection
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && canLoadMoreRef.current) {
+          canLoadMoreRef.current = false; // prevent double-fire before next render
+          setPageLimit((p) => p + PAGE_SIZE);
+        }
+      },
+      { rootMargin: "300px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Hide posts where the current user is the sole owner
   const visiblePosts = posts.filter((post) => {
@@ -61,6 +102,9 @@ export const DashboardPage = () => {
     if (owners.length === 0) return true;
     return !(owners.length === 1 && owners[0].userId === currentUser.uid);
   });
+
+  // Update every render so the observer always sees current values
+  canLoadMoreRef.current = !loading && !loadingMore && !error && visiblePosts.length >= pageLimit;
 
   return (
     <PageTransition>
@@ -76,13 +120,13 @@ export const DashboardPage = () => {
               <p className="text-muted-foreground mt-1">Browse sneakers available for trade</p>
             </div>
 
-            {/* Brand filter — horizontal scroll pills */}
+            {/* Brand filter */}
             <div className="mb-6 -mx-4 px-4 overflow-x-auto scrollbar-hide">
               <div className="flex gap-2 min-w-max pb-1">
                 {brands.map((brand) => (
                   <button
                     key={brand}
-                    onClick={() => setSelectedBrand(brand)}
+                    onClick={() => handleBrandChange(brand)}
                     className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
                       selectedBrand === brand
                         ? "bg-[#3366FF] text-white shadow-md shadow-[#3366FF]/25"
@@ -94,6 +138,16 @@ export const DashboardPage = () => {
                 ))}
               </div>
             </div>
+
+            {/* Find your size shortcut */}
+            <Link
+              to="/find-your-size"
+              className="mb-5 flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-[#3366FF]/30 bg-[#3366FF]/5 hover:bg-[#3366FF]/10 transition-colors group w-fit"
+            >
+              <Ruler className="w-4 h-4 text-[#3366FF] shrink-0" />
+              <span className="text-sm font-semibold text-[#3366FF]">Find your size</span>
+              <span className="text-[#3366FF]/60 group-hover:translate-x-0.5 transition-transform text-sm">→</span>
+            </Link>
 
             {/* Results count */}
             {!loading && !error && (
@@ -115,7 +169,7 @@ export const DashboardPage = () => {
               </div>
             )}
 
-            {/* Loading skeleton */}
+            {/* Initial loading skeleton */}
             {loading && !error && (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
                 {[...Array(8)].map((_, i) => (
@@ -155,6 +209,16 @@ export const DashboardPage = () => {
                 </p>
               </div>
             )}
+
+            {/* Bottom spinner while fetching more */}
+            {loadingMore && (
+              <div className="flex justify-center py-8">
+                <div className="w-6 h-6 rounded-full border-2 border-[#3366FF]/30 border-t-[#3366FF] animate-spin" />
+              </div>
+            )}
+
+            {/* Invisible sentinel — IntersectionObserver watches this */}
+            <div ref={sentinelRef} className="h-1" />
           </div>
         </main>
 
