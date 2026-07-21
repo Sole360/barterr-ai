@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/shared/Navbar";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
+import { BrandPickerSheet, KNOWN_BRANDS } from "@/components/shared/BrandPickerSheet";
 import { searchClient, ALGOLIA_INDEX } from "@/lib/algolia/config";
 import { getPostById } from "@/lib/firebase/posts.service";
 import type { AlgoliaHit, Post, BrandFilter } from "@/types";
@@ -11,12 +12,14 @@ const SIZES = [
   10, 10.5, 11, 11.5, 12, 12.5, 13, 14, 15,
 ];
 
-const BRANDS: BrandFilter[] = ["All", "Nike", "Adidas", "Jordan", "New Balance", "Other"];
+const PINNED_BRANDS: BrandFilter[] = ["All", "Nike", "Adidas", "Jordan", "New Balance", "Other"];
 const PAGE_SIZE = 24;
 
 export const FindYourSizePage = () => {
   const [selectedSizes, setSelectedSizes] = useState<number[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
+  const [customBrand, setCustomBrand] = useState<string>("OTHER_ALL");
+  const [brandSheetOpen, setBrandSheetOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [results, setResults] = useState<AlgoliaHit[]>([]);
   const [totalHits, setTotalHits] = useState(0);
@@ -29,6 +32,7 @@ export const FindYourSizePage = () => {
   const fetchPage = async (
     sizes: number[],
     brand: BrandFilter,
+    custom: string,
     pageNum: number,
     append: boolean
   ) => {
@@ -38,7 +42,14 @@ export const FindYourSizePage = () => {
 
     try {
       const sizeFilter = sizes.map((s) => `size = ${s}`).join(" OR ");
-      const brandFilter = brand !== "All" ? ` AND brand:"${brand}"` : "";
+      const brandFilter =
+        brand === "All"
+          ? ""
+          : brand === "Other" && custom === "OTHER_ALL"
+          ? KNOWN_BRANDS.map((b) => ` AND NOT brand:"${b}"`).join("")
+          : brand === "Other"
+          ? ` AND brand:"${custom}"`
+          : ` AND brand:"${brand}"`;
       const filters = `(${sizeFilter})${brandFilter}`;
 
       const { results: searchResults } = await searchClient.search<AlgoliaHit>([
@@ -77,25 +88,33 @@ export const FindYourSizePage = () => {
     }
   };
 
-  // New filter selection — reset to page 0, replace results
-  const applyFilter = (sizes: number[], brand: BrandFilter) => {
+  const applyFilter = (sizes: number[], brand: BrandFilter, custom: string) => {
     setSelectedSizes(sizes);
     setSelectedBrand(brand);
+    setCustomBrand(custom);
     setPage(0);
     setResults([]);
     setTotalHits(0);
-    fetchPage(sizes, brand, 0, false);
+    fetchPage(sizes, brand, custom, 0, false);
   };
 
   const toggleSize = (size: number) => {
     const next = selectedSizes.includes(size)
       ? selectedSizes.filter((s) => s !== size)
       : [...selectedSizes, size];
-    applyFilter(next, selectedBrand);
+    applyFilter(next, selectedBrand, customBrand);
   };
 
   const changeBrand = (brand: BrandFilter) => {
-    applyFilter(selectedSizes, brand);
+    if (brand === "Other") {
+      setBrandSheetOpen(true);
+      return;
+    }
+    applyFilter(selectedSizes, brand, "OTHER_ALL");
+  };
+
+  const handleCustomBrandSelect = (brand: string) => {
+    applyFilter(selectedSizes, "Other", brand);
   };
 
   const clearSizes = () => {
@@ -115,7 +134,7 @@ export const FindYourSizePage = () => {
           canLoadMoreRef.current = false;
           const nextPage = page + 1;
           setPage(nextPage);
-          fetchPage(selectedSizes, selectedBrand, nextPage, true);
+          fetchPage(selectedSizes, selectedBrand, customBrand, nextPage, true);
         }
       },
       { rootMargin: "300px" }
@@ -123,7 +142,7 @@ export const FindYourSizePage = () => {
     observer.observe(el);
     return () => observer.disconnect();
     // Re-create observer whenever page/filters change so closure values are fresh
-  }, [page, selectedSizes, selectedBrand]);
+  }, [page, selectedSizes, selectedBrand, customBrand]);
 
   const handleSelectPost = async (postId: string) => {
     try {
@@ -159,21 +178,35 @@ export const FindYourSizePage = () => {
             {/* Brand filter */}
             <div className="mb-4 -mx-4 px-4 overflow-x-auto scrollbar-hide">
               <div className="flex gap-2 min-w-max pb-1">
-                {BRANDS.map((brand) => (
-                  <button
-                    key={brand}
-                    onClick={() => changeBrand(brand)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
-                      selectedBrand === brand
-                        ? "bg-[#3366FF] text-white shadow-md shadow-[#3366FF]/25"
-                        : "bg-card text-foreground border border-border hover:border-[#3366FF]/50"
-                    }`}
-                  >
-                    {brand}
-                  </button>
-                ))}
+                {PINNED_BRANDS.map((brand) => {
+                  const isActive = selectedBrand === brand;
+                  const label =
+                    brand === "Other" && isActive && customBrand !== "OTHER_ALL"
+                      ? customBrand
+                      : brand;
+                  return (
+                    <button
+                      key={brand}
+                      onClick={() => changeBrand(brand)}
+                      className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                        isActive
+                          ? "bg-[#3366FF] text-white shadow-md shadow-[#3366FF]/25"
+                          : "bg-card text-foreground border border-border hover:border-[#3366FF]/50"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            <BrandPickerSheet
+              open={brandSheetOpen}
+              onClose={() => setBrandSheetOpen(false)}
+              activeBrand={selectedBrand === "Other" ? customBrand : ""}
+              onSelect={handleCustomBrandSelect}
+            />
 
             {/* Size picker */}
             <div className="mb-6">

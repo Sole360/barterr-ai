@@ -5,6 +5,7 @@ import { Navbar } from "@/components/shared/Navbar";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
 import { PageTransition } from "@/components/shared/PageTransition";
+import { BrandPickerSheet, KNOWN_BRANDS } from "@/components/shared/BrandPickerSheet";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useTour } from "@/lib/contexts/tour.context";
 import type { Post, BrandFilter } from "@/types";
@@ -13,13 +14,16 @@ import {
   subscribeToPostsByBrand,
 } from "@/lib/firebase/posts.service";
 
-const brands: BrandFilter[] = ["All", "Nike", "Adidas", "Jordan", "New Balance", "Other"];
+const PINNED_BRANDS: BrandFilter[] = ["All", "Nike", "Adidas", "Jordan", "New Balance", "Other"];
 const PAGE_SIZE = 20;
 
 export const DashboardPage = () => {
   const { currentUser, userProfile } = useAuth();
   const { isRunning, startTour } = useTour();
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
+  // customBrand: "OTHER_ALL" = all non-featured brands, any other string = specific brand like "Gucci"
+  const [customBrand, setCustomBrand] = useState<string>("OTHER_ALL");
+  const [brandSheetOpen, setBrandSheetOpen] = useState(false);
   const [pageLimit, setPageLimit] = useState(PAGE_SIZE);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [addSneakerOpen, setAddSneakerOpen] = useState(false);
@@ -28,12 +32,20 @@ export const DashboardPage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  // Ref read on every render so the observer never sees a stale closure
   const canLoadMoreRef = useRef(false);
 
-  // Brand filter change: reset both together so subscription effect fires once
   const handleBrandChange = (brand: BrandFilter) => {
+    if (brand === "Other") {
+      setBrandSheetOpen(true);
+      return;
+    }
     setSelectedBrand(brand);
+    setPageLimit(PAGE_SIZE);
+  };
+
+  const handleCustomBrandSelect = (brand: string) => {
+    setCustomBrand(brand);
+    setSelectedBrand("Other");
     setPageLimit(PAGE_SIZE);
   };
 
@@ -61,13 +73,17 @@ export const DashboardPage = () => {
       setLoadingMore(false);
     };
 
+    // "Other" + specific brand (e.g. Gucci) → brand subscription; OTHER_ALL → fetch all, filter client-side
     const unsubscribe =
-      selectedBrand === "All"
+      selectedBrand === "All" ||
+      (selectedBrand === "Other" && customBrand === "OTHER_ALL")
         ? subscribeToPosts(handlePosts, handleError, pageLimit)
+        : selectedBrand === "Other"
+        ? subscribeToPostsByBrand(customBrand, handlePosts, handleError, pageLimit)
         : subscribeToPostsByBrand(selectedBrand, handlePosts, handleError, pageLimit);
 
     return () => unsubscribe?.();
-  }, [selectedBrand, pageLimit]);
+  }, [selectedBrand, customBrand, pageLimit]);
 
   // Auto-start tour on first visit
   useEffect(() => {
@@ -95,12 +111,16 @@ export const DashboardPage = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Hide posts where the current user is the sole owner
   const visiblePosts = posts.filter((post) => {
-    if (!currentUser) return true;
-    const owners = post.owners ?? [];
-    if (owners.length === 0) return true;
-    return !(owners.length === 1 && owners[0].userId === currentUser.uid);
+    // Hide the current user's own sole-owner listings
+    if (currentUser) {
+      const owners = post.owners ?? [];
+      if (owners.length === 1 && owners[0].userId === currentUser.uid) return false;
+    }
+    // OTHER_ALL = any brand not in the four pinned brands
+    if (selectedBrand === "Other" && customBrand === "OTHER_ALL")
+      return !KNOWN_BRANDS.includes(post.brand);
+    return true;
   });
 
   // Update every render so the observer always sees current values
@@ -123,21 +143,35 @@ export const DashboardPage = () => {
             {/* Brand filter */}
             <div className="mb-6 -mx-4 px-4 overflow-x-auto scrollbar-hide">
               <div className="flex gap-2 min-w-max pb-1">
-                {brands.map((brand) => (
-                  <button
-                    key={brand}
-                    onClick={() => handleBrandChange(brand)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
-                      selectedBrand === brand
-                        ? "bg-[#3366FF] text-white shadow-md shadow-[#3366FF]/25"
-                        : "bg-card text-foreground border border-border hover:border-[#3366FF]/50"
-                    }`}
-                  >
-                    {brand}
-                  </button>
-                ))}
+                {PINNED_BRANDS.map((brand) => {
+                  const isActive = selectedBrand === brand;
+                  const label =
+                    brand === "Other" && isActive && customBrand !== "OTHER_ALL"
+                      ? customBrand
+                      : brand;
+                  return (
+                    <button
+                      key={brand}
+                      onClick={() => handleBrandChange(brand)}
+                      className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                        isActive
+                          ? "bg-[#3366FF] text-white shadow-md shadow-[#3366FF]/25"
+                          : "bg-card text-foreground border border-border hover:border-[#3366FF]/50"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            <BrandPickerSheet
+              open={brandSheetOpen}
+              onClose={() => setBrandSheetOpen(false)}
+              activeBrand={selectedBrand === "Other" ? customBrand : ""}
+              onSelect={handleCustomBrandSelect}
+            />
 
             {/* Find your size shortcut */}
             <Link
