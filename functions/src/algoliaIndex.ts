@@ -99,6 +99,14 @@ export const indexUser = onDocumentWritten(
 
     if (!data) return null;
 
+    // Skip re-index if none of the search-relevant fields changed.
+    // This prevents every numNotification increment or address save from
+    // triggering an unnecessary Algolia write operation.
+    const before = event.data?.before?.data();
+    const fingerprint = (d: Record<string, unknown> | undefined) =>
+      [d?.displayName, d?.photoURL, d?.location].join("|");
+    if (before && fingerprint(before) === fingerprint(data)) return null;
+
     const client = getAlgoliaClient();
     try {
       await client.saveObjects({
