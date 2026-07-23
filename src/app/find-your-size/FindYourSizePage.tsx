@@ -3,6 +3,7 @@ import { Navbar } from "@/components/shared/Navbar";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
 import { BrandPickerSheet, KNOWN_BRANDS } from "@/components/shared/BrandPickerSheet";
+import { useAuth } from "@/lib/contexts/auth.context";
 import { searchClient, ALGOLIA_INDEX } from "@/lib/algolia/config";
 import { getPostById } from "@/lib/firebase/posts.service";
 import type { AlgoliaHit, Post, BrandFilter } from "@/types";
@@ -16,6 +17,7 @@ const PINNED_BRANDS: BrandFilter[] = ["All", "Nike", "Adidas", "Jordan", "New Ba
 const PAGE_SIZE = 24;
 
 export const FindYourSizePage = () => {
+  const { userProfile } = useAuth();
   const [selectedSizes, setSelectedSizes] = useState<number[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
   const [customBrand, setCustomBrand] = useState<string>("OTHER_ALL");
@@ -123,6 +125,17 @@ export const FindYourSizePage = () => {
     setTotalHits(0);
     setPage(0);
   };
+
+  // Pre-select the user's onboarding shoe size on first load
+  useEffect(() => {
+    if (!userProfile?.shoeSize) return;
+    const size = userProfile.shoeSize;
+    if (!SIZES.includes(size)) return;
+    setSelectedSizes([size]);
+    fetchPage([size], "All", "OTHER_ALL", 0, false);
+    // Only run once when profile first becomes available
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile?.shoeSize]);
 
   // Infinite scroll observer
   useEffect(() => {
