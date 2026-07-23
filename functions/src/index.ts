@@ -1,4 +1,5 @@
 import { processImageJobs } from "./processImageJobs";
+import { onUserProfileUpdate } from "./profileCascade";
 import { indexPost, unindexPost, indexUser, unindexUser } from "./algoliaIndex";
 import { onNewTradeNotification, onTradeStatusNotification } from "./notificationTriggers";
 import { setAdminRole, disableUser, enableUser, resolveFlaggedAttempt, reviewListing, sendOrderPhotosEmail, cancelOrder } from "./adminActions";
@@ -33,6 +34,8 @@ setGlobalOptions({ maxInstances: 10 });
 export {
   // Image processing
   processImageJobs,
+  // Profile cascade
+  onUserProfileUpdate,
   // Search
   indexPost,
   unindexPost,
