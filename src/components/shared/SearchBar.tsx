@@ -51,6 +51,7 @@ export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
                 hitsPerPage: 8,
                 attributesToRetrieve: [
                   "objectID",
+                  "postId",
                   "productName",
                   "brand",
                   "styleId",
@@ -132,7 +133,7 @@ export const SearchBar = ({ onSelectPost }: SearchBarProps) => {
               {results.map((hit) => (
                 <button
                   key={hit.objectID}
-                  onClick={() => handleSelectResult(hit.objectID)}
+                  onClick={() => handleSelectResult(hit.postId ?? hit.objectID)}
                   className="w-full px-4 py-3 hover:bg-accent flex items-center gap-3 text-left transition-colors"
                 >
                   <div className="w-12 h-12 flex-shrink-0 bg-muted rounded-lg overflow-hidden border border-border/50">

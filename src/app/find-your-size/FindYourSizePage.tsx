@@ -64,6 +64,7 @@ export const FindYourSizePage = () => {
             hitsPerPage: PAGE_SIZE,
             attributesToRetrieve: [
               "objectID",
+              "postId",
               "productName",
               "brand",
               "styleId",
@@ -157,9 +158,9 @@ export const FindYourSizePage = () => {
     // Re-create observer whenever page/filters change so closure values are fresh
   }, [page, selectedSizes, selectedBrand, customBrand]);
 
-  const handleSelectPost = async (postId: string) => {
+  const handleSelectPost = async (hit: AlgoliaHit) => {
     try {
-      const post = await getPostById(postId);
+      const post = await getPostById(hit.postId ?? hit.objectID);
       if (post) setSelectedPost(post);
     } catch (err) {
       console.error("Error loading post:", err);
@@ -318,7 +319,7 @@ export const FindYourSizePage = () => {
                   <SizeResultCard
                     key={hit.objectID}
                     hit={hit}
-                    onClick={() => handleSelectPost(hit.objectID)}
+                    onClick={() => handleSelectPost(hit)}
                   />
                 ))}
               </div>

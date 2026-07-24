@@ -56,6 +56,7 @@ async function reindexListings() {
 
     objects.push({
       objectID: doc.id,
+      postId: data.postId ?? "",
       productName: data.productName ?? "",
       brand: data.brand ?? "",
       styleId: data.styleId ?? "",

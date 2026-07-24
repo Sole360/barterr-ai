@@ -443,6 +443,7 @@ export interface ImageJob {
  */
 export interface AlgoliaHit {
   objectID: string;
+  postId?: string;
   productName: string;
   brand: string;
   styleId?: string;

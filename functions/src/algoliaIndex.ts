@@ -64,6 +64,7 @@ export const indexPost = onDocumentWritten(
 
     const algoliaObject = {
       objectID: postId,
+      postId: data.postId ?? "",
       productName: data.productName ?? "",
       brand: data.brand ?? "",
       styleId: data.styleId ?? "",
