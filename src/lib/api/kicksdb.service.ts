@@ -96,28 +96,29 @@ export async function searchSneakers(query: string): Promise<SearchResult[]> {
   }
 }
 
-// Fetch recent sneaker releases filtered by date and optionally brand
+// Fetch sneakers for the Discover feature.
+// release_date is a string field in KicksDB's index — comparison operators (>) don't work on it.
+// Strategy: brand filter when specified (confirmed working); broad query otherwise.
 export async function fetchRecentReleases(options?: {
   brand?: string;
   limit?: number;
-  daysBack?: number;
 }): Promise<SearchResult[]> {
-  const { brand, limit = 20, daysBack = 90 } = options ?? {};
+  const { brand, limit = 20 } = options ?? {};
 
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - daysBack);
-  const dateStr = cutoff.toISOString().split("T")[0]; // "YYYY-MM-DD"
-
-  let filterStr = `release_date > "${dateStr}"`;
-  if (brand) filterStr += ` AND brand = "${brand}"`;
-
-  const url = `${BASE_URL}/stockx/products?filters=${encodeURIComponent(filterStr)}&limit=${limit}&currency=USD&market=US`;
+  let url: string;
+  if (brand) {
+    const filterStr = `brand = "${brand}"`;
+    url = `${BASE_URL}/stockx/products?filters=${encodeURIComponent(filterStr)}&limit=${limit}&currency=USD&market=US`;
+  } else {
+    // No date filter available on string fields — use a broad query for popular sneakers
+    url = `${BASE_URL}/stockx/products?query=sneakers&limit=${limit}&currency=USD&market=US`;
+  }
 
   try {
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${KICKSDB_API_KEY}` },
     });
-    if (!response.ok) throw new Error("Recent releases fetch failed");
+    if (!response.ok) throw new Error("Discover fetch failed");
     const data = await response.json();
     return (data.data ?? []).map(mapStockXProduct);
   } catch (error) {

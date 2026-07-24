@@ -20,7 +20,6 @@ export const SwipeCardStack = ({
   const [stack, setStack] = useState<SearchResult[]>(initialCards);
   const [fetching, setFetching] = useState(false);
 
-  // Pre-fetch when running low
   useEffect(() => {
     if (stack.length < 3 && !fetching) {
       setFetching(true);
@@ -53,13 +52,15 @@ export const SwipeCardStack = ({
   }, [stack.length, fetching, onEmpty]);
 
   const visible = stack.slice(0, 3);
-
   if (visible.length === 0) return null;
 
   return (
-    <div className="flex flex-col items-center w-full">
-      {/* Card area */}
-      <div className="relative w-full max-w-sm" style={{ height: 480 }}>
+    <div className="flex flex-col items-center w-full flex-1 min-h-0">
+      {/* Card area: fills available space, capped for desktop */}
+      <div
+        className="relative w-full max-w-sm flex-1 min-h-0"
+        style={{ minHeight: 420, maxHeight: 620 }}
+      >
         {[...visible].reverse().map((sneaker, reversedIdx) => {
           const stackIndex = visible.length - 1 - reversedIdx;
           return (
@@ -74,7 +75,6 @@ export const SwipeCardStack = ({
         })}
       </div>
 
-      {/* Action buttons */}
       <SwipeActionButtons onSwipe={handleSwipe} />
     </div>
   );
