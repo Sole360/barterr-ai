@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { collection, getDocs, addDoc, Timestamp } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { fetchRecentReleases } from "@/lib/api/kicksdb.service";
@@ -49,7 +49,8 @@ export const DiscoverPage = () => {
 
       setSwipedSet((prev) => new Set([...prev, sneaker.styleId]));
 
-      addDoc(collection(db, "users", currentUser.uid, "swipes"), {
+      // Use styleId as doc ID for natural dedup + TradeCompose pass-signal lookup
+      setDoc(doc(db, "users", currentUser.uid, "swipes", sneaker.styleId), {
         result,
         brand: sneaker.brand,
         productName: sneaker.name,
@@ -57,7 +58,8 @@ export const DiscoverPage = () => {
         swipedAt: Timestamp.now(),
       })
         .then(async () => {
-          if ((result === "like" || result === "want") && userProfile.shoeSize) {
+          // Only "want" (up swipe) adds to wishlist — "like" is a preference signal only
+          if (result === "want" && userProfile.shoeSize) {
             const postId = await createOrUpdatePost({
               styleId: sneaker.styleId,
               title: sneaker.name,
@@ -100,8 +102,11 @@ export const DiscoverPage = () => {
     <div className="min-h-[100dvh] bg-[#FAFAF8] flex flex-col">
       <Navbar />
 
+      {/* Spacer for fixed top navbar (h-14 mobile, h-16 desktop) */}
+      <div className="h-14 md:h-16 flex-shrink-0" />
+
       {/* Header */}
-      <header className="px-5 pt-5 pb-3 flex-shrink-0">
+      <header className="px-5 pt-3 pb-2 flex-shrink-0">
         {isOnboarding ? (
           <div className="flex items-start justify-between">
             <div>
@@ -126,20 +131,25 @@ export const DiscoverPage = () => {
             </Link>
           </div>
         ) : (
-          <h1 className="text-2xl font-bold text-foreground">
-            New{" "}
-            <span
-              className="bg-clip-text text-transparent"
-              style={{ backgroundImage: "linear-gradient(90deg, #33FF99, #3366FF)" }}
-            >
-              drops
-            </span>
-          </h1>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              New{" "}
+              <span
+                className="bg-clip-text text-transparent"
+                style={{ backgroundImage: "linear-gradient(90deg, #33FF99, #3366FF)" }}
+              >
+                drops
+              </span>
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Swipe right to like · up to want · left to pass
+            </p>
+          </div>
         )}
       </header>
 
-      {/* Card area */}
-      <main className="flex-1 flex flex-col items-center px-4 pb-4 min-h-0">
+      {/* Card area — pb-20 clears the fixed bottom tab bar (h-14) on mobile */}
+      <main className="flex-1 flex flex-col items-center px-4 pb-20 md:pb-6 min-h-0">
         {isEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 px-6">
             <div

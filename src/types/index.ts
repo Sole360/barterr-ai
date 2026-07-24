@@ -28,6 +28,12 @@ export interface User {
   preferences?: {
     brands?: Record<string, number>;
   };
+  recentLikes?: {
+    styleId: string;
+    brand: string;
+    productName: string;
+    imageUrl: string;
+  }[];
 }
 
 export interface Address {

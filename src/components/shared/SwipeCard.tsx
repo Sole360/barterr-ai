@@ -192,6 +192,7 @@ export const SwipeActionButtons = ({
         </svg>
       </div>
       <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Want</span>
+      <span className="text-[9px] text-muted-foreground/60 -mt-0.5">Wishlist</span>
     </button>
 
     {/* Like */}

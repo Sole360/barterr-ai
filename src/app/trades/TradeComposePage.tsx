@@ -95,6 +95,7 @@ export const TradeComposePage = () => {
   const [posterProfile, setPosterProfile] = useState<{
     shoeSize?: number;
     styleTags?: string[];
+    recentLikes?: { styleId: string; brand: string; productName: string; imageUrl: string }[];
   } | null>(null);
   const [posterWishlisted, setPosterWishlisted] = useState(false);
   const [posterPassedOnThis, setPosterPassedOnThis] = useState(false);
@@ -234,7 +235,11 @@ export const TradeComposePage = () => {
         const userSnap = await getDoc(doc(db, "users", posterId));
         if (alive && userSnap.exists()) {
           const d = userSnap.data();
-          setPosterProfile({ shoeSize: d.shoeSize, styleTags: d.styleTags });
+          setPosterProfile({
+            shoeSize: d.shoeSize,
+            styleTags: d.styleTags,
+            recentLikes: d.recentLikes ?? [],
+          });
         }
 
         // Check if they've wishlisted this post (any size)
@@ -634,7 +639,8 @@ export const TradeComposePage = () => {
     posterPassedOnThis ||
     topBrands.length > 0 ||
     posterProfile?.shoeSize ||
-    (posterProfile?.styleTags?.length ?? 0) > 0;
+    (posterProfile?.styleTags?.length ?? 0) > 0 ||
+    (posterProfile?.recentLikes?.length ?? 0) > 0;
 
   const InsightsPanel = () => (
     <div className="w-full rounded-2xl border border-border bg-card p-4 mt-3 space-y-3">
@@ -706,6 +712,34 @@ export const TradeComposePage = () => {
               >
                 {tag}
               </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(posterProfile?.recentLikes?.length ?? 0) > 0 && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-2">
+            <Star className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Recently liked in Discover
+            </span>
+          </div>
+          {/* Horizontal scroll strip — thumbnails only, no text (sneaker names are too long for mobile) */}
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5 scrollbar-none">
+            {posterProfile!.recentLikes!.map((item) => (
+              <div
+                key={item.styleId}
+                className="shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-border"
+                title={item.productName}
+                style={{ background: "linear-gradient(135deg, #F5F3EE, #EAE8FF)" }}
+              >
+                <img
+                  src={item.imageUrl}
+                  alt={item.brand}
+                  className="w-full h-full object-contain p-1"
+                />
+              </div>
             ))}
           </div>
         </div>

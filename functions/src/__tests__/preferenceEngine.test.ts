@@ -156,10 +156,68 @@ describe("onSwipeCreated — preference engine EMA", () => {
     await (onSwipeCreated as any)(
       makeEvent("u1", "style-1", { result: "want", brand: "Nike" })
     );
-    // Update must use the per-brand dot-notation path, not a nested object
+    // Brand update must be a flat dot-notation string key, not a nested object
     const updateArg = mockUpdate.mock.calls[0][0];
-    expect(Object.keys(updateArg)).toEqual(["preferences.brands.Nike"]);
-    expect(updateArg).not.toHaveProperty("preferences");
+    // Use array form so Jest treats the dot as a literal character, not path traversal
+    expect(updateArg).toHaveProperty(["preferences.brands.Nike"]);
+    expect(updateArg).not.toHaveProperty(["preferences"]); // no nested overwrite
+  });
+
+  // ── recentLikes ────────────────────────────────────────────────────────────
+
+  it("adds to recentLikes for 'like' swipes", async () => {
+    const { mockUpdate } = setupFirestore();
+    await (onSwipeCreated as any)(
+      makeEvent("u1", "style-abc", { result: "like", brand: "Nike", productName: "Nike Dunk Low", imageUrl: "https://img.test/dunk.jpg" })
+    );
+    const updateArg = mockUpdate.mock.calls[0][0];
+    expect(updateArg.recentLikes).toHaveLength(1);
+    expect(updateArg.recentLikes[0]).toMatchObject({ styleId: "style-abc", brand: "Nike" });
+  });
+
+  it("adds to recentLikes for 'want' swipes", async () => {
+    const { mockUpdate } = setupFirestore();
+    await (onSwipeCreated as any)(
+      makeEvent("u1", "style-xyz", { result: "want", brand: "Jordan", productName: "Jordan 1", imageUrl: "https://img.test/j1.jpg" })
+    );
+    const updateArg = mockUpdate.mock.calls[0][0];
+    expect(updateArg.recentLikes).toBeDefined();
+    expect(updateArg.recentLikes[0].styleId).toBe("style-xyz");
+  });
+
+  it("does NOT add to recentLikes for 'pass' swipes", async () => {
+    const { mockUpdate } = setupFirestore();
+    await (onSwipeCreated as any)(
+      makeEvent("u1", "style-1", { result: "pass", brand: "Nike" })
+    );
+    const updateArg = mockUpdate.mock.calls[0][0];
+    expect(updateArg).not.toHaveProperty("recentLikes");
+  });
+
+  it("caps recentLikes at 5 and deduplicates by styleId", async () => {
+    const existing = [
+      { styleId: "a", brand: "Nike", productName: "A", imageUrl: "" },
+      { styleId: "b", brand: "Adidas", productName: "B", imageUrl: "" },
+      { styleId: "c", brand: "Jordan", productName: "C", imageUrl: "" },
+      { styleId: "d", brand: "Puma", productName: "D", imageUrl: "" },
+      { styleId: "e", brand: "Vans", productName: "E", imageUrl: "" },
+    ];
+    // setupFirestore needs to return existing recentLikes on the user doc
+    const mockUpdate = jest.fn().mockResolvedValue({});
+    const mockGet = jest.fn().mockResolvedValue({
+      data: () => ({ preferences: { brands: {} }, recentLikes: existing }),
+    });
+    (getFirestore as jest.Mock).mockReturnValue({
+      collection: () => ({ doc: () => ({ get: mockGet, update: mockUpdate }) }),
+    });
+
+    await (onSwipeCreated as any)(
+      makeEvent("u1", "style-new", { result: "like", brand: "New Balance", productName: "NB 550", imageUrl: "" })
+    );
+    const updateArg = mockUpdate.mock.calls[0][0];
+    expect(updateArg.recentLikes).toHaveLength(5);
+    expect(updateArg.recentLikes[0].styleId).toBe("style-new"); // newest first
+    expect(updateArg.recentLikes.map((l: any) => l.styleId)).not.toContain("e"); // oldest dropped
   });
 
   // ── Error handling ─────────────────────────────────────────────────────────
