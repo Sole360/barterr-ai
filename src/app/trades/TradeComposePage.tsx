@@ -4,6 +4,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -23,7 +24,7 @@ import type {
   TradeReviewYourItem,
   TheirListingRow,
 } from "@/types";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Ruler, Shirt, Sparkles, Star } from "lucide-react";
 
 /**
  * Helper: clamp a number between min/max.
@@ -87,6 +88,12 @@ export const TradeComposePage = () => {
   // -----------------------------
   const [theirListings, setTheirListings] = useState<TheirListingRow[]>([]);
   const [theirLoading, setTheirLoading] = useState(true);
+
+  // -----------------------------
+  // Data: poster profile insights
+  // -----------------------------
+  const [posterProfile, setPosterProfile] = useState<{ shoeSize?: number; styleTags?: string[] } | null>(null);
+  const [posterWishlisted, setPosterWishlisted] = useState(false);
 
   // -----------------------------------------
   // EFFECT 1: Load requested listing doc
@@ -209,6 +216,34 @@ export const TradeComposePage = () => {
 
     return () => unsub();
   }, [posterId]);
+
+  // -----------------------------------------
+  // EFFECT 4b: Fetch poster profile + wishlist check
+  // -----------------------------------------
+  useEffect(() => {
+    if (!posterId || !postId) return;
+    let alive = true;
+
+    const run = async () => {
+      try {
+        // Fetch user profile for size + style tags
+        const userSnap = await getDoc(doc(db, "users", posterId));
+        if (alive && userSnap.exists()) {
+          const d = userSnap.data();
+          setPosterProfile({ shoeSize: d.shoeSize, styleTags: d.styleTags });
+        }
+
+        // Check if they've wishlisted this post (any size)
+        const wishSnap = await getDocs(query(collection(db, "users", posterId, "wishlist"), where("postId", "==", postId)));
+        if (alive) setPosterWishlisted(!wishSnap.empty);
+      } catch {
+        // non-critical — insights just won't show
+      }
+    };
+
+    run();
+    return () => { alive = false; };
+  }, [posterId, postId]);
 
   // -----------------------------------------
   // EFFECT 4: Fetch current prices for all listings
@@ -390,6 +425,18 @@ export const TradeComposePage = () => {
     return () => cancelAnimationFrame(raf);
   }, [tradeLikelihood]);
 
+  // Derive top brands from their collection (up to 3)
+  const topBrands = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const l of theirListings) {
+      if (l.brand) counts[l.brand] = (counts[l.brand] ?? 0) + 1;
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([brand]) => brand);
+  }, [theirListings]);
+
   // -----------------------------
   // Gate: must have both sides + >=50% likelihood
   // -----------------------------
@@ -536,6 +583,63 @@ export const TradeComposePage = () => {
     );
   };
 
+  const hasInsights = posterWishlisted || topBrands.length > 0 || posterProfile?.shoeSize || (posterProfile?.styleTags?.length ?? 0) > 0;
+
+  const InsightsPanel = () => (
+    <div className="w-full rounded-2xl border border-border bg-card p-4 mt-3 space-y-3">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        About {requestedListing?.userName?.split(" ")[0] ?? "them"}
+      </div>
+
+      {posterWishlisted && (
+        <div className="flex items-center gap-2 text-sm font-semibold text-[#33C97B]">
+          <Star className="w-3.5 h-3.5 fill-[#33C97B] shrink-0" />
+          They have this on their wishlist
+        </div>
+      )}
+
+      {topBrands.length > 0 && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Shirt className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Brand interests</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {topBrands.map((brand) => (
+              <span key={brand} className="px-2.5 py-1 rounded-full bg-accent text-xs font-semibold text-foreground">
+                {brand}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {posterProfile?.shoeSize && (
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Ruler className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-xs font-semibold uppercase tracking-wide">Shoe size</span>
+          <span className="text-sm font-bold text-foreground">{posterProfile.shoeSize}</span>
+        </div>
+      )}
+
+      {(posterProfile?.styleTags?.length ?? 0) > 0 && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Style</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {posterProfile!.styleTags!.map((tag) => (
+              <span key={tag} className="px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground">
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   // -----------------------------
   // Render
   // -----------------------------
@@ -643,6 +747,9 @@ export const TradeComposePage = () => {
             </div>
           </div>
 
+          {/* Poster insights (mobile) */}
+          {hasInsights && <InsightsPanel />}
+
           {/* Their Listing */}
           <div>
             <div className="flex items-baseline justify-between mb-2">
@@ -735,6 +842,9 @@ export const TradeComposePage = () => {
                 </>
               )}
             </div>
+
+            {/* Poster insights below likelihood meter */}
+            {hasInsights && <InsightsPanel />}
           </section>
 
           {/* RIGHT: Their Listing */}
