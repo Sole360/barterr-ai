@@ -1,5 +1,6 @@
 import { processImageJobs } from "./processImageJobs";
 import { onUserProfileUpdate } from "./profileCascade";
+import { onSwipeCreated } from "./preferenceEngine";
 import { indexPost, unindexPost, indexUser, unindexUser } from "./algoliaIndex";
 import { onNewTradeNotification, onTradeStatusNotification } from "./notificationTriggers";
 import { setAdminRole, disableUser, enableUser, resolveFlaggedAttempt, reviewListing, sendOrderPhotosEmail, cancelOrder } from "./adminActions";
@@ -36,6 +37,8 @@ export {
   processImageJobs,
   // Profile cascade
   onUserProfileUpdate,
+  // Preference engine
+  onSwipeCreated,
   // Search
   indexPost,
   unindexPost,

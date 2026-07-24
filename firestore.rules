@@ -53,6 +53,17 @@ service cloud.firestore {
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
         allow create, delete: if false;
       }
+
+      // Swipes subcollection — Discover feature taste signals
+      // Owner writes their own swipes; any authenticated user can get a single
+      // swipe doc by exact path (needed for TradeCompose pass-signal check).
+      // Listing all swipes (query) is restricted to the owner only.
+      match /swipes/{styleId} {
+        allow get: if isAuthenticated();
+        allow list: if isOwner(userId);
+        allow create, update: if isOwner(userId);
+        allow delete: if false;
+      }
     }
 
     // Posts collection (sneaker posts)

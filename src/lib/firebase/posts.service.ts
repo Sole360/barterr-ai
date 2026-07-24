@@ -260,6 +260,16 @@ export const subscribeToListings = (
 };
 
 // One-time read operations (for when you don't need real-time)
+
+// Get a single post by styleId (one-time read)
+export const getPostByStyleId = async (styleId: string): Promise<Post | null> => {
+  const postsRef = collection(db, "posts");
+  const q = query(postsRef, where("styleId", "==", styleId));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  return { ...snapshot.docs[0].data(), postId: snapshot.docs[0].id } as Post;
+};
+
 // Get a single post by ID (one-time read)
 export const getPostById = async (postId: string): Promise<Post | null> => {
   const postRef = doc(db, "posts", postId);

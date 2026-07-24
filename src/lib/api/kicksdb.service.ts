@@ -96,6 +96,36 @@ export async function searchSneakers(query: string): Promise<SearchResult[]> {
   }
 }
 
+// Fetch recent sneaker releases filtered by date and optionally brand
+export async function fetchRecentReleases(options?: {
+  brand?: string;
+  limit?: number;
+  daysBack?: number;
+}): Promise<SearchResult[]> {
+  const { brand, limit = 20, daysBack = 90 } = options ?? {};
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysBack);
+  const dateStr = cutoff.toISOString().split("T")[0]; // "YYYY-MM-DD"
+
+  let filterStr = `release_date > "${dateStr}"`;
+  if (brand) filterStr += ` AND brand = "${brand}"`;
+
+  const url = `${BASE_URL}/stockx/products?filters=${encodeURIComponent(filterStr)}&limit=${limit}&currency=USD&market=US`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${KICKSDB_API_KEY}` },
+    });
+    if (!response.ok) throw new Error("Recent releases fetch failed");
+    const data = await response.json();
+    return (data.data ?? []).map(mapStockXProduct);
+  } catch (error) {
+    console.error("fetchRecentReleases error:", error);
+    return [];
+  }
+}
+
 // Fetch current market price for a product
 export const fetchCurrentPrice = async (
   apiID: string,

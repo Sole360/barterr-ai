@@ -52,7 +52,7 @@ export const OnboardingPage = () => {
         onboardingFinished: true,
       });
 
-      navigate("/dashboard");
+      navigate("/discover?onboarding=true");
     } catch (error) {
       console.error("Onboarding error:", error);
       setLoading(false);
@@ -87,7 +87,8 @@ export const OnboardingPage = () => {
                   </FormControl>
                   <FormMessage className="text-red-500" />
                   <p className="text-sm text-muted-foreground mt-1">
-                    This helps us match you with the right trades
+                    Required — we use your size to automatically add sneakers to
+                    your wishlist when you discover them
                   </p>
                 </FormItem>
               )}

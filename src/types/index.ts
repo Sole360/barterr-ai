@@ -22,8 +22,12 @@ export interface User {
   address?: Address;
   onboardingFinished: boolean;
   hasSeenTour?: boolean;
+  hasSeenDiscovery?: boolean;
   coverPhoto?: string;
   styleTags?: string[];
+  preferences?: {
+    brands?: Record<string, number>;
+  };
 }
 
 export interface Address {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Ruler } from "lucide-react";
+import { Plus, Ruler, Compass } from "lucide-react";
 import { Navbar } from "@/components/shared/Navbar";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
@@ -173,15 +173,25 @@ export const DashboardPage = () => {
               onSelect={handleCustomBrandSelect}
             />
 
-            {/* Find your size shortcut */}
-            <Link
-              to="/find-your-size"
-              className="mb-5 flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-[#3366FF]/30 bg-[#3366FF]/5 hover:bg-[#3366FF]/10 transition-colors group w-fit"
-            >
-              <Ruler className="w-4 h-4 text-[#3366FF] shrink-0" />
-              <span className="text-sm font-semibold text-[#3366FF]">Find your size</span>
-              <span className="text-[#3366FF]/60 group-hover:translate-x-0.5 transition-transform text-sm">→</span>
-            </Link>
+            {/* Shortcut cards */}
+            <div className="mb-5 flex flex-wrap gap-3">
+              <Link
+                to="/find-your-size"
+                className="flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-[#3366FF]/30 bg-[#3366FF]/5 hover:bg-[#3366FF]/10 transition-colors group"
+              >
+                <Ruler className="w-4 h-4 text-[#3366FF] shrink-0" />
+                <span className="text-sm font-semibold text-[#3366FF]">Find your size</span>
+                <span className="text-[#3366FF]/60 group-hover:translate-x-0.5 transition-transform text-sm">→</span>
+              </Link>
+              <Link
+                to="/discover"
+                className="flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-[#33FF99]/40 bg-[#33FF99]/10 hover:bg-[#33FF99]/20 transition-colors group"
+              >
+                <Compass className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-sm font-semibold text-emerald-700">Discover new drops</span>
+                <span className="text-emerald-600/60 group-hover:translate-x-0.5 transition-transform text-sm">→</span>
+              </Link>
+            </div>
 
             {/* Results count */}
             {!loading && !error && (

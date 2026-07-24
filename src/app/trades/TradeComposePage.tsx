@@ -61,7 +61,7 @@ export const TradeComposePage = () => {
   // Pricing state
   // -----------------------------
   const [fetchedPrices, setFetchedPrices] = useState<Map<string, number>>(
-    new Map()
+    new Map(),
   );
   const [pricesFetching, setPricesFetching] = useState(false);
 
@@ -77,7 +77,7 @@ export const TradeComposePage = () => {
   // (requestedPost was unused and removed to fix strict builds)
   // -----------------------------
   const [requestedListing, setRequestedListing] = useState<Listing | null>(
-    null
+    null,
   );
   const [requestedLoading, setRequestedLoading] = useState(true);
 
@@ -92,8 +92,12 @@ export const TradeComposePage = () => {
   // -----------------------------
   // Data: poster profile insights
   // -----------------------------
-  const [posterProfile, setPosterProfile] = useState<{ shoeSize?: number; styleTags?: string[] } | null>(null);
+  const [posterProfile, setPosterProfile] = useState<{
+    shoeSize?: number;
+    styleTags?: string[];
+  } | null>(null);
   const [posterWishlisted, setPosterWishlisted] = useState(false);
+  const [posterPassedOnThis, setPosterPassedOnThis] = useState(false);
 
   // -----------------------------------------
   // EFFECT 1: Load requested listing doc
@@ -121,7 +125,7 @@ export const TradeComposePage = () => {
                 ...(listingSnap.data() as Listing),
                 id: listingSnap.id,
               } as Listing)
-            : null
+            : null,
         );
       } catch (e) {
         console.error("TradeCompose load requested listing error:", e);
@@ -165,7 +169,7 @@ export const TradeComposePage = () => {
     const q = query(
       collection(db, "listings"),
       where("userId", "==", posterId),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
 
     const unsub = onSnapshot(
@@ -211,7 +215,7 @@ export const TradeComposePage = () => {
         console.error("TradeCompose their listings snapshot error:", err);
         setTheirListings([]);
         setTheirLoading(false);
-      }
+      },
     );
 
     return () => unsub();
@@ -234,15 +238,36 @@ export const TradeComposePage = () => {
         }
 
         // Check if they've wishlisted this post (any size)
-        const wishSnap = await getDocs(query(collection(db, "users", posterId, "wishlist"), where("postId", "==", postId)));
+        const wishSnap = await getDocs(
+          query(
+            collection(db, "users", posterId, "wishlist"),
+            where("postId", "==", postId),
+          ),
+        );
         if (alive) setPosterWishlisted(!wishSnap.empty);
+
+        // Check if the poster has swiped "pass" on the requested sneaker
+        const postSnap = await getDoc(doc(db, "posts", postId));
+        const styleId: string | undefined = postSnap.exists()
+          ? postSnap.data()?.styleId
+          : undefined;
+        if (alive && styleId) {
+          const swipeRef = doc(db, "users", posterId, "swipes", styleId);
+          const swipeSnap = await getDoc(swipeRef);
+          if (alive)
+            setPosterPassedOnThis(
+              swipeSnap.exists() && swipeSnap.data()?.result === "pass",
+            );
+        }
       } catch {
         // non-critical — insights just won't show
       }
     };
 
     run();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [posterId, postId]);
 
   // -----------------------------------------
@@ -282,7 +307,7 @@ export const TradeComposePage = () => {
             const price = await fetchCurrentPrice(
               listing.apiID,
               listing.source,
-              listing.tradeValue
+              listing.tradeValue,
             );
             if (price !== null) {
               priceMap.set(listing.id, price);
@@ -290,15 +315,12 @@ export const TradeComposePage = () => {
               priceMap.set(listing.id, listing.tradeValue);
             }
           } catch (e) {
-            console.error(
-              `Error fetching price for ${listing.id}:`,
-              e
-            );
+            console.error(`Error fetching price for ${listing.id}:`, e);
             if (listing.tradeValue) {
               priceMap.set(listing.id, listing.tradeValue);
             }
           }
-        })
+        }),
       );
 
       setFetchedPrices(priceMap);
@@ -315,13 +337,13 @@ export const TradeComposePage = () => {
   // -----------------------------
   const toggleYourListing = (id: string) => {
     setSelectedYourListingIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
   const toggleTheirListing = (id: string) => {
     setSelectedTheirListingIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
@@ -361,14 +383,14 @@ export const TradeComposePage = () => {
   const yourSneakerTotal = useMemo(() => {
     return selectedYourListingIds.reduce(
       (sum, id) => sum + (myValueById.get(id) ?? 0),
-      0
+      0,
     );
   }, [selectedYourListingIds, myValueById]);
 
   const theirSneakerTotal = useMemo(() => {
     return selectedTheirListingIds.reduce(
       (sum, id) => sum + (theirValueById.get(id) ?? 0),
-      0
+      0,
     );
   }, [selectedTheirListingIds, theirValueById]);
 
@@ -521,19 +543,29 @@ export const TradeComposePage = () => {
   // -----------------------------
 
   // Shared horizontal-scroll card for mobile
-  const MobileYourCard = ({ item }: { item: typeof myCollectionItems[0] }) => {
+  const MobileYourCard = ({
+    item,
+  }: {
+    item: (typeof myCollectionItems)[0];
+  }) => {
     const selected = selectedYourListingIds.includes(item.id);
     return (
       <button
         type="button"
         onClick={() => toggleYourListing(item.id)}
         className={`snap-start shrink-0 w-[112px] rounded-xl border-2 p-2 text-left transition-all ${
-          selected ? "border-[#3366FF] bg-[#3366FF]/8" : "border-border bg-card hover:bg-accent"
+          selected
+            ? "border-[#3366FF] bg-[#3366FF]/8"
+            : "border-border bg-card hover:bg-accent"
         }`}
       >
         <div className="relative aspect-square rounded-lg bg-white overflow-hidden">
           {item.imageUrl && (
-            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain p-1" />
+            <img
+              src={item.imageUrl}
+              alt={item.name}
+              className="w-full h-full object-contain p-1"
+            />
           )}
           {selected && (
             <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[#3366FF] flex items-center justify-center shadow-sm">
@@ -542,14 +574,18 @@ export const TradeComposePage = () => {
           )}
         </div>
         <div className="mt-1.5">
-          <div className="text-[11px] font-semibold line-clamp-2 leading-tight">{item.name}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">{item.size} · {item.value}</div>
+          <div className="text-[11px] font-semibold line-clamp-2 leading-tight">
+            {item.name}
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">
+            {item.size} · {item.value}
+          </div>
         </div>
       </button>
     );
   };
 
-  const MobileTheirCard = ({ l }: { l: typeof theirListings[0] }) => {
+  const MobileTheirCard = ({ l }: { l: (typeof theirListings)[0] }) => {
     const isRequested = l.id === listingId;
     const selected = selectedTheirListingIds.includes(l.id);
     return (
@@ -557,12 +593,18 @@ export const TradeComposePage = () => {
         type="button"
         onClick={() => toggleTheirListing(l.id)}
         className={`snap-start shrink-0 w-[112px] rounded-xl border-2 p-2 text-left transition-all ${
-          selected ? "border-[#3366FF] bg-[#3366FF]/8" : "border-border bg-card hover:bg-accent"
+          selected
+            ? "border-[#3366FF] bg-[#3366FF]/8"
+            : "border-border bg-card hover:bg-accent"
         }`}
       >
         <div className="relative aspect-square rounded-lg bg-white overflow-hidden">
           {l.imageUrl && (
-            <img src={l.imageUrl} alt={l.title} className="w-full h-full object-contain p-1" />
+            <img
+              src={l.imageUrl}
+              alt={l.title}
+              className="w-full h-full object-contain p-1"
+            />
           )}
           {selected && (
             <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[#3366FF] flex items-center justify-center shadow-sm">
@@ -576,14 +618,23 @@ export const TradeComposePage = () => {
           )}
         </div>
         <div className="mt-1.5">
-          <div className="text-[11px] font-semibold line-clamp-2 leading-tight">{l.title}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Sz {l.size} · {l.condition}</div>
+          <div className="text-[11px] font-semibold line-clamp-2 leading-tight">
+            {l.title}
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">
+            Sz {l.size} · {l.condition}
+          </div>
         </div>
       </button>
     );
   };
 
-  const hasInsights = posterWishlisted || topBrands.length > 0 || posterProfile?.shoeSize || (posterProfile?.styleTags?.length ?? 0) > 0;
+  const hasInsights =
+    posterWishlisted ||
+    posterPassedOnThis ||
+    topBrands.length > 0 ||
+    posterProfile?.shoeSize ||
+    (posterProfile?.styleTags?.length ?? 0) > 0;
 
   const InsightsPanel = () => (
     <div className="w-full rounded-2xl border border-border bg-card p-4 mt-3 space-y-3">
@@ -598,15 +649,28 @@ export const TradeComposePage = () => {
         </div>
       )}
 
+      {posterPassedOnThis && (
+        <div className="flex items-center gap-2 text-sm font-semibold text-amber-600">
+          <span className="shrink-0">⚠️</span>
+          They passed on this sneaker in Discover already — they may not be
+          interested in trading for it.
+        </div>
+      )}
+
       {topBrands.length > 0 && (
         <div>
           <div className="flex items-center gap-1.5 mb-1.5">
             <Shirt className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Brand interests</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Brand interests
+            </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {topBrands.map((brand) => (
-              <span key={brand} className="px-2.5 py-1 rounded-full bg-accent text-xs font-semibold text-foreground">
+              <span
+                key={brand}
+                className="px-2.5 py-1 rounded-full bg-accent text-xs font-semibold text-foreground"
+              >
                 {brand}
               </span>
             ))}
@@ -617,8 +681,12 @@ export const TradeComposePage = () => {
       {posterProfile?.shoeSize && (
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Ruler className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-xs font-semibold uppercase tracking-wide">Shoe size</span>
-          <span className="text-sm font-bold text-foreground">{posterProfile.shoeSize}</span>
+          <span className="text-xs font-semibold uppercase tracking-wide">
+            Shoe size
+          </span>
+          <span className="text-sm font-bold text-foreground">
+            {posterProfile.shoeSize}
+          </span>
         </div>
       )}
 
@@ -626,11 +694,16 @@ export const TradeComposePage = () => {
         <div>
           <div className="flex items-center gap-1.5 mb-1.5">
             <Sparkles className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Style</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Style
+            </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {posterProfile!.styleTags!.map((tag) => (
-              <span key={tag} className="px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground">
+              <span
+                key={tag}
+                className="px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground"
+              >
                 {tag}
               </span>
             ))}
@@ -646,10 +719,13 @@ export const TradeComposePage = () => {
   return (
     <div className="min-h-[100dvh] bg-background">
       <div className="flex min-h-[100dvh] w-full flex-col px-4 py-4 md:mx-auto md:px-8 md:py-6">
-
         {/* Header */}
         <div className="relative flex w-full items-center">
-          <Button variant="ghost" className="-ml-2 gap-2" onClick={() => navigate(-1)}>
+          <Button
+            variant="ghost"
+            className="-ml-2 gap-2"
+            onClick={() => navigate(-1)}
+          >
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
@@ -665,14 +741,20 @@ export const TradeComposePage = () => {
             <div className="text-sm font-semibold">Trade Summary</div>
             <div className="flex items-center gap-4 shrink-0">
               <div className="text-right">
-                <div className="text-[10px] text-white/70 leading-none">Net</div>
+                <div className="text-[10px] text-white/70 leading-none">
+                  Net
+                </div>
                 <div className="mt-0.5 text-sm font-bold leading-none tabular-nums">
                   {netTotal >= 0 ? "+" : "-"}${Math.abs(netTotal).toFixed(0)}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[10px] text-white/70 leading-none">Likelihood</div>
-                <div className="mt-0.5 text-sm font-bold leading-none tabular-nums">{animatedLikelihood}%</div>
+                <div className="text-[10px] text-white/70 leading-none">
+                  Likelihood
+                </div>
+                <div className="mt-0.5 text-sm font-bold leading-none tabular-nums">
+                  {animatedLikelihood}%
+                </div>
               </div>
             </div>
           </div>
@@ -685,7 +767,11 @@ export const TradeComposePage = () => {
                 <span className="text-xs font-bold">${addCash}</span>
               </div>
               <input
-                type="range" min={0} max={500} step={10} value={addCash}
+                type="range"
+                min={0}
+                max={500}
+                step={10}
+                value={addCash}
                 onChange={(e) => setAddCash(Number(e.target.value))}
                 className="mt-1.5 w-full accent-white"
               />
@@ -696,7 +782,11 @@ export const TradeComposePage = () => {
                 <span className="text-xs font-bold">${askCash}</span>
               </div>
               <input
-                type="range" min={0} max={500} step={10} value={askCash}
+                type="range"
+                min={0}
+                max={500}
+                step={10}
+                value={askCash}
                 onChange={(e) => setAskCash(Number(e.target.value))}
                 className="mt-1.5 w-full accent-white"
               />
@@ -709,15 +799,21 @@ export const TradeComposePage = () => {
           {/* Your Offer */}
           <div>
             <div className="flex items-baseline justify-between mb-2">
-              <h2 className="text-sm font-semibold text-[#3366FF]">Your Offer</h2>
+              <h2 className="text-sm font-semibold text-[#3366FF]">
+                Your Offer
+              </h2>
               <span className="text-xs text-muted-foreground">
                 {selectedYourListingIds.length} selected
               </span>
             </div>
             {myCollectionLoading ? (
-              <p className="text-sm text-muted-foreground px-1">Loading your collection…</p>
+              <p className="text-sm text-muted-foreground px-1">
+                Loading your collection…
+              </p>
             ) : myCollectionItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-1">You have no listings yet.</p>
+              <p className="text-sm text-muted-foreground px-1">
+                You have no listings yet.
+              </p>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
                 {myCollectionItems.map((item) => (
@@ -743,7 +839,9 @@ export const TradeComposePage = () => {
               <div className="text-sm font-bold text-[#3366FF] tabular-nums leading-none">
                 {pricesFetching ? "—" : `${animatedLikelihood}%`}
               </div>
-              <div className="text-[9px] text-muted-foreground leading-none mt-0.5">likely</div>
+              <div className="text-[9px] text-muted-foreground leading-none mt-0.5">
+                likely
+              </div>
             </div>
           </div>
 
@@ -753,15 +851,21 @@ export const TradeComposePage = () => {
           {/* Their Listing */}
           <div>
             <div className="flex items-baseline justify-between mb-2">
-              <h2 className="text-sm font-semibold text-[#3366FF]">Their Listing</h2>
+              <h2 className="text-sm font-semibold text-[#3366FF]">
+                Their Listing
+              </h2>
               <span className="text-xs text-muted-foreground">
                 {requestedListing?.userName ?? ""}
               </span>
             </div>
             {theirLoading || requestedLoading ? (
-              <p className="text-sm text-muted-foreground px-1">Loading their listings…</p>
+              <p className="text-sm text-muted-foreground px-1">
+                Loading their listings…
+              </p>
             ) : theirListings.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-1">This user has no listings.</p>
+              <p className="text-sm text-muted-foreground px-1">
+                This user has no listings.
+              </p>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
                 {theirListings.map((l) => (
@@ -777,49 +881,80 @@ export const TradeComposePage = () => {
           {/* LEFT: Your Offer */}
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-semibold text-[#3366FF]">Your Offer</h2>
-              <div className="text-xs text-muted-foreground">Selected: {selectedYourListingIds.length}</div>
+              <h2 className="text-sm font-semibold text-[#3366FF]">
+                Your Offer
+              </h2>
+              <div className="text-xs text-muted-foreground">
+                Selected: {selectedYourListingIds.length}
+              </div>
             </div>
             <div className="flex-1 min-h-0 overflow-auto space-y-3">
               {myCollectionLoading ? (
-                <div className="text-sm text-muted-foreground">Loading your collection…</div>
+                <div className="text-sm text-muted-foreground">
+                  Loading your collection…
+                </div>
               ) : myCollectionItems.length === 0 ? (
-                <div className="rounded-lg border p-4 text-sm text-muted-foreground">You have no listings yet.</div>
-              ) : myCollectionItems.map((item) => {
-                const selected = selectedYourListingIds.includes(item.id);
-                return (
-                  <button
-                    key={item.id} type="button"
-                    onClick={() => toggleYourListing(item.id)}
-                    className={`w-full rounded-xl border p-4 text-left transition ${
-                      selected ? "border-[#3366FF] bg-[#3366FF]/10" : "border-border hover:bg-accent"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 shrink-0">
-                        {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain" />}
+                <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                  You have no listings yet.
+                </div>
+              ) : (
+                myCollectionItems.map((item) => {
+                  const selected = selectedYourListingIds.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleYourListing(item.id)}
+                      className={`w-full rounded-xl border p-4 text-left transition ${
+                        selected
+                          ? "border-[#3366FF] bg-[#3366FF]/10"
+                          : "border-border hover:bg-accent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 shrink-0">
+                          {item.imageUrl && (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="h-full w-full object-contain"
+                            />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="line-clamp-2 text-lg font-semibold">
+                            {item.name}
+                          </div>
+                          <div className="mt-0.5 text-sm text-muted-foreground">
+                            {item.size} · {item.value}
+                          </div>
+                        </div>
+                        <div
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selected ? "border-[#3366FF]" : "border-border"}`}
+                        >
+                          {selected && (
+                            <div className="h-3 w-3 rounded-full bg-[#3366FF]" />
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="line-clamp-2 text-lg font-semibold">{item.name}</div>
-                        <div className="mt-0.5 text-sm text-muted-foreground">{item.size} · {item.value}</div>
-                      </div>
-                      <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selected ? "border-[#3366FF]" : "border-border"}`}>
-                        {selected && <div className="h-3 w-3 rounded-full bg-[#3366FF]" />}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </section>
 
           {/* CENTER: Likelihood Meter */}
           <section className="flex min-h-0 flex-col items-center justify-start">
             <div className="w-full rounded-2xl border border-[#3366FF]/20 bg-card p-5 text-center shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-wide text-[#3366FF]">Trade Likelihood</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-[#3366FF]">
+                Trade Likelihood
+              </div>
               {pricesFetching ? (
                 <div className="mt-4 space-y-2">
-                  <div className="text-sm text-muted-foreground">Fetching current prices...</div>
+                  <div className="text-sm text-muted-foreground">
+                    Fetching current prices...
+                  </div>
                   <div className="mx-auto h-1 w-24 overflow-hidden rounded-full bg-muted">
                     <div className="h-full w-1/2 animate-pulse bg-[#3366FF]" />
                   </div>
@@ -827,8 +962,12 @@ export const TradeComposePage = () => {
               ) : (
                 <>
                   <div className="mt-2 flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-extrabold text-foreground">{animatedLikelihood}</span>
-                    <span className="text-lg font-semibold text-muted-foreground">%</span>
+                    <span className="text-5xl font-extrabold text-foreground">
+                      {animatedLikelihood}
+                    </span>
+                    <span className="text-lg font-semibold text-muted-foreground">
+                      %
+                    </span>
                   </div>
                   <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -837,7 +976,9 @@ export const TradeComposePage = () => {
                     />
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
-                    Aim for <span className="font-semibold text-[#3366FF]">50%+</span> to continue.
+                    Aim for{" "}
+                    <span className="font-semibold text-[#3366FF]">50%+</span>{" "}
+                    to continue.
                   </div>
                 </>
               )}
@@ -850,53 +991,88 @@ export const TradeComposePage = () => {
           {/* RIGHT: Their Listing */}
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-semibold text-[#3366FF]">Their Listing</h2>
-              <div className="text-xs text-muted-foreground">{requestedListing?.userName ?? ""}</div>
+              <h2 className="text-sm font-semibold text-[#3366FF]">
+                Their Listing
+              </h2>
+              <div className="text-xs text-muted-foreground">
+                {requestedListing?.userName ?? ""}
+              </div>
             </div>
             <div className="flex-1 min-h-0 overflow-auto space-y-3">
               {theirLoading || requestedLoading ? (
-                <div className="text-sm text-muted-foreground">Loading their listings…</div>
+                <div className="text-sm text-muted-foreground">
+                  Loading their listings…
+                </div>
               ) : theirListings.length === 0 ? (
-                <div className="rounded-lg border p-4 text-sm text-muted-foreground">This user has no listings.</div>
-              ) : theirListings.map((l) => {
-                const isRequested = l.id === listingId;
-                const selected = selectedTheirListingIds.includes(l.id);
-                return (
-                  <button
-                    key={l.id} type="button"
-                    onClick={() => toggleTheirListing(l.id)}
-                    className={`w-full rounded-xl border p-4 text-left transition ${
-                      selected ? "border-[#3366FF] bg-[#3366FF]/10" : "border-border hover:bg-accent"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 shrink-0">
-                        {l.imageUrl && <img src={l.imageUrl} alt={l.title} className="h-full w-full object-contain" />}
+                <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                  This user has no listings.
+                </div>
+              ) : (
+                theirListings.map((l) => {
+                  const isRequested = l.id === listingId;
+                  const selected = selectedTheirListingIds.includes(l.id);
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => toggleTheirListing(l.id)}
+                      className={`w-full rounded-xl border p-4 text-left transition ${
+                        selected
+                          ? "border-[#3366FF] bg-[#3366FF]/10"
+                          : "border-border hover:bg-accent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg bg-muted p-2 shrink-0">
+                          {l.imageUrl && (
+                            <img
+                              src={l.imageUrl}
+                              alt={l.title}
+                              className="h-full w-full object-contain"
+                            />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="line-clamp-2 text-lg font-semibold">
+                            {l.title}
+                          </div>
+                          <div className="mt-0.5 text-sm text-muted-foreground">
+                            Sz {l.size} · {l.condition}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          {isRequested && (
+                            <span className="rounded-full border border-[#3366FF] px-3 py-1 text-xs text-[#3366FF]">
+                              Requested
+                            </span>
+                          )}
+                          {selected && (
+                            <span className="rounded-full bg-[#3366FF]/10 px-3 py-1 text-xs font-semibold text-[#3366FF]">
+                              Selected
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="line-clamp-2 text-lg font-semibold">{l.title}</div>
-                        <div className="mt-0.5 text-sm text-muted-foreground">Sz {l.size} · {l.condition}</div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        {isRequested && (
-                          <span className="rounded-full border border-[#3366FF] px-3 py-1 text-xs text-[#3366FF]">Requested</span>
-                        )}
-                        {selected && (
-                          <span className="rounded-full bg-[#3366FF]/10 px-3 py-1 text-xs font-semibold text-[#3366FF]">Selected</span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </section>
         </div>
 
         {/* Desktop action */}
         <div className="hidden md:block pt-4 mx-auto w-64">
-          <Button className="w-full bg-[#3366FF]" disabled={continueDisabled} onClick={handleContinue}>
-            {pricesFetching ? "Fetching prices…" : continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
+          <Button
+            className="w-full bg-[#3366FF]"
+            disabled={continueDisabled}
+            onClick={handleContinue}
+          >
+            {pricesFetching
+              ? "Fetching prices…"
+              : continueDisabled
+                ? "Increase likelihood to 50%+"
+                : "Continue"}
           </Button>
         </div>
 
@@ -908,7 +1084,11 @@ export const TradeComposePage = () => {
               disabled={continueDisabled}
               onClick={handleContinue}
             >
-              {pricesFetching ? "Fetching prices…" : continueDisabled ? "Increase likelihood to 50%+" : "Continue"}
+              {pricesFetching
+                ? "Fetching prices…"
+                : continueDisabled
+                  ? "Increase likelihood to 50%+"
+                  : "Continue"}
             </Button>
           </div>
         </div>
