@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/contexts/auth.context";
 import { fetchRecentReleases } from "@/lib/api/kicksdb.service";
 import { createOrUpdatePost, addToWishlist } from "@/lib/firebase/posts.service";
 import { SwipeCardStack } from "@/components/shared/SwipeCardStack";
+import { Navbar } from "@/components/shared/Navbar";
 import type { SearchResult } from "@/types";
 
 const DISCOVER_BRANDS = ["Nike", "Jordan", "Adidas", "New Balance", "Asics", "Puma", "Reebok", "Vans"];
@@ -97,8 +98,10 @@ export const DiscoverPage = () => {
 
   return (
     <div className="min-h-[100dvh] bg-[#FAFAF8] flex flex-col">
+      <Navbar />
+
       {/* Header */}
-      <header className="px-5 pt-10 pb-3 flex-shrink-0">
+      <header className="px-5 pt-5 pb-3 flex-shrink-0">
         {isOnboarding ? (
           <div className="flex items-start justify-between">
             <div>
@@ -123,20 +126,15 @@ export const DiscoverPage = () => {
             </Link>
           </div>
         ) : (
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              New{" "}
-              <span
-                className="bg-clip-text text-transparent"
-                style={{ backgroundImage: "linear-gradient(90deg, #33FF99, #3366FF)" }}
-              >
-                drops
-              </span>
-            </h1>
-            <p className="text-xs text-muted-foreground mt-1 tracking-wide uppercase font-medium">
-              Right = like · Up = want · Left = pass
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-foreground">
+            New{" "}
+            <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: "linear-gradient(90deg, #33FF99, #3366FF)" }}
+            >
+              drops
+            </span>
+          </h1>
         )}
       </header>
 

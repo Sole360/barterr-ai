@@ -112,11 +112,14 @@ export const DashboardPage = () => {
   }, []);
 
   const visiblePosts = posts.filter((post) => {
-    // Hide the current user's own sole-owner listings
-    if (currentUser) {
-      const owners = post.owners ?? [];
-      if (owners.length === 1 && owners[0].userId === currentUser.uid) return false;
-    }
+    // Only show posts that have at least one owner (i.e. someone has it in their collection)
+    // Posts created from wishlist/discover swipes have owners:[] and should not surface here
+    const owners = post.owners ?? [];
+    if (owners.length === 0) return false;
+
+    // Hide posts where the current user is the only owner
+    if (currentUser && owners.length === 1 && owners[0].userId === currentUser.uid) return false;
+
     // OTHER_ALL = any brand not in the four pinned brands
     if (selectedBrand === "Other" && customBrand === "OTHER_ALL")
       return !KNOWN_BRANDS.includes(post.brand);
