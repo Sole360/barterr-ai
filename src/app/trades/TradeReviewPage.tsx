@@ -13,6 +13,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import useEmblaCarousel from "embla-carousel-react";
 import {
   Elements,
+  ExpressCheckoutElement,
   PaymentElement,
   useElements,
   useStripe,
@@ -72,6 +73,45 @@ const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
   const elements = useElements();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [expressAvailable, setExpressAvailable] = useState(false);
+
+  const savePaymentMethodId = async (paymentMethodId: string) => {
+    const functions = getFunctions(undefined, "us-central1");
+    const res = await httpsCallable(functions, "setDefaultPaymentMethod")({ paymentMethodId });
+    const data = res.data as SetDefaultPaymentMethodResponse;
+    if (!data?.defaultPaymentMethodId) {
+      toast({ title: "Payment not saved", description: "Could not confirm payment method.", variant: "destructive" });
+      return;
+    }
+    onSaved(data.defaultPaymentMethodId, data.card ? { brand: data.card.brand ?? "", last4: data.card.last4 ?? "" } : null);
+  };
+
+  const handleExpressConfirm = async () => {
+    if (!stripe || !elements || submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await stripe.confirmSetup({
+        elements,
+        confirmParams: { return_url: window.location.href },
+        redirect: "if_required",
+      });
+      if (result.error) {
+        toast({ title: "Payment not saved", description: result.error.message ?? "Please try again.", variant: "destructive" });
+        return;
+      }
+      const pm = result.setupIntent?.payment_method;
+      const pmId = typeof pm === "string" ? pm : (pm?.id ?? "");
+      if (!pmId) {
+        toast({ title: "Payment not saved", description: "Stripe did not return a payment method.", variant: "destructive" });
+        return;
+      }
+      await savePaymentMethodId(pmId);
+    } catch {
+      toast({ title: "Payment not saved", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!stripe || !elements || submitting) return;
@@ -106,16 +146,7 @@ const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
         return;
       }
 
-      const functions = getFunctions(undefined, "us-central1");
-      const res = await httpsCallable(functions, "setDefaultPaymentMethod")({ paymentMethodId });
-      const data = res.data as SetDefaultPaymentMethodResponse;
-
-      if (!data?.defaultPaymentMethodId) {
-        toast({ title: "Payment not saved", description: "Could not confirm payment method.", variant: "destructive" });
-        return;
-      }
-
-      onSaved(data.defaultPaymentMethodId, data.card ? { brand: data.card.brand ?? "", last4: data.card.last4 ?? "" } : null);
+      await savePaymentMethodId(paymentMethodId);
     } catch {
       toast({ title: "Payment not saved", description: "Please try again.", variant: "destructive" });
     } finally {
@@ -125,7 +156,25 @@ const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
 
   return (
     <div className="mt-3 rounded-xl border border-border bg-background p-4">
-      <PaymentElement />
+      <ExpressCheckoutElement
+        onReady={({ availablePaymentMethods }) => setExpressAvailable(!!availablePaymentMethods)}
+        onConfirm={handleExpressConfirm}
+        options={{
+          paymentMethods: {
+            applePay: "always",
+            googlePay: "always",
+            link: "never",
+          },
+        }}
+      />
+      {expressAvailable && (
+        <div className="my-4 flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted-foreground">or pay with card</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+      )}
+      <PaymentElement options={{ wallets: { applePay: "never", googlePay: "never" } }} />
       <Button
         className="w-full bg-[#3366FF] mt-4"
         type="button"
