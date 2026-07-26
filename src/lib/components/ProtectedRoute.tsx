@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/contexts/auth.context";
+import { auth } from "@/lib/firebase/config";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -37,7 +38,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <>{children}</>;
   }
 
-  if (!currentUser.emailVerified) {
+  // Read directly from Firebase SDK — React state can lag behind after reload()
+  if (!auth.currentUser?.emailVerified) {
     return (
       <Navigate
         to={`/verify-email?email=${encodeURIComponent(

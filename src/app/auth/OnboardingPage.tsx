@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { usePlacesAutocomplete, type ParsedAddress } from "@/lib/hooks/usePlacesAutocomplete";
 
 const ALL_BRANDS = ["Nike", "Jordan", "Adidas", "New Balance", "Asics", "Puma", "Reebok", "Vans"];
 const BRAND_ROWS = [
@@ -14,11 +15,6 @@ const BRAND_ROWS = [
 const MENS_SIZES = [4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 15, 16];
 const WOMENS_SIZES = [4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12];
 
-const US_STATES = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA",
-  "ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK",
-  "OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC",
-];
 
 const HEX_W = 92;
 const HEX_H = 80;
@@ -74,12 +70,23 @@ export const OnboardingPage = () => {
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
-  const [state, setState] = useState("");
+  const [addrState, setAddrState] = useState("");
   const [zip, setZip] = useState("");
   const [sizeError, setSizeError] = useState("");
   const [loading, setLoading] = useState(false);
+  const addressDropdownRef = useRef<HTMLDivElement>(null);
   const { updateUserProfile } = useAuth();
   const navigate = useNavigate();
+
+  const onAddressSelect = useCallback((parsed: ParsedAddress) => {
+    setStreet(parsed.street);
+    setCity(parsed.city);
+    setAddrState(parsed.state);
+    setZip(parsed.zip);
+  }, []);
+
+  const { suggestions, fetchSuggestions, selectSuggestion, clearSuggestions } =
+    usePlacesAutocomplete(onAddressSelect);
 
   const sizes = sizeGender === "mens" ? MENS_SIZES : WOMENS_SIZES;
 
@@ -120,8 +127,8 @@ export const OnboardingPage = () => {
         selectedBrands.forEach((b) => { brands[b] = 0.65; });
         updates.preferences = { brands };
       }
-      if (!skipAddress && street && city && state && zip) {
-        updates.address = { street, city, state, zip, country: "US" };
+      if (!skipAddress && street && city && addrState && zip) {
+        updates.address = { street, city, state: addrState, zip, country: "US" };
       }
       await updateUserProfile(updates);
       navigate("/discover?onboarding=true");
@@ -293,33 +300,51 @@ export const OnboardingPage = () => {
             </p>
 
             <div className="space-y-3">
-              <Input
-                placeholder="Street address"
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-              />
+              <div className="relative" ref={addressDropdownRef}>
+                <Input
+                  value={street}
+                  onChange={(e) => {
+                    setStreet(e.target.value);
+                    fetchSuggestions(e.target.value);
+                  }}
+                  onBlur={() => setTimeout(clearSuggestions, 150)}
+                  placeholder="Start typing your address…"
+                  autoComplete="off"
+                />
+                {suggestions.length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                    {suggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onMouseDown={() => selectSuggestion(s)}
+                        className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors border-b border-border last:border-0"
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   placeholder="City"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                 />
-                <select
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  <option value="">State</option>
-                  {US_STATES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                <Input
+                  placeholder="State"
+                  value={addrState}
+                  onChange={(e) => setAddrState(e.target.value)}
+                  maxLength={2}
+                />
               </div>
               <Input
                 placeholder="ZIP code"
                 value={zip}
                 onChange={(e) => setZip(e.target.value)}
                 maxLength={10}
+                className="max-w-[160px]"
               />
             </div>
 

@@ -9,13 +9,21 @@ import {
   serverTimestamp,
   writeBatch,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import useEmblaCarousel from "embla-carousel-react";
+import {
+  Elements,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
 
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { Button } from "@/components/ui/button";
 import type { TradeReviewDraft } from "@/types/index";
 import { useToast } from "@/hooks/use-toast";
+import { stripePromise } from "@/lib/stripe/stripeClient";
 
 const DRAFT_STORAGE_KEY = "barterr.tradeReviewDraft.v1";
 
@@ -48,6 +56,86 @@ const grossUpForStripe = (netCents: number) => {
   );
   const fee = Math.max(0, gross - netCents);
   return { grossCents: gross, feeCents: fee };
+};
+
+type SetDefaultPaymentMethodResponse = {
+  defaultPaymentMethodId?: string;
+  card?: { brand?: string; last4?: string; expMonth?: number; expYear?: number };
+};
+
+type InlinePaymentFormProps = {
+  onSaved: (pmId: string, card: { brand: string; last4: string } | null) => void;
+};
+
+const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSave = async () => {
+    if (!stripe || !elements || submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await stripe.confirmSetup({
+        elements,
+        confirmParams: { return_url: window.location.href },
+        redirect: "if_required",
+      });
+
+      let paymentMethodId = "";
+      if (result.error) {
+        if (
+          result.error.code === "setup_intent_unexpected_state" &&
+          result.error.setup_intent?.payment_method
+        ) {
+          const pm = result.error.setup_intent.payment_method;
+          paymentMethodId = typeof pm === "string" ? pm : (pm?.id ?? "");
+        }
+        if (!paymentMethodId) {
+          toast({ title: "Payment not saved", description: result.error.message ?? "Please try again.", variant: "destructive" });
+          return;
+        }
+      } else {
+        const pm = result.setupIntent?.payment_method;
+        paymentMethodId = typeof pm === "string" ? pm : (pm?.id ?? "");
+      }
+
+      if (!paymentMethodId) {
+        toast({ title: "Payment not saved", description: "Stripe did not return a payment method.", variant: "destructive" });
+        return;
+      }
+
+      const functions = getFunctions(undefined, "us-central1");
+      const res = await httpsCallable(functions, "setDefaultPaymentMethod")({ paymentMethodId });
+      const data = res.data as SetDefaultPaymentMethodResponse;
+
+      if (!data?.defaultPaymentMethodId) {
+        toast({ title: "Payment not saved", description: "Could not confirm payment method.", variant: "destructive" });
+        return;
+      }
+
+      onSaved(data.defaultPaymentMethodId, data.card ? { brand: data.card.brand ?? "", last4: data.card.last4 ?? "" } : null);
+    } catch {
+      toast({ title: "Payment not saved", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-background p-4">
+      <PaymentElement />
+      <Button
+        className="w-full bg-[#3366FF] mt-4"
+        type="button"
+        disabled={!stripe || !elements || submitting}
+        onClick={handleSave}
+      >
+        {submitting ? "Saving…" : "Save payment method"}
+      </Button>
+    </div>
+  );
 };
 
 type TradeReviewLocationState = {
@@ -228,6 +316,34 @@ export const TradeReviewPage = () => {
       alive = false;
     };
   }, [uid]);
+
+  // --- Inline payment form: fetch setup intent when no PM saved ---
+  const [setupClientSecret, setSetupClientSecret] = useState("");
+  const [setupLoading, setSetupLoading] = useState(false);
+
+  useEffect(() => {
+    if (billingLoading || paymentReady || !uid) return;
+    let alive = true;
+    setSetupLoading(true);
+    (async () => {
+      try {
+        const functions = getFunctions(undefined, "us-central1");
+        const res = await httpsCallable(functions, "createSetupIntent")({ forceNew: true });
+        const data = res.data as { clientSecret?: string };
+        if (alive && data.clientSecret) setSetupClientSecret(data.clientSecret);
+      } catch {
+        // leave empty — user can use "Change" link if it fails
+      } finally {
+        if (alive) setSetupLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [billingLoading, paymentReady, uid]);
+
+  const elementsOptions = useMemo(
+    () => setupClientSecret ? { clientSecret: setupClientSecret, appearance: { theme: "stripe" as const } } : null,
+    [setupClientSecret],
+  );
 
   // --- Pricing (guard draft null) ---
   const senderSneakerCount = draft?.yourItems.length ?? 0;
@@ -567,15 +683,12 @@ export const TradeReviewPage = () => {
         <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="text-sm font-semibold">Checkout</div>
 
-          {/* Payment Method row */}
-          <div className="mt-3 flex items-center justify-between border-b border-border pb-3">
-            <div className="text-sm text-muted-foreground">Payment Method</div>
-
-            {billingLoading ? (
-              <div className="text-sm font-semibold text-muted-foreground">
-                Loading…
-              </div>
-            ) : paymentReady ? (
+          {/* Payment Method */}
+          {billingLoading ? (
+            <div className="mt-3 text-sm text-muted-foreground pb-3 border-b border-border">Loading payment method…</div>
+          ) : paymentReady ? (
+            <div className="mt-3 flex items-center justify-between border-b border-border pb-3">
+              <div className="text-sm text-muted-foreground">Payment Method</div>
               <div className="flex items-center gap-3">
                 <div className="text-sm font-semibold">
                   {cardSummary?.brand && cardSummary?.last4
@@ -590,16 +703,33 @@ export const TradeReviewPage = () => {
                   Change
                 </button>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={goToPaymentMethod}
-                className="text-sm font-semibold text-[#3366FF]"
-              >
-                Add
-              </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="mt-3 border-b border-border pb-4">
+              <div className="text-sm font-semibold mb-1">Payment Method</div>
+              <div className="text-xs text-muted-foreground mb-2">Add a payment method to send your trade</div>
+              {setupLoading ? (
+                <div className="text-sm text-muted-foreground py-6 text-center">Loading payment form…</div>
+              ) : elementsOptions ? (
+                <Elements key={setupClientSecret} stripe={stripePromise} options={elementsOptions}>
+                  <InlinePaymentForm
+                    onSaved={(pmId, card) => {
+                      setDefaultPaymentMethodId(pmId);
+                      setCardSummary(card ? { brand: card.brand, last4: card.last4 } : null);
+                    }}
+                  />
+                </Elements>
+              ) : (
+                <button
+                  type="button"
+                  onClick={goToPaymentMethod}
+                  className="text-sm font-semibold text-[#3366FF]"
+                >
+                  Add payment method
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Line items */}
           <div className="mt-3 space-y-2">

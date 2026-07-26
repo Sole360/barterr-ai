@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { X } from "lucide-react";
 import {
   collection,
   doc,
@@ -58,8 +58,16 @@ export const DiscoverPage = () => {
   const [swipedSet, setSwipedSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [isEmpty, setIsEmpty] = useState(false);
+
+  // Show insight tip modal once per device
+  useEffect(() => {
+    if (!localStorage.getItem("barterr.discoverTipSeen")) {
+      setTipOpen(true);
+    }
+  }, []);
   const [onboardingSwipeCount, setOnboardingSwipeCount] = useState(0);
   const onboardingDone = isOnboarding && onboardingSwipeCount >= 5;
+  const [tipOpen, setTipOpen] = useState(false);
 
   // Shuffle brands once per session for variety across visits
   const shuffledBrandsRef = useRef(shuffle([...DISCOVER_BRANDS]));
@@ -206,22 +214,6 @@ export const DiscoverPage = () => {
         )}
       </header>
 
-      {/* Insight strip — sits between header and cards, not inline with title text */}
-      {!isEmpty && (
-        <div className="flex-shrink-0 px-5 pt-1 pb-3">
-          <div className="flex items-start gap-2.5 border-l-2 border-[#3366FF]/50 pl-3">
-            <Sparkles
-              size={12}
-              className="mt-0.5 shrink-0"
-              style={{ color: "#3366FF" }}
-            />
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Each swipe helps your future trade partners send you better offers
-              based on what you're interested in.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Card area — pb-20 clears the fixed bottom tab bar (h-14) on mobile */}
       <main className="flex-1 flex flex-col items-center px-4 pb-20 md:pb-6 min-h-0">
@@ -278,6 +270,41 @@ export const DiscoverPage = () => {
           />
         )}
       </main>
+
+      {/* One-time tip modal */}
+      {tipOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-6 sm:pb-0">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => { setTipOpen(false); localStorage.setItem("barterr.discoverTipSeen", "1"); }}
+          />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-card p-6 shadow-2xl">
+            <button
+              onClick={() => { setTipOpen(false); localStorage.setItem("barterr.discoverTipSeen", "1"); }}
+              className="absolute top-4 right-4 p-1 rounded-full hover:bg-accent transition-colors"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center mb-4"
+              style={{ background: "linear-gradient(135deg, #33FF99, #3366FF)" }}
+            >
+              <span className="text-lg">👟</span>
+            </div>
+            <h3 className="text-base font-bold text-foreground mb-2">Swipe to teach Barterr your taste</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Each swipe helps your future trade partners send you better offers based on what you're into.
+            </p>
+            <button
+              onClick={() => { setTipOpen(false); localStorage.setItem("barterr.discoverTipSeen", "1"); }}
+              className="mt-5 w-full py-2.5 rounded-xl text-sm font-semibold text-white"
+              style={{ background: "linear-gradient(135deg, #33FF99 0%, #3366FF 100%)" }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

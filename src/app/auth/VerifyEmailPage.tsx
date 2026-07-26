@@ -13,6 +13,13 @@ export const VerifyEmailPage = () => {
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
 
+  // Skip the page entirely if already verified (e.g. user navigated back here after verifying)
+  useEffect(() => {
+    if (auth.currentUser?.emailVerified) {
+      navigate("/onboarding", { replace: true });
+    }
+  }, [navigate]);
+
   // Poll every 3s — Firebase won't update emailVerified without a reload()
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -20,7 +27,7 @@ export const VerifyEmailPage = () => {
         await auth.currentUser?.reload();
         if (auth.currentUser?.emailVerified) {
           clearInterval(interval);
-          navigate("/onboarding");
+          navigate("/onboarding", { replace: true });
         }
       } catch {
         // ignore transient network errors during poll
