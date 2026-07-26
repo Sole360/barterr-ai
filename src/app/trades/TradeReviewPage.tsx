@@ -160,9 +160,10 @@ const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
         onReady={({ availablePaymentMethods }) => setExpressAvailable(!!availablePaymentMethods)}
         onConfirm={handleExpressConfirm}
         options={{
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           paymentMethods: {
-            applePay: "auto",
-            googlePay: "auto",
+            applePay: "always" as any,
+            googlePay: "always" as any,
             link: "never",
           },
         }}
@@ -839,7 +840,7 @@ export const TradeReviewPage = () => {
         </section>
 
         {/* Sticky action — sits above the mobile bottom tab bar (h-14 + safe area) */}
-        <div className="fixed left-0 right-0 z-50 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] md:bottom-0">
+        <div className="fixed left-0 right-0 z-50 bottom-[calc(4.5rem_+_env(safe-area-inset-bottom))] md:bottom-0">
           <div className="border-t border-border bg-background/90 px-4 pb-3 pt-3 backdrop-blur">
             <div className="mx-auto w-full max-w-7xl">
               <Button

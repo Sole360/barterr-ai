@@ -239,7 +239,7 @@ export const MessageThreadPage = () => {
       </div>
 
       {/* Input bar */}
-      <div className="fixed left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] md:bottom-0">
+      <div className="fixed left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3 bottom-[calc(4.5rem_+_env(safe-area-inset-bottom))] md:bottom-0">
         <div className="mx-auto max-w-2xl space-y-2">
           {/* Hard block warning */}
           {blocked && (

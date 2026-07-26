@@ -663,7 +663,7 @@ export const TradeCounterPage = () => {
         </div>
 
         {/* Mobile sticky action bar */}
-        <div className="fixed left-0 right-0 z-50 md:hidden bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]">
+        <div className="fixed left-0 right-0 z-50 md:hidden bottom-[calc(4.5rem_+_env(safe-area-inset-bottom))]">
           <div className="border-t border-border bg-background/90 px-4 pb-3 pt-3 backdrop-blur">
             <Button
               className="w-full bg-[#3366FF]"
