@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 import {
   collection,
@@ -51,12 +51,15 @@ function dedupeByStyleId(results: SearchResult[]): SearchResult[] {
 export const DiscoverPage = () => {
   const { currentUser, userProfile } = useAuth();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const isOnboarding = searchParams.get("onboarding") === "true";
 
   const [initialCards, setInitialCards] = useState<SearchResult[]>([]);
   const [swipedSet, setSwipedSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [isEmpty, setIsEmpty] = useState(false);
+  const [onboardingSwipeCount, setOnboardingSwipeCount] = useState(0);
+  const onboardingDone = isOnboarding && onboardingSwipeCount >= 5;
 
   // Shuffle brands once per session for variety across visits
   const shuffledBrandsRef = useRef(shuffle([...DISCOVER_BRANDS]));
@@ -111,6 +114,10 @@ export const DiscoverPage = () => {
 
       setSwipedSet((prev) => new Set([...prev, sneaker.styleId]));
 
+      if (isOnboarding) {
+        setOnboardingSwipeCount((c) => c + 1);
+      }
+
       // Use styleId as doc ID for natural dedup + TradeCompose pass-signal lookup
       setDoc(doc(db, "users", currentUser.uid, "swipes", sneaker.styleId), {
         result,
@@ -143,7 +150,7 @@ export const DiscoverPage = () => {
         })
         .catch((err) => console.error("Swipe write failed:", err));
     },
-    [currentUser, userProfile],
+    [currentUser, userProfile, isOnboarding],
   );
 
   if (loading) {
@@ -218,7 +225,27 @@ export const DiscoverPage = () => {
 
       {/* Card area — pb-20 clears the fixed bottom tab bar (h-14) on mobile */}
       <main className="flex-1 flex flex-col items-center px-4 pb-20 md:pb-6 min-h-0">
-        {isEmpty ? (
+        {onboardingDone ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 px-6">
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center text-4xl"
+              style={{ background: "linear-gradient(135deg, #33FF99, #3366FF)" }}
+            >
+              🎉
+            </div>
+            <h2 className="text-xl font-bold text-foreground">You're all set!</h2>
+            <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">
+              Barterr is learning your style — we'll use this to surface better trade matches.
+            </p>
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-white px-5 py-2.5 rounded-full"
+              style={{ background: "linear-gradient(135deg, #33FF99 0%, #3366FF 100%)" }}
+            >
+              Let's start trading →
+            </button>
+          </div>
+        ) : isEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 px-6">
             <div
               className="w-20 h-20 rounded-full flex items-center justify-center text-4xl"

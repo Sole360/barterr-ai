@@ -16,6 +16,7 @@ export interface User {
   numNotification: number;
   referredBy?: string;
   shoeSize?: number;
+  shoeSizeGender?: "mens" | "womens";
   numReferral: number;
   sneakerCount?: number;
   wishlistCount?: number;

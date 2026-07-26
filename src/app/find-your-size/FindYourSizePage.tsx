@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/shared/Navbar";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
@@ -18,6 +20,7 @@ const PAGE_SIZE = 24;
 
 export const FindYourSizePage = () => {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
   const [selectedSizes, setSelectedSizes] = useState<number[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
   const [customBrand, setCustomBrand] = useState<string>("OTHER_ALL");
@@ -183,6 +186,12 @@ export const FindYourSizePage = () => {
 
             {/* Header */}
             <div className="mb-6 pt-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
               <h1 className="text-3xl font-bold text-foreground">Find Your Size</h1>
               <p className="text-muted-foreground mt-1">
                 Pick your size to see what's available for trade right now.

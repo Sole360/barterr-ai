@@ -1,14 +1,49 @@
-import { useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/contexts/auth.context";
+import { auth } from "@/lib/firebase/config";
 
 export const VerifyEmailPage = () => {
   const { currentUser, resendEmailVerification } = useAuth();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle"
   );
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
+
+  // Poll every 3s — Firebase won't update emailVerified without a reload()
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        await auth.currentUser?.reload();
+        if (auth.currentUser?.emailVerified) {
+          clearInterval(interval);
+          navigate("/onboarding");
+        }
+      } catch {
+        // ignore transient network errors during poll
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [navigate]);
+
+  const checkNow = async () => {
+    setChecking(true);
+    try {
+      await auth.currentUser?.reload();
+      if (auth.currentUser?.emailVerified) {
+        navigate("/onboarding");
+      } else {
+        setError("Email not verified yet — check your inbox and click the link.");
+      }
+    } catch {
+      setError("Couldn't check verification status. Try again.");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const location = useLocation();
   const emailFromQuery = useMemo(() => {
@@ -53,19 +88,30 @@ export const VerifyEmailPage = () => {
         )}
 
         <Button
+          onClick={checkNow}
+          disabled={checking}
+          className="w-full"
+          style={{
+            backgroundImage: "linear-gradient(135deg, #33ff99 0%, #33c9bc 50%, #3366ff 100%)",
+            color: "#fff",
+          }}
+        >
+          {checking ? "Checking…" : "I've verified my email"}
+        </Button>
+
+        <Button
+          variant="outline"
           onClick={onResend}
-          className="w-full bg-[#3366FF] hover:bg-[#3366FF]/90"
+          className="w-full"
           disabled={status === "sending"}
         >
           {status === "sending" ? "Sending..." : "Resend verification email"}
         </Button>
 
         <div className="text-sm text-muted-foreground">
-          After verifying,{" "}
           <Link to="/login" className="text-[#3366FF] hover:underline">
-            go back to Login
+            Back to Login
           </Link>
-          .
         </div>
       </div>
     </div>

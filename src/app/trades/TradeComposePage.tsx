@@ -492,10 +492,12 @@ export const TradeComposePage = () => {
   }, [theirListings]);
 
   // -----------------------------
-  // Gate: must have both sides + >=50% likelihood
+  // Gate: must have both sides + >=50% likelihood + shipping address
   // -----------------------------
+  const missingAddress = !userProfile?.address;
   const continueDisabled =
     pricesFetching ||
+    missingAddress ||
     selectedYourListingIds.length === 0 ||
     selectedTheirListingIds.length === 0 ||
     tradeLikelihood < 50;
@@ -827,6 +829,7 @@ export const TradeComposePage = () => {
                 <span className="text-xs font-medium">Add cash</span>
                 <span className="text-xs font-bold">${addCash}</span>
               </div>
+              <p className="text-[10px] text-white/60 mt-0.5">Include cash with your offer</p>
               <input
                 type="range"
                 min={0}
@@ -842,6 +845,7 @@ export const TradeComposePage = () => {
                 <span className="text-xs font-medium">Ask cash</span>
                 <span className="text-xs font-bold">${askCash}</span>
               </div>
+              <p className="text-[10px] text-white/60 mt-0.5">Request cash from them</p>
               <input
                 type="range"
                 min={0}
@@ -1142,10 +1146,20 @@ export const TradeComposePage = () => {
           >
             {pricesFetching
               ? "Fetching prices…"
-              : continueDisabled
-                ? "Increase likelihood to 50%+"
-                : "Continue"}
+              : missingAddress
+                ? "Add shipping address to continue"
+                : continueDisabled
+                  ? "Increase likelihood to 50%+"
+                  : "Continue"}
           </Button>
+          {missingAddress && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              <a href="/account" className="text-[#3366FF] underline underline-offset-2">
+                Add your shipping address
+              </a>{" "}
+              in Account Settings to send trades
+            </p>
+          )}
         </div>
 
         {/* Mobile sticky action bar */}
@@ -1158,10 +1172,20 @@ export const TradeComposePage = () => {
             >
               {pricesFetching
                 ? "Fetching prices…"
-                : continueDisabled
-                  ? "Increase likelihood to 50%+"
-                  : "Continue"}
+                : missingAddress
+                  ? "Add shipping address to continue"
+                  : continueDisabled
+                    ? "Increase likelihood to 50%+"
+                    : "Continue"}
             </Button>
+            {missingAddress && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                <a href="/account" className="text-[#3366FF] underline underline-offset-2">
+                  Add your shipping address
+                </a>{" "}
+                in Account Settings to send trades
+              </p>
+            )}
           </div>
         </div>
       </div>
