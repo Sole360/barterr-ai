@@ -75,9 +75,46 @@ const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [expressAvailable, setExpressAvailable] = useState(false);
 
-  const savePaymentMethodId = async (paymentMethodId: string) => {
+  // Shared: validate → create SetupIntent → confirm → return pmId
+  const confirmSetup = async (): Promise<string | null> => {
+    if (!stripe || !elements) return null;
+
+    // Step 1: validate the Elements form (required by Stripe docs before confirmSetup)
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      toast({ title: "Payment not saved", description: submitError.message ?? "Please try again.", variant: "destructive" });
+      return null;
+    }
+
+    // Step 2: create SetupIntent server-side
     const functions = getFunctions(undefined, "us-central1");
-    const res = await httpsCallable(functions, "setDefaultPaymentMethod")({ paymentMethodId });
+    const res = await httpsCallable(functions, "createSetupIntent")({ forceNew: true });
+    const data = res.data as { clientSecret?: string };
+    if (!data.clientSecret) {
+      toast({ title: "Payment not saved", description: "Could not initialize payment. Please try again.", variant: "destructive" });
+      return null;
+    }
+
+    // Step 3: confirm with the client secret from the server
+    const result = await stripe.confirmSetup({
+      elements,
+      clientSecret: data.clientSecret,
+      confirmParams: { return_url: window.location.href },
+      redirect: "if_required",
+    });
+
+    if (result.error) {
+      toast({ title: "Payment not saved", description: result.error.message ?? "Please try again.", variant: "destructive" });
+      return null;
+    }
+
+    const pm = result.setupIntent?.payment_method;
+    return typeof pm === "string" ? pm : (pm?.id ?? null);
+  };
+
+  const persistPaymentMethod = async (pmId: string) => {
+    const functions = getFunctions(undefined, "us-central1");
+    const res = await httpsCallable(functions, "setDefaultPaymentMethod")({ paymentMethodId: pmId });
     const data = res.data as SetDefaultPaymentMethodResponse;
     if (!data?.defaultPaymentMethodId) {
       toast({ title: "Payment not saved", description: "Could not confirm payment method.", variant: "destructive" });
@@ -87,25 +124,11 @@ const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
   };
 
   const handleExpressConfirm = async () => {
-    if (!stripe || !elements || submitting) return;
+    if (submitting) return;
     setSubmitting(true);
     try {
-      const result = await stripe.confirmSetup({
-        elements,
-        confirmParams: { return_url: window.location.href },
-        redirect: "if_required",
-      });
-      if (result.error) {
-        toast({ title: "Payment not saved", description: result.error.message ?? "Please try again.", variant: "destructive" });
-        return;
-      }
-      const pm = result.setupIntent?.payment_method;
-      const pmId = typeof pm === "string" ? pm : (pm?.id ?? "");
-      if (!pmId) {
-        toast({ title: "Payment not saved", description: "Stripe did not return a payment method.", variant: "destructive" });
-        return;
-      }
-      await savePaymentMethodId(pmId);
+      const pmId = await confirmSetup();
+      if (pmId) await persistPaymentMethod(pmId);
     } catch {
       toast({ title: "Payment not saved", description: "Please try again.", variant: "destructive" });
     } finally {
@@ -114,39 +137,11 @@ const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
   };
 
   const handleSave = async () => {
-    if (!stripe || !elements || submitting) return;
+    if (submitting) return;
     setSubmitting(true);
     try {
-      const result = await stripe.confirmSetup({
-        elements,
-        confirmParams: { return_url: window.location.href },
-        redirect: "if_required",
-      });
-
-      let paymentMethodId = "";
-      if (result.error) {
-        if (
-          result.error.code === "setup_intent_unexpected_state" &&
-          result.error.setup_intent?.payment_method
-        ) {
-          const pm = result.error.setup_intent.payment_method;
-          paymentMethodId = typeof pm === "string" ? pm : (pm?.id ?? "");
-        }
-        if (!paymentMethodId) {
-          toast({ title: "Payment not saved", description: result.error.message ?? "Please try again.", variant: "destructive" });
-          return;
-        }
-      } else {
-        const pm = result.setupIntent?.payment_method;
-        paymentMethodId = typeof pm === "string" ? pm : (pm?.id ?? "");
-      }
-
-      if (!paymentMethodId) {
-        toast({ title: "Payment not saved", description: "Stripe did not return a payment method.", variant: "destructive" });
-        return;
-      }
-
-      await savePaymentMethodId(paymentMethodId);
+      const pmId = await confirmSetup();
+      if (pmId) await persistPaymentMethod(pmId);
     } catch {
       toast({ title: "Payment not saved", description: "Please try again.", variant: "destructive" });
     } finally {
@@ -161,11 +156,7 @@ const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
         onConfirm={handleExpressConfirm}
         options={{
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          paymentMethods: {
-            applePay: "always" as any,
-            googlePay: "always" as any,
-            link: "never",
-          },
+          paymentMethods: { applePay: "always" as any, googlePay: "always" as any, link: "never" },
         }}
       />
       {expressAvailable && (
@@ -367,37 +358,12 @@ export const TradeReviewPage = () => {
     };
   }, [uid]);
 
-  // --- Inline payment form: fetch setup intent when no PM saved ---
-  const [setupClientSecret, setSetupClientSecret] = useState("");
-  const [setupLoading, setSetupLoading] = useState(false);
-
-  useEffect(() => {
-    if (billingLoading || paymentReady || !uid) return;
-    let alive = true;
-    setSetupLoading(true);
-    (async () => {
-      try {
-        const functions = getFunctions(undefined, "us-central1");
-        const res = await httpsCallable(functions, "createSetupIntent")({ forceNew: true });
-        const data = res.data as { clientSecret?: string };
-        if (alive && data.clientSecret) setSetupClientSecret(data.clientSecret);
-      } catch {
-        // leave empty — user can use "Change" link if it fails
-      } finally {
-        if (alive) setSetupLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, [billingLoading, paymentReady, uid]);
-
-  const elementsOptions = useMemo(
-    () => setupClientSecret ? {
-      clientSecret: setupClientSecret,
-      appearance: { theme: "stripe" as const },
-      currency: "usd",
-    } : null,
-    [setupClientSecret],
-  );
+  // Stripe Elements options — deferred intent pattern (no pre-created clientSecret)
+  const elementsOptions = useMemo(() => ({
+    mode: "setup" as const,
+    currency: "usd",
+    appearance: { theme: "stripe" as const },
+  }), []);
 
   // --- Pricing (guard draft null) ---
   const senderSneakerCount = draft?.yourItems.length ?? 0;
@@ -570,7 +536,7 @@ export const TradeReviewPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto w-full max-w-7xl px-4 pb-48 pt-4 md:pb-24">
+      <div className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4">
         {/* Header */}
         <div className="flex items-center gap-3">
           <button
@@ -762,26 +728,14 @@ export const TradeReviewPage = () => {
             <div className="mt-3 border-b border-border pb-4">
               <div className="text-sm font-semibold mb-1">Payment Method</div>
               <div className="text-xs text-muted-foreground mb-2">Add a payment method to send your trade</div>
-              {setupLoading ? (
-                <div className="text-sm text-muted-foreground py-6 text-center">Loading payment form…</div>
-              ) : elementsOptions ? (
-                <Elements key={setupClientSecret} stripe={stripePromise} options={elementsOptions}>
-                  <InlinePaymentForm
-                    onSaved={(pmId, card) => {
-                      setDefaultPaymentMethodId(pmId);
-                      setCardSummary(card ? { brand: card.brand, last4: card.last4 } : null);
-                    }}
-                  />
-                </Elements>
-              ) : (
-                <button
-                  type="button"
-                  onClick={goToPaymentMethod}
-                  className="text-sm font-semibold text-[#3366FF]"
-                >
-                  Add payment method
-                </button>
-              )}
+              <Elements stripe={stripePromise} options={elementsOptions}>
+                <InlinePaymentForm
+                  onSaved={(pmId, card) => {
+                    setDefaultPaymentMethodId(pmId);
+                    setCardSummary(card ? { brand: card.brand, last4: card.last4 } : null);
+                  }}
+                />
+              </Elements>
             </div>
           )}
 
@@ -832,33 +786,20 @@ export const TradeReviewPage = () => {
             </span>
           </label>
 
-          {!paymentReady ? (
-            <div className="mt-3 text-xs text-muted-foreground">
-              Add a payment method to send this binding offer.
-            </div>
-          ) : null}
+          <Button
+            className="w-full bg-[#3366FF] mt-4"
+            disabled={sending || !canSend}
+            onClick={handleSendTrade}
+          >
+            {sending
+              ? "Sending…"
+              : !tosAccepted
+                ? "Agree to continue"
+                : !paymentReady
+                  ? "Add payment method to continue"
+                  : "Send Trade"}
+          </Button>
         </section>
-
-        {/* Sticky action — sits above the mobile bottom tab bar (h-14 + safe area) */}
-        <div className="fixed left-0 right-0 z-50 bottom-[calc(4.5rem_+_env(safe-area-inset-bottom))] md:bottom-0">
-          <div className="border-t border-border bg-background/90 px-4 pb-3 pt-3 backdrop-blur">
-            <div className="mx-auto w-full max-w-7xl">
-              <Button
-                className="w-full bg-[#3366FF]"
-                disabled={sending || !canSend}
-                onClick={handleSendTrade}
-              >
-                {sending
-                  ? "Sending…"
-                  : !tosAccepted
-                    ? "Agree to continue"
-                    : !paymentReady
-                      ? "Add payment method to continue"
-                      : "Send Trade"}
-              </Button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
