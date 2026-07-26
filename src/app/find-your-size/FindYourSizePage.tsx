@@ -227,14 +227,14 @@ export const FindYourSizePage = () => {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Select size(s)
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 {SIZES.map((size) => {
                   const active = selectedSizes.includes(size);
                   return (
                     <button
                       key={size}
                       onClick={() => toggleSize(size)}
-                      className={`w-14 h-10 rounded-xl text-sm font-semibold transition-all ${
+                      className={`w-14 h-10 rounded-xl text-sm font-semibold shrink-0 transition-all ${
                         active
                           ? "bg-[#3366FF] text-white shadow-md shadow-[#3366FF]/25 scale-105"
                           : "bg-card text-foreground border border-border hover:border-[#3366FF]/50"
