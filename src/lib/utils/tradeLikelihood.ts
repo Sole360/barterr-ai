@@ -29,18 +29,20 @@ export interface TradeLikelihoodLabelContext extends TradeLikelihoodInputs {
  * Composite trade likelihood score (0–100).
  *
  * Weights:
- *   55%  Market value ratio        — are the sides financially balanced?
- *   14%  Brand affinity            — does the poster prefer the brands you're offering?
- *   11%  Wishlist signal           — did they explicitly wishlist the requested sneaker?
- *   11%  Size match                — does the requested size fit the requester?
- *    9%  Discovery signal          — did they swipe on this sneaker in Discover?
+ *   40%  Market value ratio        — are the sides financially balanced?
+ *   16%  Brand affinity            — does the poster prefer the brands you're offering?
+ *   14%  Wishlist signal           — did they explicitly wishlist the requested sneaker?
+ *   14%  Size match                — does the requested size fit the requester?
+ *   16%  Discovery signal          — did they swipe on this sneaker in Discover?
  *
  * Any signal that lacks data defaults to 50 (neutral), so the score degrades
  * gracefully to a pure market-value read for new users with no swipe history.
  *
- * Dominance boost: when the offered value greatly exceeds the ask, personality
- * signals fade — the score is pulled toward 100 proportional to the overage.
- * This ensures an overwhelmingly generous offer scores 90+, not 75.
+ * Two boosts applied after the base score:
+ *   Wishlist boost (primary):  they explicitly wishlisted this sneaker — closes 55% of the
+ *                              gap to 100. The clearest demand signal; should dominate the score.
+ *   Market boost (secondary):  when the offered value greatly exceeds the ask, close 35% of the
+ *                              remaining gap. Applied after wishlist so they don't over-stack.
  */
 export function computeTradeLikelihood(inputs: TradeLikelihoodInputs): number {
   const {
@@ -96,17 +98,21 @@ export function computeTradeLikelihood(inputs: TradeLikelihoodInputs): number {
     : 50;
 
   const raw =
-    marketScore * 0.55 +
-    brandScore * 0.14 +
-    wishlistScore * 0.11 +
-    sizeScore * 0.11 +
-    signalScore * 0.09;
+    marketScore * 0.40 +
+    brandScore * 0.16 +
+    wishlistScore * 0.14 +
+    sizeScore * 0.14 +
+    signalScore * 0.16;
 
-  // Dominance boost: when the offer greatly exceeds equal value, pull the score
-  // toward 100 so personality signals don't cap an overwhelmingly generous offer.
+  // Wishlist boost (primary): they want this exact sneaker — pull toward 100.
+  const afterWishlist = posterWishlisted
+    ? raw + 0.55 * (100 - raw)
+    : raw;
+
+  // Market boost (secondary): overwhelming value generosity fades personality drag.
   // marketFactor = 0 at equal value (68), 1 at market max (100).
   const marketFactor = clamp((marketScore - 68) / 32, 0, 1);
-  const boosted = raw + marketFactor * (100 - raw) * 0.5;
+  const boosted = afterWishlist + marketFactor * (100 - afterWishlist) * 0.35;
 
   return Math.round(clamp(boosted, 0, 100));
 }
