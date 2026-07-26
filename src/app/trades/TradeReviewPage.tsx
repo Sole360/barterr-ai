@@ -161,8 +161,8 @@ const InlinePaymentForm = ({ onSaved }: InlinePaymentFormProps) => {
         onConfirm={handleExpressConfirm}
         options={{
           paymentMethods: {
-            applePay: "always",
-            googlePay: "always",
+            applePay: "auto",
+            googlePay: "auto",
             link: "never",
           },
         }}
@@ -569,7 +569,7 @@ export const TradeReviewPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 md:pb-24">
+      <div className="mx-auto w-full max-w-7xl px-4 pb-48 pt-4 md:pb-24">
         {/* Header */}
         <div className="flex items-center gap-3">
           <button
@@ -838,9 +838,9 @@ export const TradeReviewPage = () => {
           ) : null}
         </section>
 
-        {/* Sticky action */}
-        <div className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="border-t border-border bg-background/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
+        {/* Sticky action — sits above the mobile bottom tab bar (h-14 + safe area) */}
+        <div className="fixed left-0 right-0 z-50 bottom-0 md:bottom-0" style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom))' }}>
+          <div className="border-t border-border bg-background/90 px-4 pb-3 pt-3 backdrop-blur md:pb-[calc(env(safe-area-inset-bottom)+12px)]">
             <div className="mx-auto w-full max-w-7xl">
               <Button
                 className="w-full bg-[#3366FF]"
