@@ -317,7 +317,7 @@ export const TradeDetailPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <PageTransition>
-        <main className={`pt-20 px-4 mx-auto max-w-2xl ${receiverNeedsAction ? "pb-32" : "pb-24 md:pb-10"}`}>
+        <main className={`pt-20 px-4 mx-auto max-w-2xl ${receiverNeedsAction ? "pb-44 md:pb-32" : "pb-24 md:pb-10"}`}>
           {/* Back */}
           <button
             onClick={() => navigate("/trades")}
@@ -608,7 +608,7 @@ export const TradeDetailPage = () => {
 
         {/* Sticky Accept / Decline / Counter footer */}
         {receiverNeedsAction && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-4">
+          <div className="fixed left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-4 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] md:bottom-0">
             <div className="mx-auto max-w-2xl flex gap-3">
               <Button
                 className="flex-1 bg-[#3366FF] hover:bg-[#3366FF]/90"

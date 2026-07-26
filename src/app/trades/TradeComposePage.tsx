@@ -860,7 +860,7 @@ export const TradeComposePage = () => {
         </div>
 
         {/* ── MOBILE layout ── */}
-        <div className="md:hidden mt-4 space-y-4 pb-28">
+        <div className="md:hidden mt-4 space-y-4 pb-44">
           {/* Your Offer */}
           <div>
             <div className="flex items-baseline justify-between mb-2">
@@ -1163,8 +1163,8 @@ export const TradeComposePage = () => {
         </div>
 
         {/* Mobile sticky action bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-          <div className="border-t border-border bg-background/90 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
+        <div className="fixed left-0 right-0 z-50 md:hidden bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]">
+          <div className="border-t border-border bg-background/90 px-4 pb-3 pt-3 backdrop-blur">
             <Button
               className="w-full bg-[#3366FF]"
               disabled={continueDisabled}

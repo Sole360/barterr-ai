@@ -212,7 +212,7 @@ export const MessageThreadPage = () => {
       </div>
 
       {/* Messages area — pt accounts for Navbar (64px) + chat header (56px) + banner (~40px) */}
-      <div className="flex-1 overflow-y-auto pt-[10.5rem] pb-28 px-4">
+      <div className="flex-1 overflow-y-auto pt-[10.5rem] pb-36 px-4">
         <div className="mx-auto max-w-2xl space-y-3 py-4">
           {loading && (
             <div className="text-center text-sm text-muted-foreground py-8">Loading…</div>
@@ -239,7 +239,7 @@ export const MessageThreadPage = () => {
       </div>
 
       {/* Input bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3">
+      <div className="fixed left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] md:bottom-0">
         <div className="mx-auto max-w-2xl space-y-2">
           {/* Hard block warning */}
           {blocked && (

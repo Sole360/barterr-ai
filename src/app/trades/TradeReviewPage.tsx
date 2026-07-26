@@ -839,8 +839,8 @@ export const TradeReviewPage = () => {
         </section>
 
         {/* Sticky action — sits above the mobile bottom tab bar (h-14 + safe area) */}
-        <div className="fixed left-0 right-0 z-50 bottom-0 md:bottom-0" style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom))' }}>
-          <div className="border-t border-border bg-background/90 px-4 pb-3 pt-3 backdrop-blur md:pb-[calc(env(safe-area-inset-bottom)+12px)]">
+        <div className="fixed left-0 right-0 z-50 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] md:bottom-0">
+          <div className="border-t border-border bg-background/90 px-4 pb-3 pt-3 backdrop-blur">
             <div className="mx-auto w-full max-w-7xl">
               <Button
                 className="w-full bg-[#3366FF]"
