@@ -14,6 +14,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { fetchCurrentPrice } from "@/lib/api/kicksdb.service";
+import { computeTradeLikelihood } from "@/lib/utils/tradeLikelihood";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check } from "lucide-react";
 import type {
@@ -248,12 +249,10 @@ export const TradeCounterPage = () => {
   );
 
   const tradeLikelihood = useMemo(() => {
-    const yourTotal = yourSneakerTotal + addCash;
-    const theirTotal = theirSneakerTotal + askCash;
-    const sum = yourTotal + theirTotal;
-    if (sum === 0) return 50;
-    const shoeFactor = ((yourTotal - theirTotal) / sum) * 120;
-    return Math.round(clamp(shoeFactor + 68, 0, 100));
+    return computeTradeLikelihood({
+      yourTotal: yourSneakerTotal + addCash,
+      theirTotal: theirSneakerTotal + askCash,
+    });
   }, [yourSneakerTotal, theirSneakerTotal, addCash, askCash]);
 
   const [animatedLikelihood, setAnimatedLikelihood] = useState<number>(0);

@@ -15,6 +15,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { fetchCurrentPrice } from "@/lib/api/kicksdb.service";
+import { computeTradeLikelihood } from "@/lib/utils/tradeLikelihood";
 import { Button } from "@/components/ui/button";
 import type {
   Listing,
@@ -39,7 +40,7 @@ export const TradeComposePage = () => {
   // -----------------------------
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
 
   // These come from PostDetail -> Request Trade navigation
   const postId = params.get("postId") ?? "";
@@ -96,6 +97,7 @@ export const TradeComposePage = () => {
     shoeSize?: number;
     styleTags?: string[];
     recentLikes?: { styleId: string; brand: string; productName: string; imageUrl: string }[];
+    preferences?: { brands?: Record<string, number> };
   } | null>(null);
   const [posterWishlisted, setPosterWishlisted] = useState(false);
   const [posterPassedOnThis, setPosterPassedOnThis] = useState(false);
@@ -239,6 +241,7 @@ export const TradeComposePage = () => {
             shoeSize: d.shoeSize,
             styleTags: d.styleTags,
             recentLikes: d.recentLikes ?? [],
+            preferences: d.preferences,
           });
         }
 
@@ -408,23 +411,29 @@ export const TradeComposePage = () => {
   }, [yourSneakerTotal, theirSneakerTotal, addCash, askCash]);
 
   // -----------------------------
-  // Trade likelihood (MVP formula)
+  // Trade likelihood — composite score using market value + preference signals
   // -----------------------------
   const tradeLikelihood = useMemo(() => {
-    const yourTotal = yourSneakerTotal + addCash;
-    const theirTotal = theirSneakerTotal + askCash;
+    const yourOfferedBrands = myCollectionItems
+      .filter((i) => selectedYourListingIds.includes(i.id))
+      .map((i) => i.brand)
+      .filter((b): b is string => !!b);
 
-    const sum = yourTotal + theirTotal;
-
-    // Legacy parity: if both sides are 0, treat as neutral
-    if (sum === 0) return 50;
-
-    // Sole360-style directional factor + baseline
-    const shoeFactor = ((yourTotal - theirTotal) / sum) * 120;
-    const tradePercentage = shoeFactor + 68;
-
-    return Math.round(clamp(tradePercentage, 0, 100));
-  }, [yourSneakerTotal, theirSneakerTotal, addCash, askCash]);
+    return computeTradeLikelihood({
+      yourTotal: yourSneakerTotal + addCash,
+      theirTotal: theirSneakerTotal + askCash,
+      posterBrandPrefs: posterProfile?.preferences?.brands,
+      yourOfferedBrands,
+      posterWishlisted,
+      requestedSize: requestedListing?.size,
+      yourSize: userProfile?.shoeSize,
+      posterPassedOnThis,
+    });
+  }, [
+    yourSneakerTotal, theirSneakerTotal, addCash, askCash,
+    myCollectionItems, selectedYourListingIds,
+    posterProfile, posterWishlisted, requestedListing, userProfile, posterPassedOnThis,
+  ]);
 
   // Animated likelihood — ref tracks true current value to avoid stale closure
   // when target changes mid-flight (e.g. rapid selections).
