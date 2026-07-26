@@ -15,7 +15,9 @@ export interface TradeLikelihoodInputs {
   posterWishlisted?: boolean;
   requestedSize?: number;
   yourSize?: number;
-  posterPassedOnThis?: boolean;
+  // Full discovery signal from the poster's swipe history on this sneaker.
+  // want=100, like=75, pass=0, undefined=50 (neutral — no data)
+  posterDiscoverySignal?: "want" | "like" | "pass";
 }
 
 export interface TradeLikelihoodLabelContext extends TradeLikelihoodInputs {
@@ -27,14 +29,18 @@ export interface TradeLikelihoodLabelContext extends TradeLikelihoodInputs {
  * Composite trade likelihood score (0–100).
  *
  * Weights:
- *   35%  Market value ratio        — are the sides financially balanced?
- *   20%  Brand affinity            — does the poster prefer the brands you're offering?
- *   20%  Wishlist signal           — did they explicitly wishlist the requested sneaker?
- *   15%  Size match                — does the requested size fit the requester?
- *   10%  Discovery signal          — penalizes if they swiped pass on this sneaker in Discover
+ *   55%  Market value ratio        — are the sides financially balanced?
+ *   14%  Brand affinity            — does the poster prefer the brands you're offering?
+ *   11%  Wishlist signal           — did they explicitly wishlist the requested sneaker?
+ *   11%  Size match                — does the requested size fit the requester?
+ *    9%  Discovery signal          — did they swipe on this sneaker in Discover?
  *
  * Any signal that lacks data defaults to 50 (neutral), so the score degrades
  * gracefully to a pure market-value read for new users with no swipe history.
+ *
+ * Dominance boost: when the offered value greatly exceeds the ask, personality
+ * signals fade — the score is pulled toward 100 proportional to the overage.
+ * This ensures an overwhelmingly generous offer scores 90+, not 75.
  */
 export function computeTradeLikelihood(inputs: TradeLikelihoodInputs): number {
   const {
@@ -45,17 +51,17 @@ export function computeTradeLikelihood(inputs: TradeLikelihoodInputs): number {
     posterWishlisted,
     requestedSize,
     yourSize,
-    posterPassedOnThis,
+    posterDiscoverySignal,
   } = inputs;
 
   const sum = yourTotal + theirTotal;
 
-  // 1. Market value score (35%)
+  // 1. Market value score (55%)
   // Equal value → 68. Offering more → >68. Offering less → <68.
   const marketScore =
     sum === 0 ? 68 : clamp(((yourTotal - theirTotal) / sum) * 120 + 68, 0, 100);
 
-  // 2. Brand affinity score (20%)
+  // 2. Brand affinity score (14%)
   // Average the poster's EMA preference weight across each brand you're offering.
   let brandScore = 50;
   if (
@@ -68,11 +74,11 @@ export function computeTradeLikelihood(inputs: TradeLikelihoodInputs): number {
     brandScore = weights.reduce((a, b) => a + b, 0) / weights.length;
   }
 
-  // 3. Wishlist score (20%)
+  // 3. Wishlist score (11%)
   // 100 = they explicitly want this; 50 = no signal either way.
   const wishlistScore = posterWishlisted === true ? 100 : 50;
 
-  // 4. Size match score (15%)
+  // 4. Size match score (11%)
   // Exact fit = 100. Half-size off = 70. 1 size off = 40. >1 off = 25. Unknown = 50.
   // Floor is 25 (not 0) — size mismatch is a signal, not a hard block (user may be reselling/gifting).
   let sizeScore = 50;
@@ -81,18 +87,28 @@ export function computeTradeLikelihood(inputs: TradeLikelihoodInputs): number {
     sizeScore = diff === 0 ? 100 : diff <= 0.5 ? 70 : diff <= 1 ? 40 : 25;
   }
 
-  // 5. Discovery signal score (10%)
-  // Penalize if the poster swiped pass on this exact sneaker in Discover.
-  const signalScore = posterPassedOnThis === true ? 0 : 50;
+  // 5. Discovery signal score (9%)
+  // want=100, like=75, pass=0, no data=50 (neutral)
+  const signalScore =
+    posterDiscoverySignal === "want" ? 100
+    : posterDiscoverySignal === "like" ? 75
+    : posterDiscoverySignal === "pass" ? 0
+    : 50;
 
   const raw =
-    marketScore * 0.35 +
-    brandScore * 0.2 +
-    wishlistScore * 0.2 +
-    sizeScore * 0.15 +
-    signalScore * 0.1;
+    marketScore * 0.55 +
+    brandScore * 0.14 +
+    wishlistScore * 0.11 +
+    sizeScore * 0.11 +
+    signalScore * 0.09;
 
-  return Math.round(clamp(raw, 0, 100));
+  // Dominance boost: when the offer greatly exceeds equal value, pull the score
+  // toward 100 so personality signals don't cap an overwhelmingly generous offer.
+  // marketFactor = 0 at equal value (68), 1 at market max (100).
+  const marketFactor = clamp((marketScore - 68) / 32, 0, 1);
+  const boosted = raw + marketFactor * (100 - raw) * 0.5;
+
+  return Math.round(clamp(boosted, 0, 100));
 }
 
 /**
@@ -106,7 +122,7 @@ export function getTradeLikelihoodLabel(ctx: TradeLikelihoodLabelContext): Likel
     posterBrandPrefs = {},
     yourOfferedBrands = [],
     posterWishlisted,
-    posterPassedOnThis,
+    posterDiscoverySignal,
     posterRecentLikes = [],
     yourTotal,
     theirTotal,
@@ -199,7 +215,7 @@ export function getTradeLikelihoodLabel(ctx: TradeLikelihoodLabelContext): Likel
         : "Solid value — a closer brand match could strengthen this";
     }
   } else if (score >= 50) {
-    if (posterPassedOnThis) {
+    if (posterDiscoverySignal === "pass") {
       description = "They swiped left on this in Discover — they may not want it";
     } else if (topMissingBrand && cashGap > 0) {
       description = `Add a ${topMissingBrand} or $${cashGap} to close the gap`;
@@ -213,7 +229,7 @@ export function getTradeLikelihoodLabel(ctx: TradeLikelihoodLabelContext): Likel
       description = "Near the bar — add cash or another item to send";
     }
   } else {
-    if (posterPassedOnThis) {
+    if (posterDiscoverySignal === "pass") {
       description = "They swiped left on this in Discover — strong signal they won't accept";
     } else if (topMissingBrand && cashGap > 0) {
       description = `Add a ${topMissingBrand} or ~$${cashGap} to close the value gap`;

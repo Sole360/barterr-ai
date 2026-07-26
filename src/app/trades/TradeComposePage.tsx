@@ -100,7 +100,7 @@ export const TradeComposePage = () => {
     preferences?: { brands?: Record<string, number> };
   } | null>(null);
   const [posterWishlisted, setPosterWishlisted] = useState(false);
-  const [posterPassedOnThis, setPosterPassedOnThis] = useState(false);
+  const [posterDiscoverySignal, setPosterDiscoverySignal] = useState<"want" | "like" | "pass" | undefined>(undefined);
 
   // -----------------------------------------
   // EFFECT 1: Load requested listing doc
@@ -260,12 +260,12 @@ export const TradeComposePage = () => {
           ? postSnap.data()?.styleId
           : undefined;
         if (alive && styleId) {
-          const swipeRef = doc(db, "users", posterId, "swipes", styleId);
-          const swipeSnap = await getDoc(swipeRef);
-          if (alive)
-            setPosterPassedOnThis(
-              swipeSnap.exists() && swipeSnap.data()?.result === "pass",
-            );
+          const swipeSnap = await getDoc(doc(db, "users", posterId, "swipes", styleId));
+          if (alive && swipeSnap.exists()) {
+            const result = swipeSnap.data()?.result;
+            if (result === "want" || result === "like" || result === "pass")
+              setPosterDiscoverySignal(result);
+          }
         }
       } catch {
         // non-critical — insights just won't show
@@ -431,12 +431,12 @@ export const TradeComposePage = () => {
       posterWishlisted,
       requestedSize: requestedListing?.size,
       yourSize: userProfile?.shoeSize,
-      posterPassedOnThis,
+      posterDiscoverySignal,
     });
   }, [
     yourSneakerTotal, theirSneakerTotal, addCash, askCash,
     yourOfferedBrands, posterProfile, posterWishlisted,
-    requestedListing, userProfile, posterPassedOnThis,
+    requestedListing, userProfile, posterDiscoverySignal,
   ]);
 
   // Animated likelihood — ref tracks true current value to avoid stale closure
@@ -475,7 +475,7 @@ export const TradeComposePage = () => {
     posterWishlisted,
     requestedSize: requestedListing?.size,
     yourSize: userProfile?.shoeSize,
-    posterPassedOnThis,
+    posterDiscoverySignal,
     posterRecentLikes: posterProfile?.recentLikes,
   });
 
@@ -663,7 +663,7 @@ export const TradeComposePage = () => {
 
   const hasInsights =
     posterWishlisted ||
-    posterPassedOnThis ||
+    posterDiscoverySignal !== undefined ||
     topBrands.length > 0 ||
     posterProfile?.shoeSize ||
     (posterProfile?.styleTags?.length ?? 0) > 0 ||
@@ -682,7 +682,7 @@ export const TradeComposePage = () => {
         </div>
       )}
 
-      {posterPassedOnThis && (
+      {posterDiscoverySignal === "pass" && (
         <div className="flex items-center gap-2 text-sm font-semibold text-amber-600">
           <span className="shrink-0">⚠️</span>
           They passed on this sneaker in Discover already — they may not be
