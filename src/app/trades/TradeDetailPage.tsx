@@ -317,7 +317,7 @@ export const TradeDetailPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <PageTransition>
-        <main className={`pt-20 px-4 mx-auto max-w-2xl ${receiverNeedsAction ? "pb-44 md:pb-32" : "pb-24 md:pb-10"}`}>
+        <main className="pt-20 px-4 mx-auto max-w-2xl pb-24">
           {/* Back */}
           <button
             onClick={() => navigate("/trades")}
@@ -604,12 +604,9 @@ export const TradeDetailPage = () => {
               <ShippingSection tradeId={tradeId} isSender={isSender} />
             )}
           </div>
-        </main>
 
-        {/* Sticky Accept / Decline / Counter footer */}
-        {receiverNeedsAction && (
-          <div className="fixed left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-4 bottom-[calc(4.5rem_+_env(safe-area-inset-bottom))] md:bottom-0">
-            <div className="mx-auto max-w-2xl flex gap-3">
+          {receiverNeedsAction && (
+            <div className="mt-4 flex gap-3">
               <Button
                 className="flex-1 bg-[#3366FF] hover:bg-[#3366FF]/90"
                 onClick={handleAccept}
@@ -634,8 +631,8 @@ export const TradeDetailPage = () => {
                 Decline
               </Button>
             </div>
-          </div>
-        )}
+          )}
+        </main>
       </PageTransition>
     </div>
   );

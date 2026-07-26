@@ -860,7 +860,7 @@ export const TradeComposePage = () => {
         </div>
 
         {/* ── MOBILE layout ── */}
-        <div className="md:hidden mt-4 space-y-4 pb-44">
+        <div className="md:hidden mt-4 space-y-4 pb-8">
           {/* Your Offer */}
           <div>
             <div className="flex items-baseline justify-between mb-2">
@@ -1162,31 +1162,29 @@ export const TradeComposePage = () => {
           )}
         </div>
 
-        {/* Mobile sticky action bar */}
-        <div className="fixed left-0 right-0 z-50 md:hidden bottom-[calc(4.5rem_+_env(safe-area-inset-bottom))]">
-          <div className="border-t border-border bg-background/90 px-4 pb-3 pt-3 backdrop-blur">
-            <Button
-              className="w-full bg-[#3366FF]"
-              disabled={continueDisabled}
-              onClick={handleContinue}
-            >
-              {pricesFetching
-                ? "Fetching prices…"
-                : missingAddress
-                  ? "Add shipping address to continue"
-                  : continueDisabled
-                    ? "Increase likelihood to 50%+"
-                    : "Continue"}
-            </Button>
-            {missingAddress && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                <a href="/account" className="text-[#3366FF] underline underline-offset-2">
-                  Add your shipping address
-                </a>{" "}
-                in Account Settings to send trades
-              </p>
-            )}
-          </div>
+        {/* Mobile inline action */}
+        <div className="md:hidden pt-2 pb-8">
+          <Button
+            className="w-full bg-[#3366FF]"
+            disabled={continueDisabled}
+            onClick={handleContinue}
+          >
+            {pricesFetching
+              ? "Fetching prices…"
+              : missingAddress
+                ? "Add shipping address to continue"
+                : continueDisabled
+                  ? "Increase likelihood to 50%+"
+                  : "Continue"}
+          </Button>
+          {missingAddress && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              <a href="/account" className="text-[#3366FF] underline underline-offset-2">
+                Add your shipping address
+              </a>{" "}
+              in Account Settings to send trades
+            </p>
+          )}
         </div>
       </div>
     </div>
