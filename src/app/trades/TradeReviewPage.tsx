@@ -390,7 +390,11 @@ export const TradeReviewPage = () => {
   }, [billingLoading, paymentReady, uid]);
 
   const elementsOptions = useMemo(
-    () => setupClientSecret ? { clientSecret: setupClientSecret, appearance: { theme: "stripe" as const } } : null,
+    () => setupClientSecret ? {
+      clientSecret: setupClientSecret,
+      appearance: { theme: "stripe" as const },
+      currency: "usd",
+    } : null,
     [setupClientSecret],
   );
 
