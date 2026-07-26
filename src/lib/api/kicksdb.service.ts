@@ -5,11 +5,16 @@ const BASE_URL = "https://api.kicks.dev/v3";
 
 // Map StockX product to SearchResult
 function mapStockXProduct(product: KicksDBProduct): SearchResult {
+  // Some SKUs contain " / " separating two colorway codes (e.g. "IZ6735-100 / IZ6736-100").
+  // Take the first code only — Firestore doc IDs cannot contain "/" or spaces.
+  const rawSku = product.sku ?? "";
+  const styleId = rawSku.split("/")[0].trim();
+
   return {
     id: product.id!,
     name: product.title!,
     brand: product.brand,
-    styleId: product.sku,
+    styleId,
     imageUrl: product.image!,
     source: "stockx",
     rank: product.rank,
@@ -97,28 +102,26 @@ export async function searchSneakers(query: string): Promise<SearchResult[]> {
 }
 
 // Fetch sneakers for the Discover feature.
-// release_date is a string field in KicksDB's index — comparison operators (>) don't work on it.
-// Strategy: brand filter when specified (confirmed working); broad query otherwise.
+// Confirmed from API testing:
+//  - brand filter works: filters=brand%20%3D%20%22Nike%22
+//  - page= parameter works for pagination (meta.total = 1000 per brand)
+//  - query=sneakers returns non-sneaker garbage (Valentino, books, etc.) — never use it
 export async function fetchRecentReleases(options?: {
-  brand?: string;
+  brand: string; // required — unfiltered query returns irrelevant results
   limit?: number;
+  page?: number;
 }): Promise<SearchResult[]> {
-  const { brand, limit = 20 } = options ?? {};
+  if (!options?.brand) return [];
 
-  let url: string;
-  if (brand) {
-    const filterStr = `brand = "${brand}"`;
-    url = `${BASE_URL}/stockx/products?filters=${encodeURIComponent(filterStr)}&limit=${limit}&currency=USD&market=US`;
-  } else {
-    // No date filter available on string fields — use a broad query for popular sneakers
-    url = `${BASE_URL}/stockx/products?query=sneakers&limit=${limit}&currency=USD&market=US`;
-  }
+  const { brand, limit = 12, page = 1 } = options;
+  const filterStr = `brand = "${brand}"`;
+  const url = `${BASE_URL}/stockx/products?filters=${encodeURIComponent(filterStr)}&limit=${limit}&page=${page}&currency=USD&market=US`;
 
   try {
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${KICKSDB_API_KEY}` },
     });
-    if (!response.ok) throw new Error("Discover fetch failed");
+    if (!response.ok) throw new Error(`Discover fetch failed: ${response.status}`);
     const data = await response.json();
     return (data.data ?? []).map(mapStockXProduct);
   } catch (error) {

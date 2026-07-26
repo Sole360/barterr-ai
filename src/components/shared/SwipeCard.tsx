@@ -6,6 +6,7 @@ import {
   PanInfo,
 } from "framer-motion";
 import type { SearchResult } from "@/types";
+import { useTheme } from "@/lib/contexts/theme.context";
 
 interface SwipeCardProps {
   sneaker: SearchResult;
@@ -21,6 +22,11 @@ export const SwipeCard = ({ sneaker, onSwipe, isTop, stackIndex }: SwipeCardProp
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const isDragging = useRef(false);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const cardBg = isDark
+    ? "linear-gradient(160deg, #1F1E2A 0%, #1C1B2E 55%, #1B2124 100%)"
+    : "linear-gradient(160deg, #F5F3EE 0%, #EAE8FF 55%, #DFF8F0 100%)";
 
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const likeOpacity = useTransform(x, [20, X_THRESHOLD], [0, 1]);
@@ -61,13 +67,13 @@ export const SwipeCard = ({ sneaker, onSwipe, isTop, stackIndex }: SwipeCardProp
       onDragEnd={handleDragEnd}
       whileDrag={{ cursor: "grabbing" }}
     >
-      <div className="relative w-full h-full rounded-[28px] overflow-hidden select-none bg-white"
-        style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)" }}
+      <div className="relative w-full h-full rounded-[28px] overflow-hidden select-none bg-card"
+        style={{ boxShadow: isDark ? "0 8px 40px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)" : "0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)" }}
       >
-        {/* Image area — warm gradient background so white-bg product shots look intentional */}
+        {/* Image area — gradient background so product shots look intentional */}
         <div
           className="absolute inset-0"
-          style={{ background: "linear-gradient(160deg, #F5F3EE 0%, #EAE8FF 55%, #DFF8F0 100%)" }}
+          style={{ background: cardBg }}
         />
 
         <img
@@ -164,7 +170,7 @@ export const SwipeActionButtons = ({
       className="flex flex-col items-center gap-1.5 group"
       aria-label="Pass"
     >
-      <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-[#FF4D4D] transition-transform group-hover:scale-110 group-active:scale-95"
+      <div className="w-14 h-14 rounded-full bg-card flex items-center justify-center text-[#FF4D4D] transition-transform group-hover:scale-110 group-active:scale-95"
         style={{ boxShadow: "0 4px 16px rgba(255,77,77,0.18), 0 1px 4px rgba(0,0,0,0.08)" }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -201,7 +207,7 @@ export const SwipeActionButtons = ({
       className="flex flex-col items-center gap-1.5 group"
       aria-label="Like"
     >
-      <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-[#33C97B] transition-transform group-hover:scale-110 group-active:scale-95"
+      <div className="w-14 h-14 rounded-full bg-card flex items-center justify-center text-[#33C97B] transition-transform group-hover:scale-110 group-active:scale-95"
         style={{ boxShadow: "0 4px 16px rgba(51,201,123,0.18), 0 1px 4px rgba(0,0,0,0.08)" }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">

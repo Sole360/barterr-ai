@@ -11,6 +11,24 @@ import type { SearchResult } from "@/types";
 
 const DISCOVER_BRANDS = ["Nike", "Jordan", "Adidas", "New Balance", "Asics", "Puma", "Reebok", "Vans"];
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function dedupeByStyleId(results: SearchResult[]): SearchResult[] {
+  const seen = new Set<string>();
+  return results.filter((r) => {
+    if (!r.styleId || seen.has(r.styleId)) return false;
+    seen.add(r.styleId);
+    return true;
+  });
+}
+
 export const DiscoverPage = () => {
   const { currentUser, userProfile } = useAuth();
   const [searchParams] = useSearchParams();
@@ -20,17 +38,38 @@ export const DiscoverPage = () => {
   const [swipedSet, setSwipedSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [isEmpty, setIsEmpty] = useState(false);
-  const fetchBrandIndexRef = useRef(0);
+
+  // Shuffle brands once per session for variety across visits
+  const shuffledBrandsRef = useRef(shuffle([...DISCOVER_BRANDS]));
+  // Absolute fetch index — brand = index % 8, page = floor(index / 8) + 1
+  // This means we cycle all 8 brands on page 1, then all 8 on page 2, etc.
+  const fetchIndexRef = useRef(0);
+
+  const getBrandAndPage = (idx: number) => ({
+    brand: shuffledBrandsRef.current[idx % shuffledBrandsRef.current.length],
+    page: Math.floor(idx / shuffledBrandsRef.current.length) + 1,
+  });
 
   useEffect(() => {
     if (!currentUser) return;
     (async () => {
+      // Build swiped set from stored swipe docs (doc ID = styleId via setDoc)
       const snap = await getDocs(collection(db, "users", currentUser.uid, "swipes"));
       const swiped = new Set(snap.docs.map((d) => d.id));
       setSwipedSet(swiped);
 
-      const releases = await fetchRecentReleases({ limit: 20 });
-      const fresh = releases.filter((r) => !swiped.has(r.styleId));
+      // Fetch first 4 brands (all page 1) in parallel
+      const fetches = Array.from({ length: 4 }, (_, i) => getBrandAndPage(i));
+      fetchIndexRef.current = 4;
+
+      const batches = await Promise.all(
+        fetches.map(({ brand, page }) => fetchRecentReleases({ brand, limit: 10, page }))
+      );
+
+      const fresh = dedupeByStyleId(shuffle(batches.flat())).filter(
+        (r) => !swiped.has(r.styleId)
+      );
+
       setInitialCards(fresh);
       setLoading(false);
       if (fresh.length === 0) setIsEmpty(true);
@@ -38,9 +77,9 @@ export const DiscoverPage = () => {
   }, [currentUser]);
 
   const handleFetchMore = useCallback(async (): Promise<SearchResult[]> => {
-    const brand = DISCOVER_BRANDS[fetchBrandIndexRef.current % DISCOVER_BRANDS.length];
-    fetchBrandIndexRef.current += 1;
-    return fetchRecentReleases({ brand, limit: 20 });
+    const { brand, page } = getBrandAndPage(fetchIndexRef.current);
+    fetchIndexRef.current += 1;
+    return fetchRecentReleases({ brand, limit: 12, page });
   }, []);
 
   const handleSwipe = useCallback(
@@ -86,8 +125,7 @@ export const DiscoverPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4"
-        style={{ background: "linear-gradient(160deg, #F5F3EE 0%, #EAE8FF 55%, #DFF8F0 100%)" }}
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 bg-background"
       >
         <div
           className="w-10 h-10 rounded-full border-[3px] border-transparent animate-spin"
@@ -99,7 +137,7 @@ export const DiscoverPage = () => {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAF8] flex flex-col">
+    <div className="min-h-[100dvh] bg-background flex flex-col">
       <Navbar />
 
       {/* Spacer for fixed top navbar (h-14 mobile, h-16 desktop) */}
