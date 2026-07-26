@@ -1,15 +1,34 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { collection, doc, getDocs, setDoc, Timestamp } from "firebase/firestore";
+import { Sparkles } from "lucide-react";
+import {
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  Timestamp,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { fetchRecentReleases } from "@/lib/api/kicksdb.service";
-import { createOrUpdatePost, addToWishlist } from "@/lib/firebase/posts.service";
+import {
+  createOrUpdatePost,
+  addToWishlist,
+} from "@/lib/firebase/posts.service";
 import { SwipeCardStack } from "@/components/shared/SwipeCardStack";
 import { Navbar } from "@/components/shared/Navbar";
 import type { SearchResult } from "@/types";
 
-const DISCOVER_BRANDS = ["Nike", "Jordan", "Adidas", "New Balance", "Asics", "Puma", "Reebok", "Vans"];
+const DISCOVER_BRANDS = [
+  "Nike",
+  "Jordan",
+  "Adidas",
+  "New Balance",
+  "Asics",
+  "Puma",
+  "Reebok",
+  "Vans",
+];
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -54,7 +73,9 @@ export const DiscoverPage = () => {
     if (!currentUser) return;
     (async () => {
       // Build swiped set from stored swipe docs (doc ID = styleId via setDoc)
-      const snap = await getDocs(collection(db, "users", currentUser.uid, "swipes"));
+      const snap = await getDocs(
+        collection(db, "users", currentUser.uid, "swipes"),
+      );
       const swiped = new Set(snap.docs.map((d) => d.id));
       setSwipedSet(swiped);
 
@@ -63,11 +84,13 @@ export const DiscoverPage = () => {
       fetchIndexRef.current = 4;
 
       const batches = await Promise.all(
-        fetches.map(({ brand, page }) => fetchRecentReleases({ brand, limit: 10, page }))
+        fetches.map(({ brand, page }) =>
+          fetchRecentReleases({ brand, limit: 10, page }),
+        ),
       );
 
       const fresh = dedupeByStyleId(shuffle(batches.flat())).filter(
-        (r) => !swiped.has(r.styleId)
+        (r) => !swiped.has(r.styleId),
       );
 
       setInitialCards(fresh);
@@ -114,24 +137,25 @@ export const DiscoverPage = () => {
               userProfile.displayName,
               userProfile.email,
               userProfile.photoURL ?? "",
-              userProfile.shoeSize
+              userProfile.shoeSize,
             );
           }
         })
         .catch((err) => console.error("Swipe write failed:", err));
     },
-    [currentUser, userProfile]
+    [currentUser, userProfile],
   );
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 bg-background"
-      >
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 bg-background">
         <div
           className="w-10 h-10 rounded-full border-[3px] border-transparent animate-spin"
           style={{ borderTopColor: "#3366FF", borderRightColor: "#33FF99" }}
         />
-        <p className="text-sm text-muted-foreground font-medium">Loading drops…</p>
+        <p className="text-sm text-muted-foreground font-medium">
+          Loading drops…
+        </p>
       </div>
     );
   }
@@ -152,7 +176,9 @@ export const DiscoverPage = () => {
                 Discover your{" "}
                 <span
                   className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: "linear-gradient(90deg, #33FF99, #3366FF)" }}
+                  style={{
+                    backgroundImage: "linear-gradient(90deg, #33FF99, #3366FF)",
+                  }}
                 >
                   taste
                 </span>
@@ -169,22 +195,26 @@ export const DiscoverPage = () => {
             </Link>
           </div>
         ) : (
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              New{" "}
-              <span
-                className="bg-clip-text text-transparent"
-                style={{ backgroundImage: "linear-gradient(90deg, #33FF99, #3366FF)" }}
-              >
-                drops
-              </span>
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Swipe right to like · up to want · left to pass
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-foreground">Discover</h1>
         )}
       </header>
+
+      {/* Insight strip — sits between header and cards, not inline with title text */}
+      {!isEmpty && (
+        <div className="flex-shrink-0 px-5 pt-1 pb-3">
+          <div className="flex items-start gap-2.5 border-l-2 border-[#3366FF]/50 pl-3">
+            <Sparkles
+              size={12}
+              className="mt-0.5 shrink-0"
+              style={{ color: "#3366FF" }}
+            />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Each swipe helps your future trade partners send you better offers
+              based on what you're interested in.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Card area — pb-20 clears the fixed bottom tab bar (h-14) on mobile */}
       <main className="flex-1 flex flex-col items-center px-4 pb-20 md:pb-6 min-h-0">
@@ -192,11 +222,15 @@ export const DiscoverPage = () => {
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 px-6">
             <div
               className="w-20 h-20 rounded-full flex items-center justify-center text-4xl"
-              style={{ background: "linear-gradient(135deg, #33FF99, #3366FF)" }}
+              style={{
+                background: "linear-gradient(135deg, #33FF99, #3366FF)",
+              }}
             >
               👟
             </div>
-            <h2 className="text-xl font-bold text-foreground">You're all caught up</h2>
+            <h2 className="text-xl font-bold text-foreground">
+              You're all caught up
+            </h2>
             <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">
               You've seen everything — check back soon for new drops.
             </p>

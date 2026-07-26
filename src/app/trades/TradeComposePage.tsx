@@ -15,7 +15,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useMyCollection } from "@/lib/firebase/useMyCollection";
 import { fetchCurrentPrice } from "@/lib/api/kicksdb.service";
-import { computeTradeLikelihood } from "@/lib/utils/tradeLikelihood";
+import { computeTradeLikelihood, getTradeLikelihoodLabel } from "@/lib/utils/tradeLikelihood";
 import { Button } from "@/components/ui/button";
 import type {
   Listing,
@@ -413,12 +413,16 @@ export const TradeComposePage = () => {
   // -----------------------------
   // Trade likelihood — composite score using market value + preference signals
   // -----------------------------
-  const tradeLikelihood = useMemo(() => {
-    const yourOfferedBrands = myCollectionItems
-      .filter((i) => selectedYourListingIds.includes(i.id))
-      .map((i) => i.brand)
-      .filter((b): b is string => !!b);
+  const yourOfferedBrands = useMemo(
+    () =>
+      myCollectionItems
+        .filter((i) => selectedYourListingIds.includes(i.id))
+        .map((i) => i.brand)
+        .filter((b): b is string => !!b),
+    [myCollectionItems, selectedYourListingIds],
+  );
 
+  const tradeLikelihood = useMemo(() => {
     return computeTradeLikelihood({
       yourTotal: yourSneakerTotal + addCash,
       theirTotal: theirSneakerTotal + askCash,
@@ -431,8 +435,8 @@ export const TradeComposePage = () => {
     });
   }, [
     yourSneakerTotal, theirSneakerTotal, addCash, askCash,
-    myCollectionItems, selectedYourListingIds,
-    posterProfile, posterWishlisted, requestedListing, userProfile, posterPassedOnThis,
+    yourOfferedBrands, posterProfile, posterWishlisted,
+    requestedListing, userProfile, posterPassedOnThis,
   ]);
 
   // Animated likelihood — ref tracks true current value to avoid stale closure
@@ -460,6 +464,20 @@ export const TradeComposePage = () => {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [tradeLikelihood]);
+
+  // Label derived from real score (not animated) so description is always accurate
+  const likelihoodLabel = getTradeLikelihoodLabel({
+    score: tradeLikelihood,
+    yourTotal: yourSneakerTotal + addCash,
+    theirTotal: theirSneakerTotal + askCash,
+    posterBrandPrefs: posterProfile?.preferences?.brands,
+    yourOfferedBrands,
+    posterWishlisted,
+    requestedSize: requestedListing?.size,
+    yourSize: userProfile?.shoeSize,
+    posterPassedOnThis,
+    posterRecentLikes: posterProfile?.recentLikes,
+  });
 
   // Derive top brands from their collection (up to 3)
   const topBrands = useMemo(() => {
@@ -867,25 +885,33 @@ export const TradeComposePage = () => {
           </div>
 
           {/* Compact likelihood bar */}
-          <div className="flex items-center gap-3 px-1">
-            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-              {pricesFetching ? (
-                <div className="h-full w-1/3 animate-pulse bg-[#3366FF]/50" />
-              ) : (
-                <div
-                  className="h-full bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99]"
-                  style={{ width: `${clamp(animatedLikelihood, 0, 100)}%` }}
-                />
-              )}
-            </div>
-            <div className="shrink-0 text-right w-10">
-              <div className="text-sm font-bold text-[#3366FF] tabular-nums leading-none">
-                {pricesFetching ? "—" : `${animatedLikelihood}%`}
+          <div className="space-y-1.5 px-1">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                {pricesFetching ? (
+                  <div className="h-full w-1/3 animate-pulse bg-[#3366FF]/50" />
+                ) : (
+                  <div
+                    className="h-full bg-gradient-to-r from-[#3366FF] via-[#33C9BC] to-[#33FF99]"
+                    style={{ width: `${clamp(animatedLikelihood, 0, 100)}%` }}
+                  />
+                )}
               </div>
-              <div className="text-[9px] text-muted-foreground leading-none mt-0.5">
-                likely
+              <div className="shrink-0 text-right w-10">
+                <div className="text-sm font-bold tabular-nums leading-none" style={{ color: likelihoodLabel.color }}>
+                  {pricesFetching ? "—" : `${animatedLikelihood}%`}
+                </div>
               </div>
             </div>
+            {!pricesFetching && (
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[10px] font-semibold" style={{ color: likelihoodLabel.color }}>
+                  {likelihoodLabel.text}
+                </span>
+                <span className="text-[10px] text-muted-foreground">—</span>
+                <span className="text-[10px] text-muted-foreground">{likelihoodLabel.description}</span>
+              </div>
+            )}
           </div>
 
           {/* Poster insights (mobile) */}
@@ -1018,10 +1044,13 @@ export const TradeComposePage = () => {
                       style={{ width: `${clamp(animatedLikelihood, 0, 100)}%` }}
                     />
                   </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    Aim for{" "}
-                    <span className="font-semibold text-[#3366FF]">50%+</span>{" "}
-                    to continue.
+                  <div className="mt-2 space-y-0.5">
+                    <div className="text-xs font-semibold" style={{ color: likelihoodLabel.color }}>
+                      {likelihoodLabel.text}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {likelihoodLabel.description}
+                    </div>
                   </div>
                 </>
               )}
