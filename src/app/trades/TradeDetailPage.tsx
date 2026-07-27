@@ -651,7 +651,7 @@ export const TradeDetailPage = () => {
           {receiverNeedsAction && (
             <div className="mt-4 flex gap-3">
               <Button
-                className="flex-1"
+                className="flex-1 border-[#3366FF] text-[#3366FF] hover:bg-[#3366FF]/10 hover:text-[#3366FF]"
                 variant="outline"
                 onClick={() => navigate(`/trades/${tradeId}/counter`)}
                 disabled={acting}
@@ -659,7 +659,7 @@ export const TradeDetailPage = () => {
                 Counter
               </Button>
               <Button
-                className="flex-1"
+                className="flex-1 border-red-400 text-red-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                 variant="outline"
                 onClick={handleDecline}
                 disabled={acting}
