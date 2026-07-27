@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import {
   Elements,
+  ExpressCheckoutElement,
   PaymentElement,
   useElements,
   useStripe,
@@ -55,58 +56,72 @@ const SetupPaymentForm = ({ onSaved }: SetupPaymentFormProps) => {
   const elements = useElements();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [expressAvailable, setExpressAvailable] = useState(false);
+
+  const confirmSetup = async (): Promise<string | null> => {
+    if (!stripe || !elements) return null;
+
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      toast({ title: "Payment method not saved", description: submitError.message ?? "Please try again.", variant: "destructive" });
+      return null;
+    }
+
+    const functions = getFunctions(undefined, "us-central1");
+    const res = await httpsCallable(functions, "createSetupIntent")({ forceNew: true });
+    const data = res.data as SetupIntentResponse;
+    if (!data.clientSecret) {
+      toast({ title: "Payment method not saved", description: "Could not initialize payment. Please try again.", variant: "destructive" });
+      return null;
+    }
+
+    const result = await stripe.confirmSetup({
+      elements,
+      clientSecret: data.clientSecret,
+      confirmParams: { return_url: window.location.href },
+      redirect: "if_required",
+    });
+
+    if (result.error) {
+      toast({ title: "Payment method not saved", description: result.error.message ?? "Please try again.", variant: "destructive" });
+      return null;
+    }
+
+    const pm = result.setupIntent?.payment_method;
+    return typeof pm === "string" ? pm : (pm?.id ?? null);
+  };
+
+  const persistPaymentMethod = async (paymentMethodId: string) => {
+    const functions = getFunctions(undefined, "us-central1");
+    const pmRes = await httpsCallable(functions, "setDefaultPaymentMethod")({ paymentMethodId });
+    const pmData = pmRes.data as SetDefaultPaymentMethodResponse;
+    if (!pmData?.defaultPaymentMethodId) {
+      toast({ title: "Payment method not saved", description: "Could not confirm your saved payment method.", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Payment method saved", description: "Returning to your trade…" });
+    onSaved();
+  };
+
+  const handleExpressConfirm = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const pmId = await confirmSetup();
+      if (pmId) await persistPaymentMethod(pmId);
+    } catch {
+      toast({ title: "Payment method not saved", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSave = async () => {
-    if (!stripe || !elements || submitting) return;
+    if (submitting) return;
     setSubmitting(true);
-
     try {
-      // Deferred intent pattern: validate → create SI server-side → confirm
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        toast({ title: "Payment method not saved", description: submitError.message ?? "Please try again.", variant: "destructive" });
-        return;
-      }
-
-      const functions = getFunctions(undefined, "us-central1");
-      const res = await httpsCallable(functions, "createSetupIntent")({ forceNew: true });
-      const data = res.data as SetupIntentResponse;
-      if (!data.clientSecret) {
-        toast({ title: "Payment method not saved", description: "Could not initialize payment. Please try again.", variant: "destructive" });
-        return;
-      }
-
-      const result = await stripe.confirmSetup({
-        elements,
-        clientSecret: data.clientSecret,
-        confirmParams: { return_url: window.location.href },
-        redirect: "if_required",
-      });
-
-      if (result.error) {
-        toast({ title: "Payment method not saved", description: result.error.message ?? "Please try again.", variant: "destructive" });
-        return;
-      }
-
-      const pm = result.setupIntent?.payment_method;
-      const paymentMethodId = typeof pm === "string" ? pm : (pm?.id ?? "");
-
-      if (!paymentMethodId) {
-        toast({ title: "Payment method not saved", description: "Stripe did not return a payment method id.", variant: "destructive" });
-        return;
-      }
-
-      const setDefaultPm = httpsCallable(functions, "setDefaultPaymentMethod");
-      const pmRes = await setDefaultPm({ paymentMethodId });
-      const pmData = pmRes.data as SetDefaultPaymentMethodResponse;
-
-      if (!pmData?.defaultPaymentMethodId) {
-        toast({ title: "Payment method not saved", description: "Could not confirm your saved payment method.", variant: "destructive" });
-        return;
-      }
-
-      toast({ title: "Payment method saved", description: "Returning to your trade…" });
-      onSaved();
+      const pmId = await confirmSetup();
+      if (pmId) await persistPaymentMethod(pmId);
     } catch (e) {
       console.error("Save payment method error:", e);
       toast({ title: "Payment method not saved", description: "Please try again.", variant: "destructive" });
@@ -117,6 +132,21 @@ const SetupPaymentForm = ({ onSaved }: SetupPaymentFormProps) => {
 
   return (
     <div className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <ExpressCheckoutElement
+        onReady={({ availablePaymentMethods }) => setExpressAvailable(!!availablePaymentMethods)}
+        onConfirm={handleExpressConfirm}
+        options={{
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          paymentMethods: { applePay: "always" as any, googlePay: "always" as any, link: "never" },
+        }}
+      />
+      {expressAvailable && (
+        <div className="my-4 flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted-foreground">or pay with card</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+      )}
       <PaymentElement options={{ wallets: { applePay: "never", googlePay: "never" } }} />
       <div className="mt-4">
         <Button
