@@ -3,6 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { ArrowLeft, ArrowLeftRight, Mail } from "lucide-react";
+import {
+  Elements,
+  ExpressCheckoutElement,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
 
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
@@ -18,6 +25,7 @@ import {
   formatUsd,
   toCents,
 } from "@/lib/pricing/tradePricing";
+import { stripePromise } from "@/lib/stripe/stripeClient";
 
 import type {
   TradeDocument,
@@ -26,10 +34,99 @@ import type {
 } from "@/types";
 import { ShippingSection } from "./ShippingSection";
 
-type BillingDoc = {
-  defaultPaymentMethodId?: string;
-  defaultPaymentMethodBrand?: string;
-  defaultPaymentMethodLast4?: string;
+type AcceptPaymentFormProps = {
+  acting: boolean;
+  onAccept: () => Promise<void>;
+};
+
+const AcceptPaymentForm = ({ acting, onAccept }: AcceptPaymentFormProps) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
+  const [expressAvailable, setExpressAvailable] = useState(false);
+
+  const confirmSetup = async (): Promise<string | null> => {
+    if (!stripe || !elements) return null;
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      toast({ title: "Payment error", description: submitError.message ?? "Please try again.", variant: "destructive" });
+      return null;
+    }
+    const functions = getFunctions(undefined, "us-central1");
+    const res = await httpsCallable(functions, "createSetupIntent")({ forceNew: true });
+    const data = res.data as { clientSecret?: string };
+    if (!data.clientSecret) {
+      toast({ title: "Payment error", description: "Could not initialize payment.", variant: "destructive" });
+      return null;
+    }
+    const result = await stripe.confirmSetup({
+      elements,
+      clientSecret: data.clientSecret,
+      confirmParams: { return_url: window.location.href },
+      redirect: "if_required",
+    });
+    if (result.error) {
+      toast({ title: "Payment error", description: result.error.message ?? "Please try again.", variant: "destructive" });
+      return null;
+    }
+    const pm = result.setupIntent?.payment_method;
+    return typeof pm === "string" ? pm : (pm?.id ?? null);
+  };
+
+  const persistAndAccept = async () => {
+    const pmId = await confirmSetup();
+    if (!pmId) return;
+    const functions = getFunctions(undefined, "us-central1");
+    await httpsCallable(functions, "setDefaultPaymentMethod")({ paymentMethodId: pmId });
+    await onAccept();
+  };
+
+  const handleExpressConfirm = async () => {
+    if (submitting || acting) return;
+    setSubmitting(true);
+    try { await persistAndAccept(); }
+    catch { toast({ title: "Couldn't accept trade", description: "Please try again.", variant: "destructive" }); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleCardAccept = async () => {
+    if (submitting || acting) return;
+    setSubmitting(true);
+    try { await persistAndAccept(); }
+    catch { toast({ title: "Couldn't accept trade", description: "Please try again.", variant: "destructive" }); }
+    finally { setSubmitting(false); }
+  };
+
+  const busy = submitting || acting;
+
+  return (
+    <div className="mt-4">
+      <ExpressCheckoutElement
+        onReady={({ availablePaymentMethods }) => setExpressAvailable(!!availablePaymentMethods)}
+        onConfirm={handleExpressConfirm}
+        options={{
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          paymentMethods: { applePay: "always" as any, googlePay: "always" as any, link: "never" },
+        }}
+      />
+      {expressAvailable && (
+        <div className="my-4 flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted-foreground">or pay with card</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+      )}
+      <PaymentElement options={{ wallets: { applePay: "never", googlePay: "never" } }} />
+      <Button
+        className="w-full mt-4 bg-[#3366FF] hover:bg-[#3366FF]/90"
+        disabled={!stripe || !elements || busy}
+        onClick={handleCardAccept}
+      >
+        {busy ? "Processing…" : "Accept Trade"}
+      </Button>
+    </div>
+  );
 };
 
 type OtherUser = { displayName: string; photoURL?: string };
@@ -79,9 +176,11 @@ export const TradeDetailPage = () => {
   const [acting, setActing] = useState(false);
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
 
-  const [billingLoading, setBillingLoading] = useState(true);
-  const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
-  const [cardSummary, setCardSummary] = useState<{ brand: string; last4: string } | null>(null);
+  const elementsOptions = useMemo(() => ({
+    mode: "setup" as const,
+    currency: "usd",
+    appearance: { theme: "stripe" as const },
+  }), []);
 
   // Load trade document
   useEffect(() => {
@@ -117,34 +216,6 @@ export const TradeDetailPage = () => {
     });
   }, [trade?.fromUserId, trade?.toUserId, currentUser?.uid]);
 
-  // Load billing for receiver
-  useEffect(() => {
-    if (!currentUser?.uid) {
-      setBillingLoading(false);
-      return;
-    }
-    const load = async () => {
-      setBillingLoading(true);
-      try {
-        const snap = await getDoc(doc(db, `users/${currentUser.uid}/private/billing`));
-        const billing = snap.data() as BillingDoc | undefined;
-        if (billing?.defaultPaymentMethodId) {
-          setHasPaymentMethod(true);
-          if (billing.defaultPaymentMethodBrand && billing.defaultPaymentMethodLast4) {
-            setCardSummary({ brand: billing.defaultPaymentMethodBrand, last4: billing.defaultPaymentMethodLast4 });
-          }
-        } else {
-          setHasPaymentMethod(false);
-          setCardSummary(null);
-        }
-      } catch {
-        setHasPaymentMethod(false);
-      } finally {
-        setBillingLoading(false);
-      }
-    };
-    load();
-  }, [currentUser?.uid]);
 
   const isSender = useMemo(
     () => !!currentUser?.uid && !!trade && trade.fromUserId === currentUser.uid,
@@ -198,11 +269,7 @@ export const TradeDetailPage = () => {
   }, [trade, isSender, isReceiver]);
 
   const handleAccept = async () => {
-    if (!tradeId || !trade || !isReceiver) return;
-    if (!hasPaymentMethod) {
-      toast({ title: "Payment method required", description: "Please add a payment method before accepting.", variant: "destructive" });
-      return;
-    }
+    if (!tradeId || !trade || !isReceiver || acting) return;
     setActing(true);
     try {
       const fns = getFunctions(undefined, "us-central1");
@@ -543,37 +610,13 @@ export const TradeDetailPage = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between border-t border-border pt-3.5">
-                  <div className="text-sm text-muted-foreground">Payment Method</div>
-                  {billingLoading ? (
-                    <div className="text-sm text-muted-foreground">Loading…</div>
-                  ) : hasPaymentMethod ? (
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm font-semibold">
-                        {cardSummary ? `${cardSummary.brand.toUpperCase()} •••• ${cardSummary.last4}` : "Card on file"}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => navigate("/trades/new/review/payment-method", { state: { returnTo: `/trades/${tradeId}` } })}
-                        className="text-sm font-semibold text-[#3366FF]"
-                      >
-                        Change
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => navigate("/trades/new/review/payment-method", { state: { returnTo: `/trades/${tradeId}` } })}
-                      className="text-sm font-semibold text-[#3366FF]"
-                    >
-                      Add
-                    </button>
-                  )}
-                </div>
-
-                <div className="mt-3 text-xs text-muted-foreground">
+                <div className="mt-3 text-xs text-muted-foreground border-t border-border pt-3.5">
                   Accepting is binding. You will be charged immediately.
                 </div>
+
+                <Elements stripe={stripePromise} options={elementsOptions}>
+                  <AcceptPaymentForm acting={acting} onAccept={handleAccept} />
+                </Elements>
               </section>
             )}
 
@@ -607,13 +650,6 @@ export const TradeDetailPage = () => {
 
           {receiverNeedsAction && (
             <div className="mt-4 flex gap-3">
-              <Button
-                className="flex-1 bg-[#3366FF] hover:bg-[#3366FF]/90"
-                onClick={handleAccept}
-                disabled={acting || !hasPaymentMethod || billingLoading}
-              >
-                {acting ? "Processing…" : !hasPaymentMethod ? "Add payment method" : "Accept Trade"}
-              </Button>
               <Button
                 className="flex-1"
                 variant="outline"
