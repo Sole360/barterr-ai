@@ -4,12 +4,11 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  sendEmailVerification,
-  sendPasswordResetEmail,
   updateProfile,
   type User as FirebaseUser,
 } from "firebase/auth";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { auth, db } from "@/lib/firebase/config";
 import type { User, AuthContextType } from "@/types";
 import { AuthContext } from "./auth.context";
@@ -37,7 +36,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     userData
   ) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
-    await sendEmailVerification(result.user);
 
     const newUser: User = {
       uid: result.user.uid,
@@ -66,12 +64,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await setDoc(doc(db, "users", result.user.uid), newUser);
 
     await updateProfile(result.user, { displayName: newUser.displayName });
+
+    const fns = getFunctions(undefined, "us-central1");
+    await httpsCallable(fns, "sendVerificationEmail")({});
   };
 
   const resendEmailVerification: AuthContextType["resendEmailVerification"] =
     async () => {
       if (!auth.currentUser) throw new Error("No signed-in user");
-      await sendEmailVerification(auth.currentUser);
+      const fns = getFunctions(undefined, "us-central1");
+      await httpsCallable(fns, "sendVerificationEmail")({});
     };
 
   const logout: AuthContextType["logout"] = async () => {
@@ -80,7 +82,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const resetPassword: AuthContextType["resetPassword"] = async (email) => {
-    await sendPasswordResetEmail(auth, email);
+    const fns = getFunctions(undefined, "us-central1");
+    await httpsCallable(fns, "sendPasswordResetLink")({ email });
   };
 
   const updateUserProfile: AuthContextType["updateUserProfile"] = async (

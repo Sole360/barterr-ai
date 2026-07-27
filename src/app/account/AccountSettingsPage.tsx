@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
-  sendPasswordResetEmail,
   verifyBeforeUpdateEmail,
   deleteUser,
 } from "firebase/auth";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase/config";
+import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useTour } from "@/lib/contexts/tour.context";
 import { Navbar } from "@/components/shared/Navbar";
@@ -140,7 +140,8 @@ export const AccountSettingsPage = () => {
   const handlePasswordReset = async () => {
     if (!currentUser?.email) return;
     try {
-      await sendPasswordResetEmail(auth, currentUser.email);
+      const fns = getFunctions(undefined, "us-central1");
+      await httpsCallable(fns, "sendPasswordResetLink")({ email: currentUser.email });
       toast({
         title: "Reset link sent",
         description: `Check ${currentUser.email} for a password reset link.`,

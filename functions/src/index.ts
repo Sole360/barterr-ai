@@ -7,6 +7,7 @@ import { setAdminRole, disableUser, enableUser, resolveFlaggedAttempt, reviewLis
 import { setGlobalOptions } from "firebase-functions";
 import { deleteListingPhotos } from "./cleanupPhotoStorage";
 import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
+import { sendVerificationEmail, sendPasswordResetLink } from "./authEmails";
 import { acceptTrade, onTradeConfirmed, retryPayment } from "./tradePayments";
 import { getRevenueStats } from "./stripeReporting";
 import {
@@ -57,6 +58,9 @@ export {
   cancelOrder,
   // Storage
   deleteListingPhotos,
+  // Auth emails
+  sendVerificationEmail,
+  sendPasswordResetLink,
   // Stripe
   createSetupIntent,
   setDefaultPaymentMethod,
