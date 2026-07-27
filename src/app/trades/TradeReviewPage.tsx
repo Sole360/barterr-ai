@@ -359,10 +359,11 @@ export const TradeReviewPage = () => {
   }, [uid]);
 
   // Stripe Elements options — deferred intent pattern (no pre-created clientSecret)
+  // Do NOT restrict paymentMethodTypes here — doing so blocks Apple Pay / Google Pay
+  // in ExpressCheckoutElement. Wallets are filtered at the PaymentElement level instead.
   const elementsOptions = useMemo(() => ({
     mode: "setup" as const,
     currency: "usd",
-    paymentMethodTypes: ["card"],
     appearance: { theme: "stripe" as const },
   }), []);
 

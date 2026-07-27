@@ -146,7 +146,6 @@ export const TradePaymentMethodPage = () => {
   const elementsOptions = useMemo(() => ({
     mode: "setup" as const,
     currency: "usd",
-    paymentMethodTypes: ["card"],
     appearance: { theme: "stripe" as const },
   }), []);
 
