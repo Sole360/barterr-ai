@@ -211,9 +211,11 @@ export const sendVerificationEmail = onCall(
     try {
       await sgMail.send({
         to: email,
-        from: FROM,
+        from: { name: "Barterr", email: FROM },
         subject: "Verify your Barterr email",
         html,
+        categories: ["auth", "email-verification"],
+        trackingSettings: { clickTracking: { enable: false }, openTracking: { enable: false } },
       });
     } catch (err: unknown) {
       logger.error("[sendVerificationEmail] SendGrid send failed", { to: email, error: err });
@@ -262,9 +264,11 @@ export const sendPasswordResetLink = onCall(
     try {
       await sgMail.send({
         to: email,
-        from: FROM,
+        from: { name: "Barterr", email: FROM },
         subject: "Reset your Barterr password",
         html,
+        categories: ["auth", "password-reset"],
+        trackingSettings: { clickTracking: { enable: false }, openTracking: { enable: false } },
       });
     } catch (err: unknown) {
       logger.error("[sendPasswordResetLink] SendGrid send failed", { to: email, error: err });

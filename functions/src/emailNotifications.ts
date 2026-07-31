@@ -137,17 +137,50 @@ function displayName(user: UserProfile): string {
   return user.displayName ?? user.firstName ?? "your trade partner";
 }
 
+type EmailLogMeta = {
+  eventType: string;
+  tradeId?: string;
+  orderId?: string;
+};
+
 // Wraps sgMail.send for background triggers — catches and logs rather than
 // throwing, so a single email failure doesn't crash the function or trigger retries.
 async function sendSafe(
   msg: Parameters<typeof sgMail.send>[0],
   context: string,
+  logMeta?: EmailLogMeta,
 ): Promise<void> {
+  const m = typeof msg === "object" && !Array.isArray(msg) ? msg : null;
+  const to = m ? String(m.to ?? "") : "";
+  const subject = m
+    ? ((m.dynamicTemplateData as Record<string, unknown> | undefined)?.subject as string | undefined) ?? String(m.subject ?? "")
+    : "";
   try {
     await sgMail.send(msg);
+    if (logMeta) {
+      await admin.firestore().collection("emailLogs").add({
+        eventType: logMeta.eventType,
+        to,
+        subject,
+        status: "sent",
+        tradeId: logMeta.tradeId ?? null,
+        orderId: logMeta.orderId ?? null,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
   } catch (err: unknown) {
-    const to = typeof msg === "object" && !Array.isArray(msg) ? msg.to : undefined;
     logger.error(`[${context}] SendGrid send failed`, { to, error: err });
+    if (logMeta) {
+      await admin.firestore().collection("emailLogs").add({
+        eventType: logMeta.eventType,
+        to,
+        subject,
+        status: "failed",
+        tradeId: logMeta.tradeId ?? null,
+        orderId: logMeta.orderId ?? null,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      }).catch(() => {});
+    }
   }
 }
 
@@ -172,12 +205,14 @@ export const onNewTrade = onDocumentCreated(
     const offer = trade.yourItems?.[0];
     const want = trade.theirItems?.[0];
 
+    const newTradeSubject = `${displayName(sender)} wants to trade with you`;
     await sendSafe({
       to: receiver.email,
       from: FROM,
-      subject: `${displayName(sender)} wants to trade with you`,
+      subject: newTradeSubject,
       templateId: TEMPLATES.NEW_TRADE,
       dynamicTemplateData: {
+        subject: newTradeSubject,
         receiverName: firstName(receiver),
         senderName: displayName(sender),
         likelihood: Math.round(trade.likelihood ?? 0),
@@ -193,7 +228,7 @@ export const onNewTrade = onDocumentCreated(
         askCash: trade.askCash > 0 ? trade.askCash : null,
         tradeUrl: `${APP_URL}/trades/${tradeId}`,
       },
-    }, "onNewTrade");
+    }, "onNewTrade", { eventType: "trade.new", tradeId });
 
     await admin
       .firestore()
@@ -237,24 +272,26 @@ export const onTradeStatusChange = onDocumentUpdated(
           subject: "Your trade is confirmed",
           templateId: TEMPLATES.TRADE_CONFIRMED,
           dynamicTemplateData: {
+            subject: "Your trade is confirmed",
             firstName: firstName(sender),
             counterpartyName: displayName(receiver),
             tradeId,
             tradeUrl,
           },
-        }, "onTradeStatusChange"),
+        }, "onTradeStatusChange", { eventType: "trade.confirmed", tradeId }),
         sendSafe({
           to: receiver.email,
           from: FROM,
           subject: "Your trade is confirmed",
           templateId: TEMPLATES.TRADE_CONFIRMED,
           dynamicTemplateData: {
+            subject: "Your trade is confirmed",
             firstName: firstName(receiver),
             counterpartyName: displayName(sender),
             tradeId,
             tradeUrl,
           },
-        }, "onTradeStatusChange"),
+        }, "onTradeStatusChange", { eventType: "trade.confirmed", tradeId }),
       ]);
     }
 
@@ -266,24 +303,26 @@ export const onTradeStatusChange = onDocumentUpdated(
           subject: "Trade update: offer declined",
           templateId: TEMPLATES.TRADE_DECLINED,
           dynamicTemplateData: {
+            subject: "Trade update: offer declined",
             firstName: firstName(sender),
             counterpartyName: displayName(receiver),
             tradeId,
             inboxUrl,
           },
-        }, "onTradeStatusChange"),
+        }, "onTradeStatusChange", { eventType: "trade.declined", tradeId }),
         sendSafe({
           to: receiver.email,
           from: FROM,
           subject: "Trade update: offer declined",
           templateId: TEMPLATES.TRADE_DECLINED,
           dynamicTemplateData: {
+            subject: "Trade update: offer declined",
             firstName: firstName(receiver),
             counterpartyName: displayName(sender),
             tradeId,
             inboxUrl,
           },
-        }, "onTradeStatusChange"),
+        }, "onTradeStatusChange", { eventType: "trade.declined", tradeId }),
       ]);
     }
   }
@@ -325,6 +364,7 @@ export const sendWeeklyReminder = onSchedule(
           subject: "You have pending trades on Barterr",
           templateId: TEMPLATES.REMINDER,
           dynamicTemplateData: {
+            subject: "You have pending trades on Barterr",
             firstName: firstName(user),
             pendingCount: count,
             moreThanOne: count > 1,
@@ -405,6 +445,7 @@ export const onMatchPostCriteria = onDocumentUpdated(
               subject: `${after.title} just dropped in your size`,
               templateId: TEMPLATES.WISHLIST_MATCH,
               dynamicTemplateData: {
+                subject: `${after.title} just dropped in your size`,
                 firstName: wisher.displayName,
                 sneakerSize: newOwner.size,
                 ...sneakerBase,
@@ -426,6 +467,7 @@ export const onMatchPostCriteria = onDocumentUpdated(
               subject: `Someone wants your ${after.title}`,
               templateId: TEMPLATES.LISTING_MATCH,
               dynamicTemplateData: {
+                subject: `Someone wants your ${after.title}`,
                 firstName: owner.displayName,
                 sneakerSize: newWisher.size,
                 ...sneakerBase,
@@ -464,10 +506,11 @@ export const onFakeShoes = onDocumentUpdated(
       subject: "Important: Authentication issue with your trade",
       templateId: TEMPLATES.COUNTERFEIT,
       dynamicTemplateData: {
+        subject: "Important: Authentication issue with your trade",
         firstName: user.name,
         reasons: after.fakes.reasons,
       },
-    }, "onFakeShoes");
+    }, "onFakeShoes", { eventType: "order.counterfeit", orderId: after.id });
   }
 );
 
@@ -489,6 +532,7 @@ export const onShippingLabelCreated = onDocumentUpdated(
           subject: "Your shipping label is ready",
           templateId: TEMPLATES.SHIPPING_LABEL,
           dynamicTemplateData: {
+            subject: "Your shipping label is ready",
             firstName: after.poster.name,
             otherName: after.sender?.name ?? "",
             carrier: after.trackingPoster.carrier,
@@ -497,7 +541,7 @@ export const onShippingLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onShippingLabelCreated")
+        }, "onShippingLabelCreated", { eventType: "order.shipping_label", orderId: after.id })
       );
     }
 
@@ -509,6 +553,7 @@ export const onShippingLabelCreated = onDocumentUpdated(
           subject: "Your shipping label is ready",
           templateId: TEMPLATES.SHIPPING_LABEL,
           dynamicTemplateData: {
+            subject: "Your shipping label is ready",
             firstName: after.sender.name,
             otherName: after.poster?.name ?? "",
             carrier: after.trackingSender.carrier,
@@ -517,7 +562,7 @@ export const onShippingLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onShippingLabelCreated")
+        }, "onShippingLabelCreated", { eventType: "order.shipping_label", orderId: after.id })
       );
     }
 
@@ -543,12 +588,13 @@ export const onSneakersReceived = onDocumentUpdated(
           subject: "We've received your sneakers — authentication begins now",
           templateId: TEMPLATES.SNEAKERS_RECEIVED,
           dynamicTemplateData: {
+            subject: "We've received your sneakers — authentication begins now",
             firstName: after.sender.name,
             otherName: after.poster?.name ?? "",
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onSneakersReceived")
+        }, "onSneakersReceived", { eventType: "order.sneakers_received", orderId: after.id })
       );
     }
 
@@ -560,12 +606,13 @@ export const onSneakersReceived = onDocumentUpdated(
           subject: "We've received your sneakers — authentication begins now",
           templateId: TEMPLATES.SNEAKERS_RECEIVED,
           dynamicTemplateData: {
+            subject: "We've received your sneakers — authentication begins now",
             firstName: after.poster.name,
             otherName: after.sender?.name ?? "",
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onSneakersReceived")
+        }, "onSneakersReceived", { eventType: "order.sneakers_received", orderId: after.id })
       );
     }
 
@@ -591,6 +638,7 @@ export const onOutboundLabelCreated = onDocumentUpdated(
           subject: "Your authenticated sneakers are on their way!",
           templateId: TEMPLATES.OUTBOUND_LABEL,
           dynamicTemplateData: {
+            subject: "Your authenticated sneakers are on their way!",
             firstName: after.sender.name,
             otherName: after.poster?.name ?? "",
             carrier: after.senderOutbound.carrier,
@@ -598,7 +646,7 @@ export const onOutboundLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onOutboundLabelCreated")
+        }, "onOutboundLabelCreated", { eventType: "order.outbound_label", orderId: after.id })
       );
     }
 
@@ -610,6 +658,7 @@ export const onOutboundLabelCreated = onDocumentUpdated(
           subject: "Your authenticated sneakers are on their way!",
           templateId: TEMPLATES.OUTBOUND_LABEL,
           dynamicTemplateData: {
+            subject: "Your authenticated sneakers are on their way!",
             firstName: after.poster.name,
             otherName: after.sender?.name ?? "",
             carrier: after.posterOutbound.carrier,
@@ -617,7 +666,7 @@ export const onOutboundLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onOutboundLabelCreated")
+        }, "onOutboundLabelCreated", { eventType: "order.outbound_label", orderId: after.id })
       );
     }
 

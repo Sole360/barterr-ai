@@ -249,6 +249,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Email send log — admins can read; all writes go through Cloud Functions
+    match /emailLogs/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Deny all other collections by default
     match /{document=**} {
       allow read, write: if false;
