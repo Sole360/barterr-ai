@@ -44,6 +44,13 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   "admin.flag_resolved": "Flag Resolved",
   "admin.role_set": "Role Set",
   "admin.order_cancelled": "Order Cancelled",
+  "email.new_trade": "Email: New Trade",
+  "email.trade_confirmed": "Email: Confirmed",
+  "email.trade_declined": "Email: Declined",
+  "email.shipping_label": "Email: Shipping Label",
+  "email.sneakers_received": "Email: Sneakers Received",
+  "email.outbound_label": "Email: Outbound Label",
+  "email.counterfeit": "Email: Counterfeit",
 };
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -57,6 +64,13 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   "auth.result": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   "auth.sneakers_received": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   "admin.order_cancelled": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  "email.new_trade": "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  "email.trade_confirmed": "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  "email.trade_declined": "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  "email.shipping_label": "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  "email.sneakers_received": "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  "email.outbound_label": "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  "email.counterfeit": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
 const EVENT_TYPE_GROUPS = [
@@ -66,6 +80,7 @@ const EVENT_TYPE_GROUPS = [
   { label: "Shipping", value: "label." },
   { label: "Authentication", value: "auth." },
   { label: "Admin Actions", value: "admin." },
+  { label: "Emails", value: "email." },
 ];
 
 function relativeTime(ts: Timestamp | null): string {
@@ -120,7 +135,10 @@ export const AuditLogPage = () => {
   const filtered = entries.filter((e) => {
     if (statusFilter !== "all" && e.status !== statusFilter) return false;
     if (groupFilter !== "all" && !e.eventType.startsWith(groupFilter)) return false;
-    if (searchLower && !e.targetId.toLowerCase().includes(searchLower) && !e.actorId.toLowerCase().includes(searchLower)) return false;
+    if (searchLower) {
+      const recipientEmail = String(e.metadata?.to ?? "").toLowerCase();
+      if (!e.targetId.toLowerCase().includes(searchLower) && !e.actorId.toLowerCase().includes(searchLower) && !recipientEmail.includes(searchLower)) return false;
+    }
     return true;
   });
 

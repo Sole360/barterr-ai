@@ -18,7 +18,14 @@ export type AuditEventType =
   | "admin.user_enabled"
   | "admin.flag_resolved"
   | "admin.role_set"
-  | "admin.order_cancelled";
+  | "admin.order_cancelled"
+  | "email.new_trade"
+  | "email.trade_confirmed"
+  | "email.trade_declined"
+  | "email.shipping_label"
+  | "email.sneakers_received"
+  | "email.outbound_label"
+  | "email.counterfeit";
 
 export type AuditTargetType = "trade" | "order" | "user" | "listing" | "flaggedAttempt";
 

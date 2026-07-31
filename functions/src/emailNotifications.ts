@@ -8,6 +8,7 @@ import { defineSecret } from "firebase-functions/params";
 import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import sgMail from "@sendgrid/mail";
+import { writeAuditLog, type AuditEventType, type AuditTargetType } from "./utils/auditLog";
 
 const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
 
@@ -138,9 +139,9 @@ function displayName(user: UserProfile): string {
 }
 
 type EmailLogMeta = {
-  eventType: string;
-  tradeId?: string;
-  orderId?: string;
+  eventType: AuditEventType;
+  targetId: string;
+  targetType: AuditTargetType;
 };
 
 // Wraps sgMail.send for background triggers — catches and logs rather than
@@ -158,27 +159,29 @@ async function sendSafe(
   try {
     await sgMail.send(msg);
     if (logMeta) {
-      await admin.firestore().collection("emailLogs").add({
+      await writeAuditLog({
         eventType: logMeta.eventType,
-        to,
-        subject,
-        status: "sent",
-        tradeId: logMeta.tradeId ?? null,
-        orderId: logMeta.orderId ?? null,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        functionName: context,
+        actorId: "system",
+        targetId: logMeta.targetId,
+        targetType: logMeta.targetType,
+        status: "success",
+        durationMs: 0,
+        metadata: { to, subject },
       });
     }
   } catch (err: unknown) {
     logger.error(`[${context}] SendGrid send failed`, { to, error: err });
     if (logMeta) {
-      await admin.firestore().collection("emailLogs").add({
+      await writeAuditLog({
         eventType: logMeta.eventType,
-        to,
-        subject,
-        status: "failed",
-        tradeId: logMeta.tradeId ?? null,
-        orderId: logMeta.orderId ?? null,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        functionName: context,
+        actorId: "system",
+        targetId: logMeta.targetId,
+        targetType: logMeta.targetType,
+        status: "failure",
+        durationMs: 0,
+        metadata: { to, subject },
       }).catch(() => {});
     }
   }
@@ -228,7 +231,7 @@ export const onNewTrade = onDocumentCreated(
         askCash: trade.askCash > 0 ? trade.askCash : null,
         tradeUrl: `${APP_URL}/trades/${tradeId}`,
       },
-    }, "onNewTrade", { eventType: "trade.new", tradeId });
+    }, "onNewTrade", { eventType: "email.new_trade", targetId: tradeId, targetType: "trade" });
 
     await admin
       .firestore()
@@ -278,7 +281,7 @@ export const onTradeStatusChange = onDocumentUpdated(
             tradeId,
             tradeUrl,
           },
-        }, "onTradeStatusChange", { eventType: "trade.confirmed", tradeId }),
+        }, "onTradeStatusChange", { eventType: "email.trade_confirmed", targetId: tradeId, targetType: "trade" }),
         sendSafe({
           to: receiver.email,
           from: FROM,
@@ -291,7 +294,7 @@ export const onTradeStatusChange = onDocumentUpdated(
             tradeId,
             tradeUrl,
           },
-        }, "onTradeStatusChange", { eventType: "trade.confirmed", tradeId }),
+        }, "onTradeStatusChange", { eventType: "email.trade_confirmed", targetId: tradeId, targetType: "trade" }),
       ]);
     }
 
@@ -309,7 +312,7 @@ export const onTradeStatusChange = onDocumentUpdated(
             tradeId,
             inboxUrl,
           },
-        }, "onTradeStatusChange", { eventType: "trade.declined", tradeId }),
+        }, "onTradeStatusChange", { eventType: "email.trade_declined", targetId: tradeId, targetType: "trade" }),
         sendSafe({
           to: receiver.email,
           from: FROM,
@@ -322,7 +325,7 @@ export const onTradeStatusChange = onDocumentUpdated(
             tradeId,
             inboxUrl,
           },
-        }, "onTradeStatusChange", { eventType: "trade.declined", tradeId }),
+        }, "onTradeStatusChange", { eventType: "email.trade_declined", targetId: tradeId, targetType: "trade" }),
       ]);
     }
   }
@@ -510,7 +513,7 @@ export const onFakeShoes = onDocumentUpdated(
         firstName: user.name,
         reasons: after.fakes.reasons,
       },
-    }, "onFakeShoes", { eventType: "order.counterfeit", orderId: after.id });
+    }, "onFakeShoes", { eventType: "email.counterfeit", targetId: after.id, targetType: "order" });
   }
 );
 
@@ -541,7 +544,7 @@ export const onShippingLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onShippingLabelCreated", { eventType: "order.shipping_label", orderId: after.id })
+        }, "onShippingLabelCreated", { eventType: "email.shipping_label", targetId: after.id, targetType: "order" })
       );
     }
 
@@ -562,7 +565,7 @@ export const onShippingLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onShippingLabelCreated", { eventType: "order.shipping_label", orderId: after.id })
+        }, "onShippingLabelCreated", { eventType: "email.shipping_label", targetId: after.id, targetType: "order" })
       );
     }
 
@@ -594,7 +597,7 @@ export const onSneakersReceived = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onSneakersReceived", { eventType: "order.sneakers_received", orderId: after.id })
+        }, "onSneakersReceived", { eventType: "email.sneakers_received", targetId: after.id, targetType: "order" })
       );
     }
 
@@ -612,7 +615,7 @@ export const onSneakersReceived = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onSneakersReceived", { eventType: "order.sneakers_received", orderId: after.id })
+        }, "onSneakersReceived", { eventType: "email.sneakers_received", targetId: after.id, targetType: "order" })
       );
     }
 
@@ -646,7 +649,7 @@ export const onOutboundLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onOutboundLabelCreated", { eventType: "order.outbound_label", orderId: after.id })
+        }, "onOutboundLabelCreated", { eventType: "email.outbound_label", targetId: after.id, targetType: "order" })
       );
     }
 
@@ -666,7 +669,7 @@ export const onOutboundLabelCreated = onDocumentUpdated(
             tradeId: after.id,
             tradeUrl,
           },
-        }, "onOutboundLabelCreated", { eventType: "order.outbound_label", orderId: after.id })
+        }, "onOutboundLabelCreated", { eventType: "email.outbound_label", targetId: after.id, targetType: "order" })
       );
     }
 
