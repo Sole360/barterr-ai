@@ -108,24 +108,28 @@ export const onSwipeCreated = onDocumentCreated(
 
     // Update recentLikes for like + want only
     if (result === "like" || result === "want") {
-      const db = getFirestore();
-      const userRef = db.collection("users").doc(uid);
-      const snap = await userRef.get();
-      const currentLikes: RecentLike[] = snap.data()?.recentLikes ?? [];
+      try {
+        const db = getFirestore();
+        const userRef = db.collection("users").doc(uid);
+        const snap = await userRef.get();
+        const currentLikes: RecentLike[] = snap.data()?.recentLikes ?? [];
 
-      const newEntry: RecentLike = {
-        styleId,
-        brand,
-        productName: productName ?? "",
-        imageUrl: imageUrl ?? "",
-      };
+        const newEntry: RecentLike = {
+          styleId,
+          brand,
+          productName: productName ?? "",
+          imageUrl: imageUrl ?? "",
+        };
 
-      const updatedLikes = [
-        newEntry,
-        ...currentLikes.filter((l) => l.styleId !== styleId),
-      ].slice(0, MAX_RECENT_LIKES);
+        const updatedLikes = [
+          newEntry,
+          ...currentLikes.filter((l) => l.styleId !== styleId),
+        ].slice(0, MAX_RECENT_LIKES);
 
-      await userRef.update({ recentLikes: updatedLikes });
+        await userRef.update({ recentLikes: updatedLikes });
+      } catch (err) {
+        logger.error(`preferenceEngine: uid=${uid} recentLikes update failed:`, err);
+      }
     }
 
     return null;
