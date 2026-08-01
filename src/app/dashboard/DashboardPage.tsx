@@ -6,6 +6,9 @@ import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { BrandPickerSheet, KNOWN_BRANDS } from "@/components/shared/BrandPickerSheet";
+import { HorizontalScrollRow } from "@/components/dashboard/HorizontalScrollRow";
+import { useRecommendations } from "@/lib/firebase/useRecommendations";
+import type { RecommendedListing, RecommendedPartner } from "@/lib/firebase/useRecommendations";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useTour } from "@/lib/contexts/tour.context";
 import type { Post, BrandFilter } from "@/types";
@@ -20,6 +23,7 @@ const PAGE_SIZE = 20;
 export const DashboardPage = () => {
   const { currentUser, userProfile } = useAuth();
   const { isRunning, startTour } = useTour();
+  const { listings: forYou, partners: tradePartners, loading: recsLoading } = useRecommendations();
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("All");
   // customBrand: "OTHER_ALL" = all non-featured brands, any other string = specific brand like "Gucci"
   const [customBrand, setCustomBrand] = useState<string>("OTHER_ALL");
@@ -196,6 +200,33 @@ export const DashboardPage = () => {
               </Link>
             </div>
 
+            {/* For You — personalized listing recommendations */}
+            {(recsLoading || forYou.length > 0) && (
+              <HorizontalScrollRow
+                title="For You"
+                subtitle="Based on your swipes and trades"
+                loading={recsLoading}
+              >
+                {forYou.map((item) => (
+                  <RecommendedListingCard key={item.postId} item={item} />
+                ))}
+              </HorizontalScrollRow>
+            )}
+
+            {/* People to Trade With */}
+            {(recsLoading || tradePartners.length > 0) && (
+              <HorizontalScrollRow
+                title="People to Trade With"
+                subtitle="Collectors with similar taste"
+                loading={recsLoading}
+                itemCount={4}
+              >
+                {tradePartners.map((partner) => (
+                  <RecommendedPartnerCard key={partner.userId} partner={partner} />
+                ))}
+              </HorizontalScrollRow>
+            )}
+
             {/* Results count */}
             {!loading && !error && (
               <p className="text-sm text-muted-foreground mb-5">
@@ -294,6 +325,76 @@ export const DashboardPage = () => {
     </PageTransition>
   );
 };
+
+function RecommendedListingCard({ item }: { item: RecommendedListing }) {
+  return (
+    <Link
+      to={`/post/${item.postId}`}
+      className="shrink-0 w-36 group text-left"
+    >
+      <div className="aspect-square bg-white dark:bg-card rounded-2xl overflow-hidden
+        shadow-[0_2px_12px_rgba(0,0,0,0.06)]
+        group-hover:shadow-[0_8px_28px_rgba(0,0,0,0.12)]
+        group-hover:-translate-y-0.5 transition-all duration-200"
+      >
+        <img
+          src={item.productImageUrl}
+          alt={item.productName}
+          className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-300"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+      <div className="mt-2 px-0.5">
+        <p className="text-[10px] font-bold text-[#3366FF] uppercase tracking-widest truncate">
+          {item.brand}
+        </p>
+        <p className="text-xs font-semibold text-foreground line-clamp-2 leading-snug mt-0.5">
+          {item.productName}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+function RecommendedPartnerCard({ partner }: { partner: RecommendedPartner }) {
+  const initials = partner.displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <Link
+      to={`/profile/${partner.userId}`}
+      className="shrink-0 w-28 group text-center"
+    >
+      <div className="w-16 h-16 mx-auto rounded-full overflow-hidden bg-muted border-2 border-transparent
+        group-hover:border-[#3366FF]/40 transition-all duration-200
+        shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
+      >
+        {partner.photoURL ? (
+          <img
+            src={partner.photoURL}
+            alt={partner.displayName}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#3366FF]/20 to-[#33FF99]/20">
+            <span className="text-sm font-bold text-[#3366FF]">{initials}</span>
+          </div>
+        )}
+      </div>
+      <p className="mt-2 text-xs font-semibold text-foreground truncate">{partner.displayName}</p>
+      {partner.sharedBrands.length > 0 && (
+        <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+          {partner.sharedBrands.slice(0, 2).join(" · ")}
+        </p>
+      )}
+    </Link>
+  );
+}
 
 function SneakerCard({ post, onClick }: { post: Post; onClick: () => void }) {
   return (

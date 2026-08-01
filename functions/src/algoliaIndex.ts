@@ -72,6 +72,8 @@ export const indexPost = onDocumentWritten(
       productImageUrl: data.productImageUrl ?? "",
       apiID: data.apiID ?? "",
       active: data.active,
+      userId: data.userId ?? "",
+      approvalStatus: data.approvalStatus ?? "pending",
       postedAt: data.postedAt?.seconds ?? Math.floor(Date.now() / 1000),
       updatedAt: data.updatedAt?.seconds ?? Math.floor(Date.now() / 1000),
     };

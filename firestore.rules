@@ -64,6 +64,12 @@ service cloud.firestore {
         allow create, update: if isOwner(userId);
         allow delete: if false;
       }
+
+      // Cached recommendations — written by Cloud Functions, read by owner only
+      match /cachedRecommendations/{doc} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
     }
 
     // Posts collection (sneaker posts)

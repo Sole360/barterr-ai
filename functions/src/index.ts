@@ -1,6 +1,6 @@
 import { processImageJobs } from "./processImageJobs";
 import { onUserProfileUpdate } from "./profileCascade";
-import { onSwipeCreated } from "./preferenceEngine";
+import { onSwipeCreated, onWishlistCreated } from "./preferenceEngine";
 import { indexPost, unindexPost, indexUser, unindexUser } from "./algoliaIndex";
 import { onNewTradeNotification, onTradeStatusNotification } from "./notificationTriggers";
 import { setAdminRole, disableUser, enableUser, resolveFlaggedAttempt, reviewListing, sendOrderPhotosEmail, cancelOrder } from "./adminActions";
@@ -9,6 +9,8 @@ import { deleteListingPhotos } from "./cleanupPhotoStorage";
 import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
 import { sendVerificationEmail, sendPasswordResetLink } from "./authEmails";
 import { acceptTrade, onTradeConfirmed, retryPayment } from "./tradePayments";
+import { onTradeOutcomeSignal } from "./tradeSignals";
+import { refreshRecommendations } from "./recommendationEngine";
 import {
   createConnectAccount,
   getConnectOnboardingLink,
@@ -49,6 +51,7 @@ export {
   onUserProfileUpdate,
   // Preference engine
   onSwipeCreated,
+  onWishlistCreated,
   // Search
   indexPost,
   unindexPost,
@@ -77,6 +80,10 @@ export {
   acceptTrade,
   onTradeConfirmed,
   retryPayment,
+  // Trade signals (preference learning from outcomes)
+  onTradeOutcomeSignal,
+  // Recommendations
+  refreshRecommendations,
   // Stripe Connect
   createConnectAccount,
   getConnectOnboardingLink,

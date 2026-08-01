@@ -28,6 +28,7 @@ export interface User {
   styleTags?: string[];
   preferences?: {
     brands?: Record<string, number>;
+    sneakers?: Record<string, number>;
   };
   recentLikes?: {
     styleId: string;
