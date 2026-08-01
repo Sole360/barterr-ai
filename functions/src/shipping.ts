@@ -679,6 +679,35 @@ export const markAuthResult = onCall({ region: "us-central1", secrets: [SENDGRID
       const failedUserId = role === "sender" ? order.sender?.id : order.poster?.id;
       await orderRef.update({ fakes: { userId: failedUserId, reasons: reasons || "" } });
 
+      // Write physical inspection label back to trainingData docs for the failing party's listings.
+      // This is the strongest possible label — post-physical-inspection ground truth.
+      // Wrapped in try-catch: never block the auth flow for a training data write.
+      try {
+        const actualTradeId: string = order.tradeId ?? tradeId;
+        const tradeSnap = await admin.firestore().doc(`trades/${actualTradeId}`).get();
+        const tradeData = tradeSnap.data();
+        const listingIds: string[] =
+          role === "sender"
+            ? (tradeData?.yourListingIds ?? [])
+            : (tradeData?.theirListingIds ?? []);
+
+        const physicalInspection = {
+          label: "counterfeit",
+          passed: false,
+          inspectedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        await Promise.all(
+          listingIds.map((lid: string) =>
+            admin.firestore().collection("trainingData").doc(lid).set(
+              { physicalInspection },
+              { merge: true }
+            )
+          )
+        );
+      } catch (trainingErr) {
+        logger.error("[markAuthResult] trainingData write failed (non-fatal):", trainingErr);
+      }
+
       // Notify the legitimate party (the one whose sneakers are NOT fake)
       const legitId    = role === "sender" ? order.poster?.id    : order.sender?.id;
       const legitEmail = role === "sender" ? order.poster?.email : order.sender?.email;
@@ -723,6 +752,33 @@ export const markAuthResult = onCall({ region: "us-central1", secrets: [SENDGRID
     const order = (await orderRef.get()).data()!;
     if (order.sender?.authenticated && order.poster?.authenticated) {
       await orderRef.update({ completed: true });
+    }
+
+    // Write physical inspection label for authenticated listings
+    try {
+      const actualTradeId: string = order.tradeId ?? tradeId;
+      const tradeSnap = await admin.firestore().doc(`trades/${actualTradeId}`).get();
+      const tradeData = tradeSnap.data();
+      const listingIds: string[] =
+        role === "sender"
+          ? (tradeData?.yourListingIds ?? [])
+          : (tradeData?.theirListingIds ?? []);
+
+      const physicalInspection = {
+        label: "authentic",
+        passed: true,
+        inspectedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+      await Promise.all(
+        listingIds.map((lid: string) =>
+          admin.firestore().collection("trainingData").doc(lid).set(
+            { physicalInspection },
+            { merge: true }
+          )
+        )
+      );
+    } catch (trainingErr) {
+      logger.error("[markAuthResult] trainingData write failed (non-fatal):", trainingErr);
     }
 
     await writeAuditLog({

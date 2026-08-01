@@ -249,6 +249,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Training data — written by Cloud Functions, readable by admins only for export/review
+    match /trainingData/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Audit log — admins can read; all writes go through Cloud Functions
     match /auditLogs/{docId} {
       allow read: if isAdmin();

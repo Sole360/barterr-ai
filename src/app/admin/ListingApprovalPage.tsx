@@ -41,6 +41,16 @@ const STATUS_FILTERS: { label: string; value: string }[] = [
   { label: "Rejected", value: "rejected" },
 ];
 
+// Structured rejection reasons — stored as ML training labels alongside free-text feedback
+const REJECTION_REASONS: { value: string; label: string }[] = [
+  { value: "suspected_fake", label: "Suspected Fake" },
+  { value: "wrong_brand", label: "Wrong Brand" },
+  { value: "wrong_model", label: "Wrong Model" },
+  { value: "bad_photo_quality", label: "Bad Photo Quality" },
+  { value: "missing_photos", label: "Missing Photos" },
+  { value: "condition_mismatch", label: "Condition Mismatch" },
+];
+
 const PHOTO_LABELS: { key: keyof ListingPhotos; label: string }[] = [
   { key: "appearance", label: "Appearance" },
   { key: "boxFrontal", label: "Box Frontal" },
@@ -115,6 +125,7 @@ export const ListingApprovalPage = () => {
   const [userEmails, setUserEmails] = useState<Record<string, string>>({});
   const [feedbackState, setFeedbackState] = useState<{ id: string; action: "request_changes" | "reject" } | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
+  const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
 
   useEffect(() => {
     setLoading(true);
@@ -130,11 +141,21 @@ export const ListingApprovalPage = () => {
     return unsub;
   }, [filter]);
 
-  const review = async (postId: string, action: "approve" | "reject" | "request_changes", feedback?: string) => {
+  const review = async (
+    postId: string,
+    action: "approve" | "reject" | "request_changes",
+    feedback?: string,
+    rejectionReasons?: string[]
+  ) => {
     setActing(postId);
     try {
       const fns = getFunctions(undefined, "us-central1");
-      await httpsCallable(fns, "reviewListing")({ listingId: postId, action, feedback });
+      await httpsCallable(fns, "reviewListing")({
+        listingId: postId,
+        action,
+        feedback,
+        rejectionReasons: rejectionReasons ?? [],
+      });
       toast({
         title:
           action === "approve"
@@ -145,6 +166,7 @@ export const ListingApprovalPage = () => {
       });
       setFeedbackState(null);
       setFeedbackText("");
+      setSelectedReasons([]);
       setExpanded(null);
     } catch {
       toast({ title: "Error", description: "Action failed", variant: "destructive" });
@@ -169,6 +191,13 @@ export const ListingApprovalPage = () => {
   const openFeedback = (id: string, action: "request_changes" | "reject") => {
     setFeedbackState({ id, action });
     setFeedbackText("");
+    setSelectedReasons([]);
+  };
+
+  const toggleReason = (value: string) => {
+    setSelectedReasons((prev) =>
+      prev.includes(value) ? prev.filter((r) => r !== value) : [...prev, value]
+    );
   };
 
   return (
@@ -282,16 +311,43 @@ export const ListingApprovalPage = () => {
                       </div>
                     )}
 
-                    {/* Feedback textarea */}
+                    {/* Feedback panel */}
                     {isFeedbackOpen && (
-                      <div className="mb-3 space-y-2">
+                      <div className="mb-3 space-y-2.5">
                         <p className="text-xs font-semibold text-foreground">
                           {feedbackState?.action === "reject" ? "Rejection reason (sent to seller)" : "Requested changes (sent to seller)"}
                         </p>
+
+                        {/* Structured reason chips — stored as ML training labels */}
+                        <div>
+                          <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-widest font-semibold">
+                            Reason tags
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {REJECTION_REASONS.map((r) => {
+                              const active = selectedReasons.includes(r.value);
+                              return (
+                                <button
+                                  key={r.value}
+                                  type="button"
+                                  onClick={() => toggleReason(r.value)}
+                                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
+                                    active
+                                      ? "bg-red-500 border-red-500 text-white"
+                                      : "border-border text-muted-foreground hover:border-red-300 hover:text-red-600"
+                                  }`}
+                                >
+                                  {r.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
                         <textarea
                           value={feedbackText}
                           onChange={(e) => setFeedbackText(e.target.value)}
-                          placeholder={feedbackState?.action === "reject" ? "Explain why this listing is being rejected…" : "Describe what needs to change…"}
+                          placeholder={feedbackState?.action === "reject" ? "Additional notes for the seller…" : "Describe what needs to change…"}
                           rows={3}
                           className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#3366FF]/40"
                           autoFocus
@@ -299,7 +355,7 @@ export const ListingApprovalPage = () => {
                         <div className="flex gap-2">
                           <button
                             type="button"
-                            onClick={() => review(item.id, feedbackState!.action, feedbackText)}
+                            onClick={() => review(item.id, feedbackState!.action, feedbackText, selectedReasons)}
                             disabled={!feedbackText.trim() || !!acting}
                             className={`flex-1 py-2 rounded-xl text-white text-xs font-semibold transition-colors disabled:opacity-40 ${
                               feedbackState?.action === "reject"
@@ -311,7 +367,7 @@ export const ListingApprovalPage = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => { setFeedbackState(null); setFeedbackText(""); }}
+                            onClick={() => { setFeedbackState(null); setFeedbackText(""); setSelectedReasons([]); }}
                             className="px-4 py-2 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
                           >
                             Cancel

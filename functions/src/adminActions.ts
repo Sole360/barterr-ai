@@ -307,10 +307,11 @@ export const reviewListing = onCall(
     const claims = (await getAuth().getUser(req.auth.uid)).customClaims ?? {};
     if (!claims.role) throw new HttpsError("permission-denied", "Admins only.");
 
-    const { listingId, action, feedback } = req.data as {
+    const { listingId, action, feedback, rejectionReasons } = req.data as {
       listingId: string;
       action: "approve" | "reject" | "request_changes";
       feedback?: string;
+      rejectionReasons?: string[];
     };
 
     if ((action === "reject" || action === "request_changes") && !feedback?.trim()) {
@@ -335,6 +336,30 @@ export const reviewListing = onCall(
       approvalStatus,
       ...(feedback ? { reviewFeedback: feedback } : {}),
     });
+
+    // Capture training data — every review decision is a labeled example.
+    // merge: true so markAuthResult can later write physicalInspection back to the same doc.
+    await db.collection("trainingData").doc(listingId).set({
+      listingId,
+      postId: listingData.postId ?? null,
+      // Sneaker identity — essential for model-level training queries
+      brand: listingData.brand ?? "",
+      styleId: listingData.styleId ?? "",
+      productName: listingData.productName ?? "",
+      size: listingData.size ?? null,
+      condition: listingData.condition ?? null,
+      // Photos (Firebase Storage URLs)
+      photos: listingData.photos ?? {},
+      // Label
+      label: approvalStatus,
+      labelSource: "admin_review",
+      // Structured reasons — the ML-useful signal (free text alone is useless for training)
+      rejectionReasons: rejectionReasons ?? [],
+      // Human notes preserved as secondary context
+      reviewerNotes: feedback ?? "",
+      reviewerId: req.auth.uid,
+      reviewedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
 
     if (action === "request_changes" && ownerId) {
       try {
