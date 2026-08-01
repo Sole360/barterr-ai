@@ -51,6 +51,10 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   "email.sneakers_received": "Email: Sneakers Received",
   "email.outbound_label": "Email: Outbound Label",
   "email.counterfeit": "Email: Counterfeit",
+  "connect.account_created": "Connect: Account Created",
+  "connect.transfer": "Connect: Transfer",
+  "connect.pending_released": "Connect: Pending Released",
+  "connect.withdrawal": "Connect: Withdrawal",
 };
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -71,6 +75,10 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   "email.sneakers_received": "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
   "email.outbound_label": "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
   "email.counterfeit": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  "connect.account_created": "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  "connect.transfer": "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  "connect.pending_released": "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  "connect.withdrawal": "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
 };
 
 const EVENT_TYPE_GROUPS = [
@@ -81,6 +89,7 @@ const EVENT_TYPE_GROUPS = [
   { label: "Authentication", value: "auth." },
   { label: "Admin Actions", value: "admin." },
   { label: "Emails", value: "email." },
+  { label: "Payouts", value: "connect." },
 ];
 
 function relativeTime(ts: Timestamp | null): string {

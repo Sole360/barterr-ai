@@ -42,6 +42,7 @@ import { AboutPage } from "@/app/marketing/AboutPage";
 import { PricingPage } from "@/app/marketing/PricingPage";
 import { FAQPage } from "@/app/marketing/FAQPage";
 import { TermsPage } from "@/app/marketing/TermsPage";
+import { WalletPage } from "@/app/wallet/WalletPage";
 function AppRoutes() {
   const location = useLocation();
   return (
@@ -105,6 +106,10 @@ function AppRoutes() {
           <Route
             path="/discover"
             element={<ProtectedRoute><DiscoverPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/wallet"
+            element={<ProtectedRoute><WalletPage /></ProtectedRoute>}
           />
 
           {/* Admin — nested under AdminShell, all guarded by AdminGuard */}

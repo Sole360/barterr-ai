@@ -15,6 +15,7 @@ import {
   Plus,
   Search,
   X,
+  Wallet,
 } from "lucide-react";
 import { useTheme } from "@/lib/contexts/theme.context";
 import { AnnouncementRibbon } from "./AnnouncementRibbon";
@@ -189,6 +190,10 @@ export const Navbar = () => {
                       <Settings className="w-4 h-4 mr-2" />
                       Account Settings
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/wallet")}>
+                      <Wallet className="w-4 h-4 mr-2" />
+                      Wallet
+                    </DropdownMenuItem>
                     {adminRole && (
                       <>
                         <DropdownMenuSeparator />
@@ -325,6 +330,10 @@ export const Navbar = () => {
                     <DropdownMenuItem onClick={() => navigate("/account")}>
                       <Settings className="w-4 h-4 mr-2" />
                       Account Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/wallet")}>
+                      <Wallet className="w-4 h-4 mr-2" />
+                      Wallet
                     </DropdownMenuItem>
                     {adminRole && (
                       <>

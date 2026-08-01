@@ -9,6 +9,15 @@ import { deleteListingPhotos } from "./cleanupPhotoStorage";
 import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
 import { sendVerificationEmail, sendPasswordResetLink } from "./authEmails";
 import { acceptTrade, onTradeConfirmed, retryPayment } from "./tradePayments";
+import {
+  createConnectAccount,
+  getConnectOnboardingLink,
+  getConnectDashboardLink,
+  syncConnectAccount,
+  getWalletData,
+  withdrawEarnings,
+  onTradeCompletedPayout,
+} from "./stripeConnect";
 import { getRevenueStats } from "./stripeReporting";
 import {
   onNewTrade,
@@ -68,6 +77,14 @@ export {
   acceptTrade,
   onTradeConfirmed,
   retryPayment,
+  // Stripe Connect
+  createConnectAccount,
+  getConnectOnboardingLink,
+  getConnectDashboardLink,
+  syncConnectAccount,
+  getWalletData,
+  withdrawEarnings,
+  onTradeCompletedPayout,
   // Stripe reporting
   getRevenueStats,
   // Email notifications

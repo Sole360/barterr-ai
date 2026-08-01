@@ -25,7 +25,11 @@ export type AuditEventType =
   | "email.shipping_label"
   | "email.sneakers_received"
   | "email.outbound_label"
-  | "email.counterfeit";
+  | "email.counterfeit"
+  | "connect.account_created"
+  | "connect.transfer"
+  | "connect.pending_released"
+  | "connect.withdrawal";
 
 export type AuditTargetType = "trade" | "order" | "user" | "listing" | "flaggedAttempt";
 
