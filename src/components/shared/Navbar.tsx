@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import {
   Bell,
@@ -56,6 +58,18 @@ export const Navbar = () => {
   const { notifications, loading: notifLoading, unreadCount, markRead, markAllRead } =
     useNotifications(currentUser?.uid);
 
+  const [walletBadgeCents, setWalletBadgeCents] = useState(0);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    const unsub = onSnapshot(doc(db, `users/${currentUser.uid}/private/billing`), (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      setWalletBadgeCents((data.pendingPayoutCents ?? 0) + (data.walletTransferCents ?? 0));
+    });
+    return () => unsub();
+  }, [currentUser?.uid]);
+
   // Close notification panel on outside click
   useEffect(() => {
     if (!notifOpen) return;
@@ -83,6 +97,9 @@ export const Navbar = () => {
   };
 
   const isActive = (path: string) => location.pathname === path;
+  const walletBadgeLabel = walletBadgeCents > 0
+    ? `$${(walletBadgeCents / 100).toFixed(2)}`
+    : null;
 
   return (
     <>
@@ -162,7 +179,7 @@ export const Navbar = () => {
                 {/* Mobile profile / sign-out menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="p-1 hover:bg-accent rounded-lg transition-colors">
+                    <button className="relative p-1 hover:bg-accent rounded-lg transition-colors">
                       {userProfile?.photoURL ? (
                         <img
                           src={userProfile.photoURL}
@@ -173,6 +190,9 @@ export const Navbar = () => {
                         <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center">
                           <User className="w-4 h-4 text-white" />
                         </div>
+                      )}
+                      {walletBadgeLabel && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-background" />
                       )}
                     </button>
                   </DropdownMenuTrigger>
@@ -193,6 +213,11 @@ export const Navbar = () => {
                     <DropdownMenuItem onClick={() => navigate("/wallet")}>
                       <Wallet className="w-4 h-4 mr-2" />
                       Wallet
+                      {walletBadgeLabel && (
+                        <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          {walletBadgeLabel}
+                        </span>
+                      )}
                     </DropdownMenuItem>
                     {adminRole && (
                       <>
@@ -296,7 +321,7 @@ export const Navbar = () => {
                 {/* Profile Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button data-tour="profile-desktop" className="flex items-center space-x-2 p-2 hover:bg-accent rounded-lg transition-colors">
+                    <button data-tour="profile-desktop" className="relative flex items-center space-x-2 p-2 hover:bg-accent rounded-lg transition-colors">
                       {userProfile?.photoURL ? (
                         <img
                           src={userProfile.photoURL}
@@ -307,6 +332,9 @@ export const Navbar = () => {
                         <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#33FF99] to-[#3366FF] flex items-center justify-center">
                           <User className="w-5 h-5 text-white" />
                         </div>
+                      )}
+                      {walletBadgeLabel && (
+                        <span className="absolute top-1 left-7 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-background" />
                       )}
                       <span className="hidden sm:block text-sm font-medium text-foreground">
                         {userProfile?.firstName ?? "User"}
@@ -334,6 +362,11 @@ export const Navbar = () => {
                     <DropdownMenuItem onClick={() => navigate("/wallet")}>
                       <Wallet className="w-4 h-4 mr-2" />
                       Wallet
+                      {walletBadgeLabel && (
+                        <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          {walletBadgeLabel}
+                        </span>
+                      )}
                     </DropdownMenuItem>
                     {adminRole && (
                       <>

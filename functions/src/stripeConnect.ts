@@ -223,6 +223,7 @@ export const syncConnectAccount = onCall(
         await billingRef.set(
           {
             pendingPayoutCents: 0,
+            walletTransferCents: admin.firestore.FieldValue.increment(pendingCents),
             lifetimeEarningsCents: admin.firestore.FieldValue.increment(pendingCents),
           },
           { merge: true }
@@ -347,6 +348,12 @@ export const withdrawEarnings = onCall(
       { stripeAccount: accountId }
     );
 
+    // Clear the badge — user has withdrawn their balance
+    await db.doc(`users/${uid}/private/billing`).set(
+      { walletTransferCents: 0 },
+      { merge: true }
+    );
+
     await writeAuditLog({
       eventType: "connect.withdrawal",
       functionName: "withdrawEarnings",
@@ -428,6 +435,7 @@ export const onTradeCompletedPayout = onDocumentUpdated(
 
           await billingRef.set(
             {
+              walletTransferCents: admin.firestore.FieldValue.increment(amountCents),
               lifetimeEarningsCents: admin.firestore.FieldValue.increment(amountCents),
             },
             { merge: true }
