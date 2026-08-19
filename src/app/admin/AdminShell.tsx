@@ -1,0 +1,176 @@
+import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
+import {
+  LayoutDashboard,
+  ShieldAlert,
+  PackageSearch,
+  Users,
+  ArrowLeftRight,
+  Megaphone,
+  LogOut,
+  Moon,
+  Settings,
+  Sun,
+  Filter,
+  LayoutGrid,
+  ClipboardList,
+  PackageCheck,
+  DollarSign,
+} from "lucide-react";
+import { useAuth } from "@/lib/contexts/auth.context";
+import { useTheme } from "@/lib/contexts/theme.context";
+
+const NAV_ITEMS = [
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/flagged", label: "Flagged", icon: ShieldAlert },
+  { to: "/admin/listings", label: "Listings", icon: PackageSearch },
+  { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/trades", label: "Trades", icon: ArrowLeftRight },
+  { to: "/admin/orders", label: "Orders", icon: PackageCheck },
+  { to: "/admin/announcements", label: "Broadcast", icon: Megaphone },
+  { to: "/admin/content-filter", label: "Content Filter", icon: Filter },
+  { to: "/admin/audit", label: "Audit Log", icon: ClipboardList },
+  { to: "/admin/revenue", label: "Revenue", icon: DollarSign },
+];
+
+const linkBase =
+  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors";
+const linkActive = "bg-[#3366FF]/10 text-[#3366FF]";
+const linkInactive = "text-muted-foreground hover:bg-accent hover:text-foreground";
+
+const mobileTab = "shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors min-w-[60px]";
+const mobileTabActive = "text-[#3366FF]";
+const mobileTabInactive = "text-muted-foreground";
+
+export const AdminShell = () => {
+  const { adminRole, logout } = useAuth();
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* ── Desktop sidebar ── */}
+      <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-border bg-card h-screen sticky top-0">
+        {/* Logo / brand */}
+        <div className="px-4 py-5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <img src="/barterr-main-icon.png" alt="Barterr" className="h-7 w-auto" />
+            <div>
+              <div className="text-xs font-bold text-foreground leading-none">BARTERR</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-widest leading-none mt-0.5">
+                {adminRole === "super_admin" ? "Super Admin" : "Admin"}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Nav links */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? linkActive : linkInactive}`
+              }
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="px-3 py-4 border-t border-border space-y-1">
+          <Link
+            to="/dashboard"
+            className={`${linkBase} ${linkInactive}`}
+          >
+            <LayoutGrid className="w-4 h-4 shrink-0" />
+            Back to app
+          </Link>
+          {adminRole === "super_admin" && (
+            <NavLink
+              to="/admin/settings"
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? linkActive : linkInactive}`
+              }
+            >
+              <Settings className="w-4 h-4 shrink-0" />
+              Settings
+            </NavLink>
+          )}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`${linkBase} ${linkInactive} w-full text-left`}
+          >
+            {resolvedTheme === "dark"
+              ? <Sun className="w-4 h-4 shrink-0" />
+              : <Moon className="w-4 h-4 shrink-0" />}
+            {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={`${linkBase} ${linkInactive} w-full text-left`}
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main content ── */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile top bar */}
+        <header className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border bg-card sticky top-0 z-30">
+          <div className="flex items-center gap-2">
+            <img src="/barterr-main-icon.png" alt="Barterr" className="h-6 w-auto" />
+            <span className="text-xs font-bold text-foreground uppercase tracking-widest">Admin</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Link to="/dashboard" className="p-2 rounded-lg hover:bg-accent transition-colors" title="Back to app">
+              <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+            </Link>
+            <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-accent transition-colors">
+              {resolvedTheme === "dark"
+                ? <Sun className="w-4 h-4 text-muted-foreground" />
+                : <Moon className="w-4 h-4 text-muted-foreground" />}
+            </button>
+            <button type="button" onClick={handleLogout} className="p-2 rounded-lg hover:bg-accent transition-colors">
+              <LogOut className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+          <Outlet />
+        </main>
+      </div>
+
+      {/* ── Mobile bottom tab bar (scrollable) ── */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border flex overflow-x-auto scrollbar-hide safe-area-inset-bottom">
+        {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            className={({ isActive }) =>
+              `${mobileTab} ${isActive ? mobileTabActive : mobileTabInactive}`
+            }
+          >
+            <Icon className="w-5 h-5" />
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+    </div>
+  );
+};

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barterr &mdash; SendGrid Email Templates</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #efeff4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .head { background: linear-gradient(135deg,#33ff99 0%,#33c9bc 50%,#3366ff 100%); padding: 40px 32px; color: #fff; }
+  .head h1 { font-size: 28px; font-weight: 900; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .head p { margin: 0; opacity: .85; font-size: 14px; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 32px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+  .item { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06); }
+  .item .bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e5e5ea; }
+  .item .name { font-weight: 700; font-size: 13px; color: #000; }
+  .item .tag { font-size: 11px; color: #8e8e93; background: #f2f2f7; padding: 3px 8px; border-radius: 9999px; font-weight: 600; }
+  .frame { height: 420px; overflow: hidden; background: #efeff4; position: relative; }
+  .frame iframe { width: 600px; height: 900px; border: 0; transform: scale(0.57); transform-origin: top left; pointer-events: none; }
+  .item a.open { display: block; padding: 10px 16px; font-size: 12px; color: #3366ff; font-weight: 700; border-top: 1px solid #e5e5ea; text-decoration: none; }
+  .item a.open:hover { background: #f9fafb; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>Email Templates</h1>
+    <p>Barterr &middot; SendGrid transactional + lifecycle emails &middot; 600px, table-based, Handlebars substitutions</p>
+  </div>
+  <div class="wrap">
+
+    <div class="item">
+      <div class="bar"><span class="name">Waitlist welcome</span><span class="tag">lifecycle</span></div>
+      <div class="frame"><iframe src="welcome.html" scrolling="no"></iframe></div>
+      <a class="open" href="welcome.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Verify email</span><span class="tag">auth</span></div>
+      <div class="frame"><iframe src="verify-email.html" scrolling="no"></iframe></div>
+      <a class="open" href="verify-email.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">New trade offer</span><span class="tag">transactional</span></div>
+      <div class="frame"><iframe src="trade-offer.html" scrolling="no"></iframe></div>
+      <a class="open" href="trade-offer.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Trade confirmed</span><span class="tag">transactional</span></div>
+      <div class="frame"><iframe src="trade-confirmed.html" scrolling="no"></iframe></div>
+      <a class="open" href="trade-confirmed.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Trade declined</span><span class="tag">transactional</span></div>
+      <div class="frame"><iframe src="trade-declined.html" scrolling="no"></iframe></div>
+      <a class="open" href="trade-declined.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Weekly reminder</span><span class="tag">scheduled</span></div>
+      <div class="frame"><iframe src="trade-reminder.html" scrolling="no"></iframe></div>
+      <a class="open" href="trade-reminder.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Direct message</span><span class="tag">transactional</span></div>
+      <div class="frame"><iframe src="direct-message.html" scrolling="no"></iframe></div>
+      <a class="open" href="direct-message.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Wishlist match</span><span class="tag">triggered</span></div>
+      <div class="frame"><iframe src="match-post-wisher.html" scrolling="no"></iframe></div>
+      <a class="open" href="match-post-wisher.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Listing match</span><span class="tag">triggered</span></div>
+      <div class="frame"><iframe src="match-post-owner.html" scrolling="no"></iframe></div>
+      <a class="open" href="match-post-owner.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Authentication failed</span><span class="tag">alert</span></div>
+      <div class="frame"><iframe src="counterfeit.html" scrolling="no"></iframe></div>
+      <a class="open" href="counterfeit.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Shipping label</span><span class="tag">transactional</span></div>
+      <div class="frame"><iframe src="shipping-label.html" scrolling="no"></iframe></div>
+      <a class="open" href="shipping-label.html" target="_blank">Open &rarr;</a>
+    </div>
+
+    <div class="item">
+      <div class="bar"><span class="name">Sneakers received</span><span class="tag">transactional</span></div>
+      <div class="frame"><iframe src="sneakers-received.html" scrolling="no"></iframe></div>
+      <a class="open" href="sneakers-received.html" target="_blank">Open &rarr;</a>
+    </div>
+
+  </div>
+</body>
+</html>

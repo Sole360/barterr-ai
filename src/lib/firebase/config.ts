@@ -38,6 +38,6 @@ if (!getApps().length) {
 export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);
 export const storage: FirebaseStorage = getStorage(app);
-export const functions: Functions = getFunctions(app);
+export const functions: Functions = getFunctions(app, "us-central1");
 
 export default app;
