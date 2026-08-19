@@ -330,6 +330,7 @@ export interface Listing {
   };
   approvalStatus?: "pending" | "approved" | "rejected" | "changes_requested";
   reviewFeedback?: string;
+  tradeValueSource?: "market" | "user_set";
   createdAt: Timestamp;
 }
 
@@ -548,6 +549,7 @@ export interface SelectedSneaker extends SearchResult {
   size: string;
   condition: number;
   tradeValue: string;
+  tradeValueSource?: "market" | "user_set";
   hasBox: boolean;
   hasInsoles: boolean;
   hasLaces: boolean;

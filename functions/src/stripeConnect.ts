@@ -65,6 +65,7 @@ export const createConnectAccount = onCall(
     const account = await stripe.accounts.create({
       type: "express",
       country: "US",
+      business_type: "individual",
       capabilities: {
         transfers: { requested: true },
       },

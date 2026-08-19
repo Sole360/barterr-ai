@@ -63,6 +63,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
   const [hasInsoles, setHasInsoles] = useState(true);
   const [hasLaces, setHasLaces] = useState(true);
   const [flaws, setFlaws] = useState("");
+  const [showManualPriceInput, setShowManualPriceInput] = useState(false);
   const skipDraftCleanupRef = useRef(false);
 
   // Photo upload state
@@ -166,9 +167,11 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
 
   const handleSelectSneaker = (sneaker: SearchResult) => {
     const id = doc(collection(db, "listings")).id;
-
     setDraftListingId(id);
     setSelectedSneaker(sneaker);
+    // Auto-populate trade value from StockX avg_price; GOAT results won't have a price
+    setTradeValue(sneaker.avg_price ? String(Math.round(sneaker.avg_price)) : "");
+    setShowManualPriceInput(!sneaker.avg_price); // GOAT → always show manual input
     setStep("details");
   };
 
@@ -185,12 +188,17 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
       return;
     }
 
+    const tradeValueSource: "market" | "user_set" = showManualPriceInput
+      ? "user_set"
+      : "market";
+
     const sneakerToAdd: SelectedSneaker = {
       ...selectedSneaker,
       listingId: draftListingId,
       size,
       condition,
       tradeValue,
+      tradeValueSource,
       hasBox,
       hasInsoles,
       hasLaces,
@@ -208,6 +216,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
     // Reset form but keep last size and condition as defaults
     setSelectedSneaker(null);
     setTradeValue("");
+    setShowManualPriceInput(false);
     setFlaws("");
     setUploadedPhotos({});
     setStep("search");
@@ -271,6 +280,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
             condition: sneaker.condition === 10 ? "new" : "used",
             conditionGrade: sneaker.condition,
             tradeValue: parseFloat(sneaker.tradeValue),
+            tradeValueSource: sneaker.tradeValueSource,
             location: userProfile.location ?? "Location not set",
             responseTime: "Usually responds within 24 hours",
             photos: sneaker.photos,
@@ -371,6 +381,7 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
       setSelectedSneakers([]);
       setSize("");
       setTradeValue("");
+      setShowManualPriceInput(false);
       setCondition(10);
       setHasBox(true);
       setHasInsoles(true);
@@ -587,30 +598,55 @@ export const AddSneakerDialog = ({ open, onClose }: AddSneakerDialogProps) => {
 
               {/* Trade Value */}
               <div>
-                <Label
-                  htmlFor="tradeValue"
-                  className="text-sm font-medium text-foreground mb-2 block"
-                >
+                <Label className="text-sm font-medium text-foreground mb-2 block">
                   Trade Value (USD) *
                 </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
-                    $
-                  </span>
-                  <Input
-                    id="tradeValue"
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="180"
-                    value={tradeValue}
-                    onChange={(e) => setTradeValue(e.target.value)}
-                    className="pl-7"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Estimated market value for trade purposes
-                </p>
+                {selectedSneaker?.avg_price && !showManualPriceInput ? (
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      ${Math.round(selectedSneaker.avg_price)}{" "}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        (StockX market avg)
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowManualPriceInput(true);
+                        setTradeValue("");
+                      }}
+                      className="text-xs text-[#3366FF] mt-1 hover:underline"
+                    >
+                      Set my own price
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    {!selectedSneaker?.avg_price && (
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Market price could not be determined for this sneaker
+                      </p>
+                    )}
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        id="tradeValue"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="180"
+                        value={tradeValue}
+                        onChange={(e) => setTradeValue(e.target.value)}
+                        className="pl-7"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Estimated market value for trade purposes
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Condition Slider */}

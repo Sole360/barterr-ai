@@ -2,6 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions/v2";
 import sgMail from "@sendgrid/mail";
 import { writeAuditLog } from "./utils/auditLog";
@@ -27,6 +28,49 @@ const CORS_ORIGINS = [
 type AdminRole = "super_admin" | "admin";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const TRAINING_PHOTO_TYPES = [
+  "appearance", "boxLabel", "insoles",
+  "boxFrontal", "insoleStitching", "dateCode",
+] as const;
+
+/** Extracts the GCS object path from a Firebase Storage download URL. */
+function extractStoragePath(url: string): string | null {
+  const match = url.match(/\/o\/([^?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
+ * Copies each listing photo to training-data/{listingId}/ in the same bucket.
+ * Returns a map of photoType → gs:// URI for the immutable copy.
+ * Per-photo failures are logged and skipped — never blocks the review action.
+ */
+async function copyPhotosToTrainingStorage(
+  rawPhotos: Record<string, string>,
+  listingId: string
+): Promise<Record<string, string>> {
+  const bucket = getStorage().bucket();
+  const copied: Record<string, string> = {};
+
+  await Promise.all(
+    TRAINING_PHOTO_TYPES.map(async (photoType) => {
+      const originalUrl = rawPhotos[photoType];
+      if (!originalUrl) return;
+      const srcPath = extractStoragePath(originalUrl);
+      if (!srcPath) return;
+      try {
+        const ext = srcPath.split(".").pop() ?? "jpg";
+        const destPath = `training-data/${listingId}/${photoType}.${ext}`;
+        await bucket.file(srcPath).copy(bucket.file(destPath));
+        copied[photoType] = `gs://${bucket.name}/${destPath}`;
+      } catch (err) {
+        logger.warn(`trainingData: photo copy failed [${photoType}] listing=${listingId}:`, err);
+      }
+    })
+  );
+
+  return copied;
+}
 
 async function assertSuperAdmin(uid: string) {
   const claims = (await getAuth().getUser(uid)).customClaims ?? {};
@@ -337,6 +381,11 @@ export const reviewListing = onCall(
       ...(feedback ? { reviewFeedback: feedback } : {}),
     });
 
+    // Copy photos to immutable training-data/ storage path before writing the doc.
+    // The trainingData document references the copies so the training set survives listing deletion.
+    const rawPhotos = (listingData.photos ?? {}) as Record<string, string>;
+    const trainingPhotos = await copyPhotosToTrainingStorage(rawPhotos, listingId);
+
     // Capture training data — every review decision is a labeled example.
     // merge: true so markAuthResult can later write physicalInspection back to the same doc.
     await db.collection("trainingData").doc(listingId).set({
@@ -348,8 +397,8 @@ export const reviewListing = onCall(
       productName: listingData.productName ?? "",
       size: listingData.size ?? null,
       condition: listingData.condition ?? null,
-      // Photos (Firebase Storage URLs)
-      photos: listingData.photos ?? {},
+      // Immutable GCS copies — gs:// paths survive listing deletion and plug directly into Vertex AI
+      photos: trainingPhotos,
       // Label
       label: approvalStatus,
       labelSource: "admin_review",

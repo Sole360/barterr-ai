@@ -354,6 +354,7 @@ export const createListing = async (listingData: {
     dateCode?: string;
   };
   approvalStatus?: "pending" | "approved" | "rejected";
+  tradeValueSource?: "market" | "user_set";
 }): Promise<string> => {
   const listingsRef = collection(db, "listings");
 
@@ -369,6 +370,7 @@ export const createListing = async (listingData: {
     location: listingData.location,
     responseTime: listingData.responseTime,
     approvalStatus: listingData.approvalStatus ?? "approved",
+    ...(listingData.tradeValueSource ? { tradeValueSource: listingData.tradeValueSource } : {}),
     createdAt: Timestamp.now(),
     ...(listingData.productName
       ? { productName: listingData.productName }
