@@ -37,3 +37,16 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Zips
+*.zip
+
+# Firebase service account keys — NEVER commit these
+scripts/serviceAccountKey.json
+serviceAccountKey.json
+.firebase/hosting.ZGlzdA.cache
+tsconfig.app.tsbuildinfo
+.firebase/hosting.ZGlzdA.cache
+.firebase/hosting.ZGlzdA.cache
+tsconfig.app.tsbuildinfo
+.firebase/hosting.ZGlzdA.cache

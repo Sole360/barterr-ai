@@ -1,0 +1,280 @@
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
+import { logger } from "firebase-functions/v2";
+import * as admin from "firebase-admin";
+import sgMail from "@sendgrid/mail";
+
+const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
+
+const CORS_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://barterr.ai",
+  "https://dev.barterr.ai",
+];
+
+const FROM = "trading@barterr.ai";
+
+function setup() {
+  const key = SENDGRID_API_KEY.value();
+  if (!key) throw new Error("SENDGRID_API_KEY secret is not set.");
+  sgMail.setApiKey(key);
+}
+
+// verify-email.html inlined without the OTP code section (link-only variant)
+const VERIFY_EMAIL_HTML = `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Verify your Barterr email</title>
+<!--[if mso]><style>body,table,td{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&family=Montserrat:wght@800;900&display=swap");
+  body { margin: 0; padding: 0; background: #efeff4; -webkit-font-smoothing: antialiased; }
+  table { border-collapse: collapse; }
+  a { text-decoration: none; }
+  .btn:hover { opacity: .92; }
+  @media (max-width: 620px) { .container { width: 100% !important; } .px { padding-left: 24px !important; padding-right: 24px !important; } }
+</style>
+</head>
+<body>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Confirm your email to start trading on Barterr.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#efeff4;">
+  <tr><td align="center" style="padding:32px 12px;">
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+
+      <tr><td align="center" style="padding:40px 40px 0;" class="px">
+        <img src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-logo%20(1).png?alt=media&token=9a1ede0a-0748-40b1-abc9-ab5c00797931" width="140" height="35" alt="Barterr" style="display:block;border:0;margin:0 auto;">
+      </td></tr>
+
+      <tr><td align="center" style="padding:24px 40px 8px;" class="px">
+        <h1 style="margin:0;font-family:'Montserrat',Arial,sans-serif;font-weight:900;font-size:28px;line-height:1.15;color:#000;letter-spacing:-0.01em;">Confirm your email</h1>
+      </td></tr>
+
+      <tr><td align="center" style="padding:12px 48px 8px;" class="px">
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:16px;line-height:1.6;color:#333;text-align:center;">Hi {{firstName}}, one quick step before you can list and trade. Tap the button below to verify your email.</p>
+      </td></tr>
+
+      <tr><td align="center" style="padding:28px 40px 8px;" class="px">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td align="center" bgcolor="#3366ff" style="border-radius:12px;background-image:linear-gradient(135deg,#33ff99 0%,#33c9bc 50%,#3366ff 100%);">
+            <a class="btn" href="{{verifyUrl}}" style="display:inline-block;padding:15px 36px;font-family:'Montserrat',Arial,sans-serif;font-weight:800;font-size:16px;color:#ffffff;border-radius:12px;">Verify Email</a>
+          </td>
+        </tr></table>
+      </td></tr>
+
+      <tr><td align="center" style="padding:8px 48px 0;" class="px">
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:13px;line-height:1.6;color:#8e8e93;text-align:center;">Or copy and paste this link into your browser:</p>
+        <p style="margin:6px 0 0;font-family:'Karla',Arial,sans-serif;font-size:12px;line-height:1.6;color:#3366ff;text-align:center;word-break:break-all;">{{verifyUrl}}</p>
+      </td></tr>
+
+      <tr><td align="center" style="padding:18px 48px 32px;" class="px">
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:13px;line-height:1.6;color:#8e8e93;text-align:center;">This link expires in 24 hours. If you didn't create a Barterr account, you can safely ignore this email.</p>
+      </td></tr>
+
+      <tr><td style="padding:0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#3366ff;background-image:linear-gradient(135deg,#33ff99 0%,#33c9bc 50%,#3366ff 100%);">
+          <tr><td align="center" style="padding:28px 40px;">
+            <p style="margin:0 0 4px;font-family:'Montserrat',Arial,sans-serif;font-weight:900;font-size:15px;letter-spacing:-0.3px;color:#ffffff;">Barterr</p>
+            <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.8);">&copy; 2026 Barterr &nbsp;&middot;&nbsp; Trade sneakers with confidence.</p>
+          </td></tr>
+        </table>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+
+const PASSWORD_RESET_HTML = `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Reset your Barterr password</title>
+<!--[if mso]><style>body,table,td{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&family=Montserrat:wght@800;900&display=swap");
+  body { margin: 0; padding: 0; background: #efeff4; -webkit-font-smoothing: antialiased; }
+  table { border-collapse: collapse; }
+  a { text-decoration: none; }
+  .btn:hover { opacity: .92; }
+  @media (max-width: 620px) { .container { width: 100% !important; } .px { padding-left: 24px !important; padding-right: 24px !important; } }
+</style>
+</head>
+<body>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Reset your Barterr password.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#efeff4;">
+  <tr><td align="center" style="padding:32px 12px;">
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+
+      <tr><td align="center" style="padding:40px 40px 0;" class="px">
+        <img src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-logo%20(1).png?alt=media&token=9a1ede0a-0748-40b1-abc9-ab5c00797931" width="140" height="35" alt="Barterr" style="display:block;border:0;margin:0 auto;">
+      </td></tr>
+
+      <tr><td align="center" style="padding:32px 40px 8px;" class="px">
+        <h1 style="margin:0;font-family:'Montserrat',Arial,sans-serif;font-weight:900;font-size:28px;line-height:1.15;color:#000;letter-spacing:-0.01em;">Reset your password</h1>
+      </td></tr>
+
+      <tr><td align="center" style="padding:12px 48px 8px;" class="px">
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:16px;line-height:1.6;color:#333;text-align:center;">We received a request to reset your Barterr password. Tap the button below to choose a new one.</p>
+      </td></tr>
+
+      <tr><td align="center" style="padding:28px 40px 8px;" class="px">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td align="center" style="border-radius:12px;background-image:linear-gradient(135deg,#33ff99 0%,#33c9bc 50%,#3366ff 100%);">
+            <a class="btn" href="{{resetUrl}}" style="display:inline-block;padding:15px 40px;font-family:'Montserrat',Arial,sans-serif;font-weight:800;font-size:16px;color:#ffffff;border-radius:12px;">Reset Password</a>
+          </td>
+        </tr></table>
+      </td></tr>
+
+      <tr><td align="center" style="padding:8px 48px 0;" class="px">
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:13px;line-height:1.6;color:#8e8e93;text-align:center;">Or copy and paste this link into your browser:</p>
+        <p style="margin:6px 0 0;font-family:'Karla',Arial,sans-serif;font-size:12px;line-height:1.6;color:#3366ff;text-align:center;word-break:break-all;">{{resetUrl}}</p>
+      </td></tr>
+
+      <tr><td align="center" style="padding:18px 48px 32px;" class="px">
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:13px;line-height:1.6;color:#8e8e93;text-align:center;">This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email — your password will not change.</p>
+      </td></tr>
+
+      <tr><td style="padding:0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-image:linear-gradient(135deg,#33ff99 0%,#33c9bc 50%,#3366ff 100%);">
+          <tr><td align="center" style="padding:28px 40px;">
+            <p style="margin:0 0 4px;font-family:'Montserrat',Arial,sans-serif;font-weight:900;font-size:15px;letter-spacing:-0.3px;color:#ffffff;">Barterr</p>
+            <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.8);">&copy; 2026 Barterr &nbsp;&middot;&nbsp; Trade sneakers with confidence.</p>
+          </td></tr>
+        </table>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+
+// ─────────────────────────────────────────────
+// sendVerificationEmail — called after signup or resend
+// ─────────────────────────────────────────────
+
+export const sendVerificationEmail = onCall(
+  {
+    region: "us-central1",
+    invoker: "public",
+    secrets: [SENDGRID_API_KEY],
+    cors: CORS_ORIGINS,
+  },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "You must be signed in.");
+
+    setup();
+
+    let email: string;
+    let userFirstName: string;
+
+    try {
+      const [authUser, userSnap] = await Promise.all([
+        admin.auth().getUser(uid),
+        admin.firestore().collection("users").doc(uid).get(),
+      ]);
+      if (!authUser.email) {
+        throw new HttpsError("failed-precondition", "No email address on account.");
+      }
+      email = authUser.email;
+      const profile = userSnap.data() as { firstName?: string; displayName?: string } | undefined;
+      userFirstName = profile?.firstName ?? profile?.displayName ?? "there";
+    } catch (err: unknown) {
+      if (err instanceof HttpsError) throw err;
+      logger.error("[sendVerificationEmail] failed to look up user", { uid, error: err });
+      throw new HttpsError("internal", "Failed to prepare verification email.");
+    }
+
+    let verifyUrl: string;
+    try {
+      verifyUrl = await admin.auth().generateEmailVerificationLink(email, {
+        url: "https://barterr.ai/login",
+        handleCodeInApp: false,
+      });
+    } catch (err: unknown) {
+      logger.error("[sendVerificationEmail] generateEmailVerificationLink failed", { uid, error: err });
+      throw new HttpsError("internal", "Failed to generate verification link.");
+    }
+
+    const html = VERIFY_EMAIL_HTML
+      .replace(/\{\{firstName\}\}/g, userFirstName)
+      .replace(/\{\{verifyUrl\}\}/g, verifyUrl);
+
+    try {
+      await sgMail.send({
+        to: email,
+        from: { name: "Barterr", email: FROM },
+        subject: "Verify your Barterr email",
+        html,
+        categories: ["auth", "email-verification"],
+        trackingSettings: { clickTracking: { enable: false }, openTracking: { enable: false } },
+      });
+    } catch (err: unknown) {
+      logger.error("[sendVerificationEmail] SendGrid send failed", { to: email, error: err });
+      throw new HttpsError("internal", "Failed to send verification email.");
+    }
+
+    return { success: true };
+  }
+);
+
+// ─────────────────────────────────────────────
+// sendPasswordResetLink — called from forgot password or account settings
+// ─────────────────────────────────────────────
+
+export const sendPasswordResetLink = onCall(
+  {
+    region: "us-central1",
+    invoker: "public",
+    secrets: [SENDGRID_API_KEY],
+    cors: CORS_ORIGINS,
+  },
+  async (request) => {
+    const { email } = (request.data ?? {}) as { email?: string };
+    if (!email) throw new HttpsError("invalid-argument", "Email is required.");
+
+    setup();
+
+    let resetUrl: string;
+    try {
+      resetUrl = await admin.auth().generatePasswordResetLink(email, {
+        url: "https://barterr.ai/login",
+        handleCodeInApp: false,
+      });
+    } catch (err: unknown) {
+      // Don't reveal whether the email is registered — just return success
+      const code = (err as { code?: string }).code;
+      if (code === "auth/user-not-found" || code === "auth/email-not-found") {
+        return { success: true };
+      }
+      logger.error("[sendPasswordResetLink] generatePasswordResetLink failed", { email, error: err });
+      throw new HttpsError("internal", "Failed to generate reset link.");
+    }
+
+    const html = PASSWORD_RESET_HTML.replace(/\{\{resetUrl\}\}/g, resetUrl);
+
+    try {
+      await sgMail.send({
+        to: email,
+        from: { name: "Barterr", email: FROM },
+        subject: "Reset your Barterr password",
+        html,
+        categories: ["auth", "password-reset"],
+        trackingSettings: { clickTracking: { enable: false }, openTracking: { enable: false } },
+      });
+    } catch (err: unknown) {
+      logger.error("[sendPasswordResetLink] SendGrid send failed", { to: email, error: err });
+      throw new HttpsError("internal", "Failed to send password reset email.");
+    }
+
+    return { success: true };
+  }
+);

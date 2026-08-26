@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Your sneakers are on their way</title>
+<!--[if mso]><style>body,table,td{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&family=Montserrat:wght@800;900&display=swap");
+  body { margin: 0; padding: 0; background: #efeff4; -webkit-font-smoothing: antialiased; }
+  table { border-collapse: collapse; }
+  a { text-decoration: none; }
+  .btn:hover { opacity: .92; }
+  @media (max-width: 620px) { .container { width: 100% !important; } .px { padding-left: 24px !important; padding-right: 24px !important; } }
+</style>
+</head>
+<body>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">They passed authentication — your new pair is shipped and tracking is live.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#efeff4;">
+  <tr><td align="center" style="padding:32px 12px;">
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+
+      <!-- Gradient celebration header -->
+      <tr><td align="center" style="background:#16a34a;background-image:linear-gradient(135deg,#33ff99 0%,#33c9bc 100%);padding:44px 40px 40px;" class="px">
+        <img src="https://firebasestorage.googleapis.com/v0/b/barterr-dev-98dfd.firebasestorage.app/o/public%2Fbarterr-logo%20(1).png?alt=media&token=9a1ede0a-0748-40b1-abc9-ab5c00797931" width="140" height="35" alt="Barterr" style="display:block;border:0;margin:0 auto 16px;">
+        <h1 style="margin:0;font-family:'Montserrat',Arial,sans-serif;font-weight:900;font-size:29px;line-height:1.15;color:#ffffff;letter-spacing:-0.01em;">They passed — and they're<br>on their way! 📦</h1>
+      </td></tr>
+
+      <tr><td style="padding:32px 40px 4px;" class="px">
+        <p style="margin:0 0 16px;font-family:'Karla',Arial,sans-serif;font-size:17px;line-height:1.6;color:#333;">Great news, {{firstName}} — both pairs from your trade with {{otherName}} cleared authentication with our experts. Your new kicks are packed up and heading straight to your door.</p>
+      </td></tr>
+
+      <!-- Tracking card -->
+      <tr><td style="padding:16px 40px 8px;" class="px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf6;background-image:linear-gradient(135deg,#f0fffa 0%,#eefbff 100%);border:1px solid #b6f0d8;border-radius:14px;">
+          <tr><td style="padding:22px 24px 18px;" class="px">
+            <p style="margin:0 0 14px;font-family:'Montserrat',Arial,sans-serif;font-weight:800;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#1aa179;">Tracking your shipment</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:6px 0;font-family:'Karla',Arial,sans-serif;font-size:14px;color:#5b6b66;">Carrier</td>
+                <td align="right" style="padding:6px 0;font-family:'Karla',Arial,sans-serif;font-size:15px;font-weight:700;color:#0b3b2c;">{{carrier}}</td>
+              </tr>
+              <tr><td colspan="2" style="padding:4px 0;"><hr style="border:none;border-top:1px solid #c8efdd;margin:0;"></td></tr>
+              <tr>
+                <td style="padding:6px 0;font-family:'Karla',Arial,sans-serif;font-size:14px;color:#5b6b66;">Tracking number</td>
+                <td align="right" style="padding:6px 0;font-family:'Montserrat',Arial,sans-serif;font-weight:800;font-size:16px;color:#0b3b2c;letter-spacing:0.01em;">{{trackingNumber}}</td>
+              </tr>
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <!-- Primary CTA -->
+      <tr><td align="center" style="padding:24px 40px 8px;" class="px">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td align="center" bgcolor="#3366ff" style="border-radius:12px;">
+            <a class="btn" href="{{tradeUrl}}" style="display:inline-block;padding:15px 36px;font-family:'Montserrat',Arial,sans-serif;font-weight:800;font-size:16px;color:#ffffff;border-radius:12px;">View Trade</a>
+          </td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Trade ref + completion note -->
+      <tr><td align="center" style="padding:6px 40px 4px;" class="px">
+        <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:13px;color:#8e8e93;">Trade #{{tradeId}}</p>
+      </td></tr>
+
+      <tr><td style="padding:18px 40px 8px;" class="px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e5ea;border-radius:12px;">
+          <tr><td style="padding:14px 18px;font-family:'Karla',Arial,sans-serif;font-size:14px;line-height:1.5;color:#555;">Once delivered, your trade with {{otherName}} is officially complete. 🤝</td></tr>
+        </table>
+      </td></tr>
+
+            <tr><td style="padding:0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#3366ff;background-image:linear-gradient(135deg,#33ff99 0%,#33c9bc 50%,#3366ff 100%);">
+          <tr><td align="center" style="padding:28px 40px;">
+            <p style="margin:0 0 4px;font-family:'Montserrat',Arial,sans-serif;font-weight:900;font-size:15px;letter-spacing:-0.3px;color:#ffffff;">Barterr</p>
+            <p style="margin:0;font-family:'Karla',Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.8);">&copy; 2026 Barterr &nbsp;&middot;&nbsp; Trade sneakers with confidence.</p>
+          </td></tr>
+        </table>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

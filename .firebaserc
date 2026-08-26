@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "barterr-prod",
+    "prod": "barterr-prod",
+    "dev": "barterr-dev-98dfd"
+  },
+  "targets": {},
+  "etags": {}
+}
