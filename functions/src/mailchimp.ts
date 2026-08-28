@@ -1,4 +1,4 @@
-import { onDocumentCreated, onDocumentDeleted } from "firebase-functions/v2/firestore";
+import { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
 import { logger } from "firebase-functions/v2";
 import { createHash } from "crypto";
@@ -56,6 +56,52 @@ export const onUserCreatedMailchimp = onDocumentCreated(
       } else {
         logger.error("[onUserCreatedMailchimp] unexpected error", {
           email: data.email,
+          error: String(err),
+        });
+      }
+    }
+  }
+);
+
+export const onUserAddressUpdatedMailchimp = onDocumentUpdated(
+  { document: "users/{uid}", region: "us-central1", secrets: [MAILCHIMP_API_KEY] },
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+
+    if (!after?.email || !after?.address) return;
+
+    const addressChanged = JSON.stringify(before?.address) !== JSON.stringify(after.address);
+    if (!addressChanged) return;
+
+    const client = mailchimpClient(MAILCHIMP_API_KEY.value());
+    const hash = subscriberHash(after.email);
+    const addr = after.address;
+
+    try {
+      await client.patch(`/lists/${AUDIENCE_ID}/members/${hash}`, {
+        merge_fields: {
+          ADDRESS: {
+            addr1: addr.street ?? "",
+            city: addr.city ?? "",
+            state: addr.state ?? "",
+            zip: addr.zip ?? "",
+            country: addr.country ?? "US",
+          },
+        },
+      });
+      logger.info("[onUserAddressUpdatedMailchimp] success", { email: after.email });
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        logger.error("[onUserAddressUpdatedMailchimp] mailchimp API error", {
+          email: after.email,
+          status: err.response?.status,
+          body: err.response?.data,
+          message: err.message,
+        });
+      } else {
+        logger.error("[onUserAddressUpdatedMailchimp] unexpected error", {
+          email: after.email,
           error: String(err),
         });
       }
