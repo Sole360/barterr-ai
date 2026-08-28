@@ -89,8 +89,16 @@ describe("markAuthResult", () => {
     jest.clearAllMocks();
     mockGet    = jest.fn().mockResolvedValue({ exists: true, data: () => baseOrder });
     mockUpdate = jest.fn().mockResolvedValue({});
-    const mockDoc = jest.fn(() => ({ get: mockGet, update: mockUpdate }));
-    (admin.firestore as unknown as jest.Mock).mockReturnValue({ doc: mockDoc });
+    const mockAdd     = jest.fn().mockResolvedValue({});
+    const mockSet     = jest.fn().mockResolvedValue({});
+    const mockSubColl = jest.fn(() => ({ add: mockAdd, doc: jest.fn(() => ({ get: mockGet, update: mockUpdate, set: mockSet })) }));
+    const mockDoc     = jest.fn(() => ({ get: mockGet, update: mockUpdate, set: mockSet, collection: mockSubColl }));
+    const mockColl    = jest.fn(() => ({ doc: mockDoc, add: mockAdd }));
+    (admin.firestore as unknown as jest.Mock).mockReturnValue({ doc: mockDoc, collection: mockColl });
+    (admin.firestore as any).FieldValue = {
+      serverTimestamp: jest.fn(() => "SERVER_TIMESTAMP"),
+      increment: jest.fn((n: number) => n),
+    };
     (sgMail.send as jest.Mock).mockResolvedValue([{ statusCode: 202 }]);
   });
 

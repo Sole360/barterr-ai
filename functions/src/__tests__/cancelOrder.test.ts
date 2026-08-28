@@ -81,7 +81,9 @@ describe("cancelOrder", () => {
     jest.clearAllMocks();
     mockGet    = jest.fn().mockResolvedValue({ exists: true, data: () => validOrder });
     mockUpdate = jest.fn().mockResolvedValue({});
-    const mockDoc        = jest.fn(() => ({ get: mockGet, update: mockUpdate }));
+    const mockAdd        = jest.fn().mockResolvedValue({});
+    const mockSubColl    = jest.fn(() => ({ add: mockAdd }));
+    const mockDoc        = jest.fn(() => ({ get: mockGet, update: mockUpdate, collection: mockSubColl }));
     const mockCollection = jest.fn(() => ({ doc: mockDoc }));
     (getFirestore as jest.Mock).mockReturnValue({ collection: mockCollection });
     (sgMail.send as jest.Mock).mockResolvedValue([{ statusCode: 202 }]);
