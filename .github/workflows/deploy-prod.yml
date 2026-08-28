@@ -6,27 +6,108 @@ on:
       - main
 
 jobs:
-  deploy:
+  codeql:
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3
+
+  dependency-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
+      - name: Install functions dependencies
+        run: cd functions && npm ci
+      - name: Audit functions dependencies
+        run: cd functions && npm audit --audit-level=high
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          VERSION=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+          wget -q "https://github.com/gitleaks/gitleaks/releases/download/${VERSION}/gitleaks_${VERSION#v}_linux_x64.tar.gz" -O gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+      - name: Run gitleaks
+        run: gitleaks detect --source . --verbose
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install functions dependencies
+        run: cd functions && npm ci
+      - name: Build functions
+        run: cd functions && npm run build
+      - name: Run tests
+        run: cd functions && npm test
+
+  deploy:
+    needs: [codeql, dependency-scan, secrets-scan, test]
+    runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build for production
+      - name: Build frontend for production
         run: npm run build:prod
 
-      - name: Deploy to Firebase Hosting (prod)
+      - name: Install functions dependencies
+        run: cd functions && npm ci
+
+      - name: Build functions
+        run: cd functions && npm run build
+
+      - name: Deploy to Firebase (hosting + functions + firestore)
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-sa.json
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_BARTERR_PROD }}' > /tmp/firebase-sa.json
           npm install -g firebase-tools
-          firebase deploy --only hosting --project barterr-prod --non-interactive
+          firebase deploy --only hosting,functions,firestore:rules,firestore:indexes --project barterr-prod --non-interactive
+
+      - name: Post-deploy smoke test
+        run: |
+          for i in {1..5}; do
+            if curl -sf https://barterr.ai | grep -q "<div id=\"root\">"; then
+              echo "Smoke test passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+            sleep 10
+          done
+          echo "Smoke test failed after 5 attempts"
+          exit 1
