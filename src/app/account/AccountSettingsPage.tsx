@@ -4,10 +4,11 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   verifyBeforeUpdateEmail,
-  deleteUser,
+  signOut,
 } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
+import { auth } from "@/lib/firebase/config";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { useTour } from "@/lib/contexts/tour.context";
@@ -19,6 +20,12 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, ArrowLeft, Bell, Lock, MapPin, PlayCircle } from "lucide-react";
 import { usePlacesAutocomplete, type ParsedAddress } from "@/lib/hooks/usePlacesAutocomplete";
+
+interface DeletionBlocker {
+  type: "active_trade" | "active_order" | "wallet_balance";
+  id?: string;
+  amountCents?: number;
+}
 
 const Toggle = ({
   checked,
@@ -115,6 +122,7 @@ export const AccountSettingsPage = () => {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [deleteBlockers, setDeleteBlockers] = useState<DeletionBlocker[]>([]);
 
   const handleEmailChange = async () => {
     if (!currentUser?.email || !newEmail || !emailPassword) return;
@@ -170,11 +178,19 @@ export const AccountSettingsPage = () => {
   const handleDelete = async () => {
     if (!currentUser?.email || deleteConfirm !== "DELETE" || !deletePassword) return;
     setDeleting(true);
+    setDeleteBlockers([]);
     try {
       const credential = EmailAuthProvider.credential(currentUser.email, deletePassword);
       await reauthenticateWithCredential(currentUser, credential);
-      await deleteDoc(doc(db, "users", currentUser.uid!));
-      await deleteUser(currentUser);
+      const fns = getFunctions(undefined, "us-central1");
+      const result = await httpsCallable(fns, "deleteAccount")({});
+      const data = result.data as { success?: boolean; blocked?: boolean; blockers?: DeletionBlocker[] };
+      if (data.blocked) {
+        setDeleteBlockers(data.blockers ?? []);
+        setDeleting(false);
+        return;
+      }
+      await signOut(auth);
       navigate("/login");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to delete account";
@@ -430,6 +446,51 @@ export const AccountSettingsPage = () => {
 
               {showDeleteForm && (
                 <div className="space-y-3 pt-1 border-t border-border">
+                  {deleteBlockers.length > 0 && (
+                    <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 space-y-2">
+                      <p className="text-sm font-semibold text-destructive">
+                        Your account can't be deleted yet
+                      </p>
+                      <ul className="space-y-1.5 text-sm text-foreground">
+                        {deleteBlockers.some((b) => b.type === "active_trade") && (
+                          <li>
+                            You have{" "}
+                            {deleteBlockers.filter((b) => b.type === "active_trade").length}{" "}
+                            trade(s) in progress —{" "}
+                            <button
+                              type="button"
+                              className="text-[#3366FF] underline"
+                              onClick={() => navigate("/trades")}
+                            >
+                              complete or decline them first
+                            </button>
+                          </li>
+                        )}
+                        {deleteBlockers.some((b) => b.type === "active_order") && (
+                          <li>
+                            You have{" "}
+                            {deleteBlockers.filter((b) => b.type === "active_order").length}{" "}
+                            order(s) still shipping or awaiting authentication
+                          </li>
+                        )}
+                        {deleteBlockers
+                          .filter((b) => b.type === "wallet_balance")
+                          .map((b, i) => (
+                            <li key={i}>
+                              You have ${((b.amountCents ?? 0) / 100).toFixed(2)} in your
+                              wallet —{" "}
+                              <button
+                                type="button"
+                                className="text-[#3366FF] underline"
+                                onClick={() => navigate("/wallet")}
+                              >
+                                withdraw it first
+                              </button>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="deletePassword">Confirm your password</Label>
                     <Input
@@ -467,6 +528,7 @@ export const AccountSettingsPage = () => {
                         setShowDeleteForm(false);
                         setDeletePassword("");
                         setDeleteConfirm("");
+                        setDeleteBlockers([]);
                       }}
                     >
                       Cancel
