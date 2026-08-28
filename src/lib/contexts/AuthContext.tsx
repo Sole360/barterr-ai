@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { trackEvent, setAnalyticsUser } from "@/lib/analytics/gtag";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -63,6 +64,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     await setDoc(doc(db, "users", result.user.uid), newUser);
 
+    trackEvent("sign_up", { method: "email" });
+
     await updateProfile(result.user, { displayName: newUser.displayName });
 
     const fns = getFunctions(undefined, "us-central1");
@@ -99,6 +102,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      setAnalyticsUser(user?.uid ?? null);
       setUserProfile(null);
       setAdminRole(null);
 

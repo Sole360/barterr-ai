@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { trackEvent } from "@/lib/analytics/gtag";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import {
@@ -395,6 +396,13 @@ export const TradeReviewPage = () => {
         newTradeId = ref.id;
       }
 
+      trackEvent("trade_initiated", {
+        trade_id: newTradeId,
+        value: totalCents / 100,
+        currency: "USD",
+        sneaker_count: senderSneakerCount,
+        is_counter: Boolean(counterOfTradeId),
+      });
       navigate(`/trades/${newTradeId}`, { replace: true });
     } catch (e) {
       console.error("Send trade error:", e);

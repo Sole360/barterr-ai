@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { trackEvent } from "@/lib/analytics/gtag";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -99,6 +100,7 @@ const SetupPaymentForm = ({ onSaved }: SetupPaymentFormProps) => {
       toast({ title: "Payment method not saved", description: "Could not confirm your saved payment method.", variant: "destructive" });
       return;
     }
+    trackEvent("add_payment_info");
     toast({ title: "Payment method saved", description: "Returning to your trade…" });
     onSaved();
   };
