@@ -134,10 +134,17 @@ export const ListingApprovalPage = () => {
       where("approvalStatus", "==", filter),
       orderBy("createdAt", "desc")
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ListingDoc)));
-      setLoading(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ListingDoc)));
+        setLoading(false);
+      },
+      (err) => {
+        console.error("[ListingApprovalPage] query failed:", err.message);
+        setLoading(false);
+      }
+    );
     return unsub;
   }, [filter]);
 

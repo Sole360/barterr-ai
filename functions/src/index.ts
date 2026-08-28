@@ -3,7 +3,7 @@ import { onUserProfileUpdate } from "./profileCascade";
 import { onSwipeCreated, onWishlistCreated } from "./preferenceEngine";
 import { indexPost, unindexPost, indexUser, unindexUser } from "./algoliaIndex";
 import { onNewTradeNotification, onTradeStatusNotification } from "./notificationTriggers";
-import { setAdminRole, disableUser, enableUser, resolveFlaggedAttempt, reviewListing, sendOrderPhotosEmail, cancelOrder } from "./adminActions";
+import { setAdminRole, disableUser, enableUser, resolveFlaggedAttempt, reviewListing, sendOrderPhotosEmail, cancelOrder, onListingCreatedAudit } from "./adminActions";
 import { setGlobalOptions } from "firebase-functions";
 import { deleteListingPhotos } from "./cleanupPhotoStorage";
 import { createSetupIntent, setDefaultPaymentMethod } from "./stripeSetupIntent";
@@ -11,6 +11,7 @@ import { sendVerificationEmail, sendPasswordResetLink } from "./authEmails";
 import { acceptTrade, onTradeConfirmed, retryPayment } from "./tradePayments";
 import { onTradeOutcomeSignal } from "./tradeSignals";
 import { refreshRecommendations } from "./recommendationEngine";
+import { onUserCreatedMailchimp, onUserAddressUpdatedMailchimp, onUserDeletedMailchimp } from "./mailchimp";
 import {
   createConnectAccount,
   getConnectOnboardingLink,
@@ -68,6 +69,7 @@ export {
   reviewListing,
   sendOrderPhotosEmail,
   cancelOrder,
+  onListingCreatedAudit,
   // Storage
   deleteListingPhotos,
   // Auth emails
@@ -112,4 +114,8 @@ export {
   markSneakersReceived,
   markAuthResult,
   createOutboundLabel,
+  // Mailchimp
+  onUserCreatedMailchimp,
+  onUserAddressUpdatedMailchimp,
+  onUserDeletedMailchimp,
 };
