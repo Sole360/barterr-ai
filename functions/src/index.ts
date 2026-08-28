@@ -11,6 +11,7 @@ import { sendVerificationEmail, sendPasswordResetLink } from "./authEmails";
 import { acceptTrade, onTradeConfirmed, retryPayment } from "./tradePayments";
 import { onTradeOutcomeSignal } from "./tradeSignals";
 import { refreshRecommendations } from "./recommendationEngine";
+import { onUserCreatedMailchimp, onUserDeletedMailchimp } from "./mailchimp";
 import {
   createConnectAccount,
   getConnectOnboardingLink,
@@ -113,4 +114,7 @@ export {
   markSneakersReceived,
   markAuthResult,
   createOutboundLabel,
+  // Mailchimp
+  onUserCreatedMailchimp,
+  onUserDeletedMailchimp,
 };
