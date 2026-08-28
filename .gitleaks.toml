@@ -1,0 +1,27 @@
+title = "Barterr gitleaks config"
+
+[allowlist]
+  description = "Suppress known false positives"
+
+  # Firebase API keys are public identifiers — security is enforced by Firestore/Storage rules, not key secrecy.
+  # Algolia search keys are read-only and explicitly designed for client-side/public use.
+  # Stripe publishable keys are public by design — they cannot initiate charges without the secret key.
+  # Firebase Storage download tokens in image URLs are public-access URLs, not credentials.
+  # SendGrid template IDs are identifiers, not credentials.
+  regexes = [
+    # Firebase / GCP browser API keys (public identifiers)
+    '''AIzaSy[0-9A-Za-z\-_]{33}''',
+    # Algolia search-only API key (read-only, client-side)
+    '''VITE_ALGOLIA_SEARCH_API_KEY''',
+    # Stripe publishable keys (pk_live_ and pk_test_ are public)
+    '''pk_(live|test)_[0-9A-Za-z]{24,}''',
+    # Firebase Storage download tokens in URLs (?alt=media&token=UUID)
+    '''alt=media&token=[0-9a-f\-]{36}''',
+    # SendGrid template IDs (d-hexstring format)
+    '''"d-[0-9a-f]{32}"''',
+  ]
+
+  paths = [
+    # Email HTML templates — contain only public image URLs, no credentials
+    '''emails/.*\.html''',
+  ]

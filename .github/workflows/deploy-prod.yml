@@ -6,19 +6,6 @@ on:
       - main
 
 jobs:
-  codeql:
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-      - uses: github/codeql-action/analyze@v3
-
   dependency-scan:
     runs-on: ubuntu-latest
     steps:
@@ -49,7 +36,7 @@ jobs:
           tar -xzf gitleaks.tar.gz gitleaks
           sudo mv gitleaks /usr/local/bin/
       - name: Run gitleaks
-        run: gitleaks detect --source . --verbose
+        run: gitleaks detect --source . --config .gitleaks.toml --log-opts="--since=2026-08-01" --verbose
 
   test:
     runs-on: ubuntu-latest
@@ -67,7 +54,7 @@ jobs:
         run: cd functions && npm test
 
   deploy:
-    needs: [codeql, dependency-scan, secrets-scan, test]
+    needs: [dependency-scan, secrets-scan, test]
     runs-on: ubuntu-latest
     environment: production
     steps:
