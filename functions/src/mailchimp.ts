@@ -32,7 +32,7 @@ export const onUserCreatedMailchimp = onDocumentCreated(
     try {
       const res = await client.put(`/lists/${AUDIENCE_ID}/members/${hash}`, {
         email_address: data.email,
-        status_if_new: "subscribed",
+        status: "subscribed",
         merge_fields: {
           FNAME: data.firstName ?? "",
           LNAME: data.lastName ?? "",
