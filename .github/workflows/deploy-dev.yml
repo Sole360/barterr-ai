@@ -6,7 +6,46 @@ on:
       - develop
 
 jobs:
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3
+
+  dependency-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
+      - name: Install functions dependencies
+        run: cd functions && npm ci
+      - name: Audit functions dependencies
+        run: cd functions && npm audit --audit-level=high
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   deploy:
+    needs: [codeql, dependency-scan, secrets-scan]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,19 +53,38 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build for dev
+      - name: Build frontend for dev
         run: npm run build:dev
 
-      - name: Deploy to Firebase Hosting (dev)
+      - name: Install functions dependencies
+        run: cd functions && npm ci
+
+      - name: Build functions
+        run: cd functions && npm run build
+
+      - name: Deploy to Firebase (hosting + functions + firestore)
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-sa.json
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_BARTERR_DEV }}' > /tmp/firebase-sa.json
           npm install -g firebase-tools
-          firebase deploy --only hosting --project barterr-dev-98dfd --non-interactive
+          firebase deploy --only hosting,functions,firestore:rules,firestore:indexes --project barterr-dev-98dfd --non-interactive
+
+      - name: Post-deploy smoke test
+        run: |
+          for i in {1..5}; do
+            if curl -sf https://barterr-dev-98dfd.web.app | grep -q "<div id=\"root\">"; then
+              echo "Smoke test passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+            sleep 10
+          done
+          echo "Smoke test failed after 5 attempts"
+          exit 1
