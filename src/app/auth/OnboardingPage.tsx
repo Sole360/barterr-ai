@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics/gtag";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/contexts/auth.context";
 import { Button } from "@/components/ui/button";
@@ -131,6 +132,7 @@ export const OnboardingPage = () => {
         updates.address = { street, city, state: addrState, zip, country: "US" };
       }
       await updateUserProfile(updates);
+      trackEvent("tutorial_complete");
       navigate("/discover?onboarding=true");
     } catch (error) {
       console.error("Onboarding error:", error);

@@ -43,6 +43,20 @@ import { PricingPage } from "@/app/marketing/PricingPage";
 import { FAQPage } from "@/app/marketing/FAQPage";
 import { TermsPage } from "@/app/marketing/TermsPage";
 import { WalletPage } from "@/app/wallet/WalletPage";
+import { ConsentBanner } from "@/components/shared/ConsentBanner";
+import { trackPageView, normalizePath } from "@/lib/analytics/gtag";
+import { useEffect } from "react";
+
+// Sits directly under BrowserRouter (outside AuthProvider, which unmounts
+// children until auth resolves) so every navigation is tracked.
+function RouteTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView(normalizePath(location.pathname));
+  }, [location.pathname]);
+  return null;
+}
+
 function AppRoutes() {
   const location = useLocation();
   return (
@@ -144,6 +158,7 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
+      <RouteTracker />
       <ThemeProvider>
         <AuthProvider>
           <TourProvider>
@@ -152,6 +167,7 @@ function App() {
             <Toaster />
           </TourProvider>
         </AuthProvider>
+        <ConsentBanner />
       </ThemeProvider>
     </BrowserRouter>
   );

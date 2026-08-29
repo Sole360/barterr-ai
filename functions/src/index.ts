@@ -12,6 +12,7 @@ import { acceptTrade, onTradeConfirmed, retryPayment } from "./tradePayments";
 import { onTradeOutcomeSignal } from "./tradeSignals";
 import { refreshRecommendations } from "./recommendationEngine";
 import { onUserCreatedMailchimp, onUserAddressUpdatedMailchimp, onUserDeletedMailchimp } from "./mailchimp";
+import { deleteAccount } from "./accountDeletion";
 import {
   createConnectAccount,
   getConnectOnboardingLink,
@@ -118,4 +119,6 @@ export {
   onUserCreatedMailchimp,
   onUserAddressUpdatedMailchimp,
   onUserDeletedMailchimp,
+  // Account deletion
+  deleteAccount,
 };

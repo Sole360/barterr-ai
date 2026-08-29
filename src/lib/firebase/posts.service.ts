@@ -1,3 +1,4 @@
+import { trackEvent } from "@/lib/analytics/gtag";
 import {
   collection,
   doc,
@@ -393,6 +394,11 @@ export const createListing = async (listingData: {
   }
 
   const docRef = await addDoc(listingsRef, newListing);
+  trackEvent("listing_created", {
+    brand: listingData.brand ?? "unknown",
+    value: listingData.tradeValue,
+    currency: "USD",
+  });
   return docRef.id;
 };
 

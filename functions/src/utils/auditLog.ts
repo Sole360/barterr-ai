@@ -30,7 +30,9 @@ export type AuditEventType =
   | "connect.account_created"
   | "connect.transfer"
   | "connect.pending_released"
-  | "connect.withdrawal";
+  | "connect.withdrawal"
+  | "account.deletion_blocked"
+  | "account.purged";
 
 export type AuditTargetType = "trade" | "order" | "user" | "listing" | "flaggedAttempt";
 

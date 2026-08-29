@@ -6,6 +6,9 @@ import * as Sentry from "@sentry/react";
 import "./index.css";
 import App from "./App.tsx";
 import { queryClient } from "@/lib/query/client";
+import { initAnalytics } from "@/lib/analytics/gtag";
+
+initAnalytics();
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
