@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { trackEvent, setAnalyticsUser } from "@/lib/analytics/gtag";
+import { bootFeaturebase, shutdownFeaturebase } from "@/lib/featurebase/featurebase";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -103,6 +104,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setAnalyticsUser(user?.uid ?? null);
+      if (user) {
+        void bootFeaturebase(user);
+      } else {
+        shutdownFeaturebase();
+      }
       setUserProfile(null);
       setAdminRole(null);
 
