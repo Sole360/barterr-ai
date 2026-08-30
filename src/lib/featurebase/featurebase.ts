@@ -1,4 +1,4 @@
-import { boot, initFeedback, shutdown } from "featurebase-js";
+import Featurebase, { initFeedback, shutdown } from "featurebase-js";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
 /**
@@ -24,15 +24,15 @@ export async function bootFeaturebase(user: {
       name: user.displayName ?? undefined,
     });
     const { featurebaseJwt } = res.data as { featurebaseJwt: string };
-    boot({
+    // The default Featurebase() entry resolves the org and boots surfaces
+    // per the workspace module toggles (Support is off, so no messenger) —
+    // unlike boot(), which starts the messenger unconditionally.
+    Featurebase({
       appId: APP_ID,
       userId: user.uid,
       email: user.email ?? undefined,
       name: user.displayName ?? undefined,
       featurebaseJwt,
-      // No support messenger — feedback board only. Note: Outbound targeted
-      // chats also deliver through the messenger, so re-enable if we use them.
-      messenger: false,
     });
     // The universal boot carries identity; the floating feedback button is
     // its own surface and needs an explicit init (identity is inherited).
