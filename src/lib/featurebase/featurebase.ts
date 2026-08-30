@@ -30,13 +30,16 @@ export async function bootFeaturebase(user: {
       email: user.email ?? undefined,
       name: user.displayName ?? undefined,
       featurebaseJwt,
+      // No support messenger — feedback board only. Note: Outbound targeted
+      // chats also deliver through the messenger, so re-enable if we use them.
+      messenger: false,
     });
     // The universal boot carries identity; the floating feedback button is
     // its own surface and needs an explicit init (identity is inherited).
     const isDark = document.documentElement.classList.contains("dark");
     initFeedback({
       theme: isDark ? "dark" : "light",
-      placement: "bottom-right",
+      placement: "right",
     });
   } catch (err) {
     booted = false;
