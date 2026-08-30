@@ -13,6 +13,7 @@ import { onTradeOutcomeSignal } from "./tradeSignals";
 import { refreshRecommendations } from "./recommendationEngine";
 import { onUserCreatedMailchimp, onUserAddressUpdatedMailchimp, onUserDeletedMailchimp } from "./mailchimp";
 import { deleteAccount } from "./accountDeletion";
+import { refreshDiscoverCache } from "./discoverCache";
 import {
   createConnectAccount,
   getConnectOnboardingLink,
@@ -121,4 +122,6 @@ export {
   onUserDeletedMailchimp,
   // Account deletion
   deleteAccount,
+  // Discover cache
+  refreshDiscoverCache,
 };

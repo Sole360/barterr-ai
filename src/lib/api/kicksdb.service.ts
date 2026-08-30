@@ -1,4 +1,6 @@
 import type { KicksDBProduct, SearchResult } from "@/types";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
 
 const KICKSDB_API_KEY = import.meta.env.VITE_KICKSDB_API_KEY;
 const BASE_URL = "https://api.kicks.dev/v3";
@@ -115,6 +117,24 @@ async function fetchWithRetry(
     response = await fetch(url, init);
   }
   return response;
+}
+
+// Discover pool pre-computed by the refreshDiscoverCache Cloud Function
+// (every 6h, swept sequentially — avoids the concurrent-request 500s this
+// endpoint throws under live per-user traffic). Returns null when the cache
+// doc doesn't exist yet (e.g. before the first scheduled run) so callers can
+// fall back to live fetchRecentReleases calls.
+export async function fetchDiscoverPool(): Promise<Record<string, SearchResult[]> | null> {
+  try {
+    const snap = await getDoc(doc(db, "discoverCache", "pool"));
+    if (!snap.exists()) return null;
+    const brands = snap.data().brands as Record<string, SearchResult[]> | undefined;
+    if (!brands || Object.keys(brands).length === 0) return null;
+    return brands;
+  } catch (error) {
+    console.error("fetchDiscoverPool error:", error);
+    return null;
+  }
 }
 
 // Fetch sneakers for the Discover feature.
