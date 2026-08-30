@@ -153,6 +153,12 @@ export const deleteAccount = onCall(
       addUpdate(snap.ref, { posterName: DELETED_NAME, posterEmail: "", posterMobile: "" });
     }
 
+    // In-app feedback keeps its content for product insight, minus the PII
+    const feedbackSnap = await db.collection("feedback").where("userId", "==", uid).get();
+    for (const snap of feedbackSnap.docs) {
+      addUpdate(snap.ref, { userName: DELETED_NAME, email: "" });
+    }
+
     // Posts are shared catalog docs (deduped by styleId) — strip the user's
     // owners[]/wishers[] entries (they embed email + displayName), keep the doc.
     // Post IDs are derivable only from the user's listings + wishlist docs.
