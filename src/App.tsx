@@ -32,6 +32,7 @@ import { AdminTradesPage } from "@/app/admin/AdminTradesPage";
 import { AnnouncementsPage } from "@/app/admin/AnnouncementsPage";
 import { ContentFilterPage } from "@/app/admin/ContentFilterPage";
 import { AuditLogPage } from "@/app/admin/AuditLogPage";
+import { FeedbackPage } from "@/app/admin/FeedbackPage";
 import { OrderManagementPage } from "@/app/admin/OrderManagementPage";
 import { RevenueDashboardPage } from "@/app/admin/RevenueDashboardPage";
 import { AccountSettingsPage } from "@/app/account/AccountSettingsPage";
@@ -43,6 +44,20 @@ import { PricingPage } from "@/app/marketing/PricingPage";
 import { FAQPage } from "@/app/marketing/FAQPage";
 import { TermsPage } from "@/app/marketing/TermsPage";
 import { WalletPage } from "@/app/wallet/WalletPage";
+import { ConsentBanner } from "@/components/shared/ConsentBanner";
+import { trackPageView, normalizePath } from "@/lib/analytics/gtag";
+import { useEffect } from "react";
+
+// Sits directly under BrowserRouter (outside AuthProvider, which unmounts
+// children until auth resolves) so every navigation is tracked.
+function RouteTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView(normalizePath(location.pathname));
+  }, [location.pathname]);
+  return null;
+}
+
 function AppRoutes() {
   const location = useLocation();
   return (
@@ -125,6 +140,7 @@ function AppRoutes() {
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="content-filter" element={<ContentFilterPage />} />
             <Route path="audit" element={<AuditLogPage />} />
+            <Route path="feedback" element={<FeedbackPage />} />
             <Route path="orders" element={<OrderManagementPage />} />
             <Route path="revenue" element={<RevenueDashboardPage />} />
           </Route>
@@ -144,6 +160,7 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
+      <RouteTracker />
       <ThemeProvider>
         <AuthProvider>
           <TourProvider>
@@ -152,6 +169,7 @@ function App() {
             <Toaster />
           </TourProvider>
         </AuthProvider>
+        <ConsentBanner />
       </ThemeProvider>
     </BrowserRouter>
   );

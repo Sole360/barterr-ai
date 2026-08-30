@@ -13,6 +13,7 @@ export type AuditEventType =
   | "label.outbound_created"
   | "auth.sneakers_received"
   | "auth.result"
+  | "listing.auto_approved"
   | "admin.listing_reviewed"
   | "admin.user_disabled"
   | "admin.user_enabled"
@@ -29,7 +30,9 @@ export type AuditEventType =
   | "connect.account_created"
   | "connect.transfer"
   | "connect.pending_released"
-  | "connect.withdrawal";
+  | "connect.withdrawal"
+  | "account.deletion_blocked"
+  | "account.purged";
 
 export type AuditTargetType = "trade" | "order" | "user" | "listing" | "flaggedAttempt";
 

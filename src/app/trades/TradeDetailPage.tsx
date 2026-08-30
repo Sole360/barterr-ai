@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics/gtag";
 import { useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -200,6 +201,24 @@ export const TradeDetailPage = () => {
     );
     return () => unsub();
   }, [tradeId]);
+
+  // GA purchase: fire once when the trade transitions to completed live in
+  // this session (server sets the status). Requiring a prior non-completed
+  // status avoids re-firing when someone revisits an already-completed trade;
+  // transaction_id lets GA dedupe across both parties' browsers.
+  const prevStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!trade || !tradeId) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = trade.status;
+    if (trade.status === "completed" && prev && prev !== "completed") {
+      trackEvent("purchase", {
+        transaction_id: tradeId,
+        value: (trade.senderTotalCents + trade.receiverTotalCents) / 100,
+        currency: "USD",
+      });
+    }
+  }, [trade, tradeId]);
 
   // Fetch other user profile once trade is known
   useEffect(() => {

@@ -141,7 +141,7 @@ export const createSetupIntent = onCall(
       const setupIntent = await stripe.setupIntents.create({
         customer: stripeCustomerId,
         usage: "off_session",
-        payment_method_types: ["card"],
+        automatic_payment_methods: { enabled: true, allow_redirects: "never" },
         metadata: { uid },
       });
       if (!setupIntent.client_secret) {

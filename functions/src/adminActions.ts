@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
@@ -635,5 +636,31 @@ export const cancelOrder = onCall(
     });
 
     return { success: true };
+  }
+);
+
+// Auto-approve audit log — deadstock (10/10) listings bypass reviewListing and are
+// approved directly by the client write. This trigger captures that event.
+export const onListingCreatedAudit = onDocumentCreated(
+  { document: "listings/{listingId}", region: "us-central1" },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data || data.approvalStatus !== "approved") return;
+
+    await writeAuditLog({
+      eventType: "listing.auto_approved",
+      functionName: "onListingCreatedAudit",
+      actorId: data.userId ?? "unknown",
+      targetId: event.params.listingId,
+      targetType: "listing",
+      status: "success",
+      durationMs: 0,
+      metadata: {
+        productName: data.productName ?? null,
+        brand: data.brand ?? null,
+        conditionGrade: data.conditionGrade ?? null,
+        reason: "deadstock",
+      },
+    });
   }
 );

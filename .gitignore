@@ -42,8 +42,8 @@ npm-debug.log*
 *.zip
 
 # Firebase service account keys — NEVER commit these
-scripts/serviceAccountKey.json
-serviceAccountKey.json
+scripts/serviceAccountKey*.json
+serviceAccountKey*.json
 .firebase/hosting.ZGlzdA.cache
 tsconfig.app.tsbuildinfo
 .firebase/hosting.ZGlzdA.cache

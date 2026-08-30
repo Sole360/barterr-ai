@@ -101,6 +101,22 @@ export async function searchSneakers(query: string): Promise<SearchResult[]> {
   }
 }
 
+// kicks.dev intermittently returns 500 when several requests hit the key
+// concurrently (Discover fires one per brand) — retry transient 5xx with a
+// short backoff before giving up.
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  retries = 2
+): Promise<Response> {
+  let response = await fetch(url, init);
+  for (let attempt = 1; attempt <= retries && response.status >= 500; attempt++) {
+    await new Promise((r) => setTimeout(r, 300 * attempt + Math.random() * 300));
+    response = await fetch(url, init);
+  }
+  return response;
+}
+
 // Fetch sneakers for the Discover feature.
 // Confirmed from API testing:
 //  - brand filter works: filters=brand%20%3D%20%22Nike%22
@@ -118,7 +134,7 @@ export async function fetchRecentReleases(options?: {
   const url = `${BASE_URL}/stockx/products?filters=${encodeURIComponent(filterStr)}&limit=${limit}&page=${page}&currency=USD&market=US`;
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers: { Authorization: `Bearer ${KICKSDB_API_KEY}` },
     });
     if (!response.ok) throw new Error(`Discover fetch failed: ${response.status}`);

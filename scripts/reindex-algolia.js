@@ -2,11 +2,13 @@
  * One-time re-index script — pushes all Firestore listings + users into Algolia.
  *
  * Usage:
- *   1. Make sure scripts/serviceAccountKey.json exists (same key used for set-super-admin)
- *   2. Set your new Algolia Admin API Key:
+ *   1. Make sure the service account key file exists in scripts/
+ *   2. Set env vars:
  *        export ALGOLIA_ADMIN_API_KEY=your_admin_key_here
- *   3. Run:
+ *   3. Run (dev):
  *        node scripts/reindex-algolia.js
+ *      Run (prod):
+ *        ALGOLIA_APP_ID=DND08PNQH4 node scripts/reindex-algolia.js serviceAccountKey.prod.json
  */
 
 import { createRequire } from "module";
@@ -21,10 +23,11 @@ const { initializeApp, cert } = fnRequire("firebase-admin/app");
 const { getFirestore } = fnRequire("firebase-admin/firestore");
 const { algoliasearch } = fnRequire("algoliasearch");
 
+const keyFile = process.argv[2] ?? "serviceAccountKey.json";
 const localRequire = createRequire(import.meta.url);
-const serviceAccount = localRequire(join(__dirname, "serviceAccountKey.json"));
+const serviceAccount = localRequire(join(__dirname, keyFile));
 
-const ALGOLIA_APP_ID = "QSCURMJ88X";
+const ALGOLIA_APP_ID = process.env.ALGOLIA_APP_ID ?? "QSCURMJ88X";
 const ALGOLIA_ADMIN_API_KEY = process.env.ALGOLIA_ADMIN_API_KEY;
 
 if (!ALGOLIA_ADMIN_API_KEY) {

@@ -11,6 +11,8 @@
  *
  *   3. Run:
  *      node scripts/set-super-admin.js YOUR_UID_HERE
+ *      # or with a named key file:
+ *      node scripts/set-super-admin.js YOUR_UID_HERE serviceAccountKey.prod.json
  */
 
 import { createRequire } from "module";
@@ -25,15 +27,16 @@ const fnRequire = createRequire(join(repoRoot, "functions", "package.json"));
 const { initializeApp, cert } = fnRequire("firebase-admin/app");
 const { getAuth } = fnRequire("firebase-admin/auth");
 
-// Load service account key from same directory as this script
-const localRequire = createRequire(import.meta.url);
-const serviceAccount = localRequire(join(__dirname, "serviceAccountKey.json"));
-
 const uid = process.argv[2];
+const keyFile = process.argv[3] ?? "serviceAccountKey.json";
 if (!uid) {
-  console.error("Usage: node scripts/set-super-admin.js <YOUR_UID>");
+  console.error("Usage: node scripts/set-super-admin.js <YOUR_UID> [keyFile.json]");
   process.exit(1);
 }
+
+// Load service account key from same directory as this script
+const localRequire = createRequire(import.meta.url);
+const serviceAccount = localRequire(join(__dirname, keyFile));
 
 initializeApp({ credential: cert(serviceAccount) });
 
