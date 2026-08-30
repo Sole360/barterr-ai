@@ -1,4 +1,4 @@
-import { boot, shutdown } from "featurebase-js";
+import { boot, initFeedback, shutdown } from "featurebase-js";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
 /**
@@ -30,6 +30,13 @@ export async function bootFeaturebase(user: {
       email: user.email ?? undefined,
       name: user.displayName ?? undefined,
       featurebaseJwt,
+    });
+    // The universal boot carries identity; the floating feedback button is
+    // its own surface and needs an explicit init (identity is inherited).
+    const isDark = document.documentElement.classList.contains("dark");
+    initFeedback({
+      theme: isDark ? "dark" : "light",
+      placement: "bottom-right",
     });
   } catch (err) {
     booted = false;
