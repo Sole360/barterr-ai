@@ -43,6 +43,7 @@ import { PricingPage } from "@/app/marketing/PricingPage";
 import { FAQPage } from "@/app/marketing/FAQPage";
 import { TermsPage } from "@/app/marketing/TermsPage";
 import { WalletPage } from "@/app/wallet/WalletPage";
+import { FeaturebaseSSOPage } from "@/app/featurebase/FeaturebaseSSOPage";
 import { ConsentBanner } from "@/components/shared/ConsentBanner";
 import { trackPageView, normalizePath } from "@/lib/analytics/gtag";
 import { useEffect } from "react";
@@ -124,6 +125,10 @@ function AppRoutes() {
           <Route
             path="/wallet"
             element={<ProtectedRoute><WalletPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/featurebase-sso"
+            element={<ProtectedRoute><FeaturebaseSSOPage /></ProtectedRoute>}
           />
 
           {/* Admin — nested under AdminShell, all guarded by AdminGuard */}
