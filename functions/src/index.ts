@@ -13,7 +13,6 @@ import { onTradeOutcomeSignal } from "./tradeSignals";
 import { refreshRecommendations } from "./recommendationEngine";
 import { onUserCreatedMailchimp, onUserAddressUpdatedMailchimp, onUserDeletedMailchimp } from "./mailchimp";
 import { deleteAccount } from "./accountDeletion";
-import { getFeaturebaseIdentity } from "./featurebase";
 import {
   createConnectAccount,
   getConnectOnboardingLink,
@@ -122,6 +121,4 @@ export {
   onUserDeletedMailchimp,
   // Account deletion
   deleteAccount,
-  // Featurebase
-  getFeaturebaseIdentity,
 };

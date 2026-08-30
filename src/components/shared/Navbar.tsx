@@ -33,6 +33,7 @@ import { SearchBar } from "./SearchBar";
 import { PostDetailModal } from "@/components/dialogs/PostDetailModal";
 import { NotificationPanel } from "./NotificationPanel";
 import { AddSneakerDialog } from "@/components/dialogs/AddSneakerDialog";
+import { FeedbackDialog } from "@/components/dialogs/FeedbackDialog";
 import { useNotifications } from "@/lib/firebase/useNotifications";
 import { getPostById } from "@/lib/firebase/posts.service";
 import { Post } from "@/types";
@@ -53,6 +54,7 @@ export const Navbar = () => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const mobileNotifRef = useRef<HTMLDivElement>(null);
 
@@ -211,7 +213,7 @@ export const Navbar = () => {
                       <Settings className="w-4 h-4 mr-2" />
                       Account Settings
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate("/featurebase-sso")}>
+                    <DropdownMenuItem onClick={() => setFeedbackOpen(true)}>
                       <MessageSquarePlus className="w-4 h-4 mr-2" />
                       Give Feedback
                     </DropdownMenuItem>
@@ -364,7 +366,7 @@ export const Navbar = () => {
                       <Settings className="w-4 h-4 mr-2" />
                       Account Settings
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate("/featurebase-sso")}>
+                    <DropdownMenuItem onClick={() => setFeedbackOpen(true)}>
                       <MessageSquarePlus className="w-4 h-4 mr-2" />
                       Give Feedback
                     </DropdownMenuItem>
@@ -449,6 +451,8 @@ export const Navbar = () => {
       </div>
 
       <AddSneakerDialog open={addOpen} onClose={() => setAddOpen(false)} />
+
+      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
 
       {/* Post Detail Modal */}
       {selectedPost && (

@@ -269,6 +269,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // In-app feedback — users submit their own; admins review
+    match /feedback/{feedbackId} {
+      allow create: if isAuthenticated() &&
+                    request.resource.data.userId == request.auth.uid;
+      allow read, update: if isAdmin();
+      allow delete: if false;
+    }
+
     // Deny all other collections by default
     match /{document=**} {
       allow read, write: if false;

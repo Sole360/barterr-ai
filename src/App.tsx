@@ -32,6 +32,7 @@ import { AdminTradesPage } from "@/app/admin/AdminTradesPage";
 import { AnnouncementsPage } from "@/app/admin/AnnouncementsPage";
 import { ContentFilterPage } from "@/app/admin/ContentFilterPage";
 import { AuditLogPage } from "@/app/admin/AuditLogPage";
+import { FeedbackPage } from "@/app/admin/FeedbackPage";
 import { OrderManagementPage } from "@/app/admin/OrderManagementPage";
 import { RevenueDashboardPage } from "@/app/admin/RevenueDashboardPage";
 import { AccountSettingsPage } from "@/app/account/AccountSettingsPage";
@@ -43,7 +44,6 @@ import { PricingPage } from "@/app/marketing/PricingPage";
 import { FAQPage } from "@/app/marketing/FAQPage";
 import { TermsPage } from "@/app/marketing/TermsPage";
 import { WalletPage } from "@/app/wallet/WalletPage";
-import { FeaturebaseSSOPage } from "@/app/featurebase/FeaturebaseSSOPage";
 import { ConsentBanner } from "@/components/shared/ConsentBanner";
 import { trackPageView, normalizePath } from "@/lib/analytics/gtag";
 import { useEffect } from "react";
@@ -126,10 +126,6 @@ function AppRoutes() {
             path="/wallet"
             element={<ProtectedRoute><WalletPage /></ProtectedRoute>}
           />
-          <Route
-            path="/featurebase-sso"
-            element={<ProtectedRoute><FeaturebaseSSOPage /></ProtectedRoute>}
-          />
 
           {/* Admin — nested under AdminShell, all guarded by AdminGuard */}
           <Route
@@ -144,6 +140,7 @@ function AppRoutes() {
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="content-filter" element={<ContentFilterPage />} />
             <Route path="audit" element={<AuditLogPage />} />
+            <Route path="feedback" element={<FeedbackPage />} />
             <Route path="orders" element={<OrderManagementPage />} />
             <Route path="revenue" element={<RevenueDashboardPage />} />
           </Route>

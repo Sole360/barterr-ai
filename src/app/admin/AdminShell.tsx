@@ -13,6 +13,7 @@ import {
   Filter,
   LayoutGrid,
   ClipboardList,
+  MessageSquareText,
   PackageCheck,
   DollarSign,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { to: "/admin/announcements", label: "Broadcast", icon: Megaphone },
   { to: "/admin/content-filter", label: "Content Filter", icon: Filter },
   { to: "/admin/audit", label: "Audit Log", icon: ClipboardList },
+  { to: "/admin/feedback", label: "Feedback", icon: MessageSquareText },
   { to: "/admin/revenue", label: "Revenue", icon: DollarSign },
 ];
 
