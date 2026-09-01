@@ -10,7 +10,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/contexts/auth.context";
-import { fetchRecentReleases } from "@/lib/api/kicksdb.service";
+import { fetchRecentReleases, fetchDiscoverPool } from "@/lib/api/kicksdb.service";
 import {
   createOrUpdatePost,
   addToWishlist,
@@ -73,12 +73,18 @@ export const DiscoverPage = () => {
   const shuffledBrandsRef = useRef(shuffle([...DISCOVER_BRANDS]));
   // Absolute fetch index — brand = index % 8, page = floor(index / 8) + 1
   // This means we cycle all 8 brands on page 1, then all 8 on page 2, etc.
+  // Only used in the live-fallback path (cache pool missing/empty).
   const fetchIndexRef = useRef(0);
 
   const getBrandAndPage = (idx: number) => ({
     brand: shuffledBrandsRef.current[idx % shuffledBrandsRef.current.length],
     page: Math.floor(idx / shuffledBrandsRef.current.length) + 1,
   });
+
+  // Remaining shuffled pool when reading from the pre-computed cache —
+  // handleFetchMore just slices off the next batch, no network call.
+  const cachePoolRef = useRef<SearchResult[] | null>(null);
+  const CARDS_PER_BATCH = 12;
 
   useEffect(() => {
     if (!currentUser) return;
@@ -90,7 +96,20 @@ export const DiscoverPage = () => {
       const swiped = new Set(snap.docs.map((d) => d.id));
       setSwipedSet(swiped);
 
-      // Fetch first 4 brands (all page 1) in parallel
+      const pool = await fetchDiscoverPool();
+
+      if (pool) {
+        const all = dedupeByStyleId(shuffle(Object.values(pool).flat())).filter(
+          (r) => !swiped.has(r.styleId),
+        );
+        cachePoolRef.current = all.slice(CARDS_PER_BATCH);
+        setInitialCards(all.slice(0, CARDS_PER_BATCH));
+        setLoading(false);
+        if (all.length === 0) setIsEmpty(true);
+        return;
+      }
+
+      // Fallback: cache not populated yet — fetch live, same as before.
       const fetches = Array.from({ length: 4 }, (_, i) => getBrandAndPage(i));
       fetchIndexRef.current = 4;
 
@@ -111,6 +130,11 @@ export const DiscoverPage = () => {
   }, [currentUser]);
 
   const handleFetchMore = useCallback(async (): Promise<SearchResult[]> => {
+    if (cachePoolRef.current !== null) {
+      const next = cachePoolRef.current.slice(0, CARDS_PER_BATCH);
+      cachePoolRef.current = cachePoolRef.current.slice(CARDS_PER_BATCH);
+      return next;
+    }
     const { brand, page } = getBrandAndPage(fetchIndexRef.current);
     fetchIndexRef.current += 1;
     return fetchRecentReleases({ brand, limit: 12, page });
